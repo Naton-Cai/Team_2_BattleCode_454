@@ -34,9 +34,13 @@ Source: [Google Java Style Guide](https://google.github.io/styleguide/javaguide.
 
 Apply these defaults to new files and changed code. Preserve unrelated code rather than reformatting the repository during feature work. If a configured formatter affects a whole file, inspect the diff and keep the formatting scope reviewable; separate a broad formatting migration from behavior changes.
 
+Style consistency does not justify extracting or moving unrelated working procedures. Apply style to necessary feature additions. Feature-specific structure belongs to the task contract selected under `AGENTS.md` §2; this guide does not prescribe handlers or abstractions.
+
 The supplied starter `RobotPlayer.java` and JUnit test use wildcard imports. For imports changed as part of a scoped edit, use explicit classes or static members. Do not rename the starter package, replace the test framework, or modify behavior merely to modernize the scaffold.
 
 Document non-obvious game constraints with specification page/version references. Explain why an exception or performance-sensitive implementation exists. Avoid comments that merely repeat the code, unsupported performance claims, and mandatory documentation templates that add no useful information.
+
+In test files, increase the use of USEFUL comments and clear Javadocs. Each test case should state the scenario being exercised, the controlling design/engine constraint, and clear Arrange-Act-Assert steps so a junior developer can quickly scan, understand, and maintain the test suite and feature changes.
 
 Keep Java code examples in shared documentation consistent with this guide when those examples are edited. Existing examples do not silently override the style baseline.
 
@@ -80,6 +84,6 @@ Use existing repository formatting and style-check commands when available. Reco
 
 When the team adopts automated enforcement, pin the formatter/checker versions and configuration, use the same configuration locally and in CI, and make intentional exceptions reviewable. Select tools compatible with the existing toolchain; do not add plugins or dependencies as part of an unrelated feature. Automated formatting does not establish compliance with naming, documentation, sandbox rules, or gameplay requirements.
 
-Before completing a Java change, check its style, necessary exceptions, import legality, and diff scope. Report style checks separately from compilation, unit tests, and engine matches. Leave architecture decisions to the active ticket and team agreement.
+Before completing a Java change, check its style, necessary exceptions, import legality, and diff scope. Report style checks separately from compilation, unit tests, and engine matches. Use the task contract for feature design and `AGENTS.md` for shared lifecycle and scope constraints.
 
 Source: `AGENTS.md` §§2, 4-5; `.ai/README.md` §§4-6; project policy for reproducible validation.

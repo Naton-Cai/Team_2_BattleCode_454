@@ -1,6 +1,6 @@
 # Battlecode 2026 Testing Guidance
 
-Store this file at `.ai/testing.md`. Run commands from the repository root. Follow `AGENTS.md` for scope, instruction precedence, and handoffs; use the Battlecode skill for engine rules and `.ai/style/java.md` for style. This guide defines a proposed testing workflow without selecting the team's architecture.
+Store this file at `.ai/testing.md`. Run commands from the repository root. Follow `AGENTS.md` for scope, instruction precedence, and handoffs; use the Battlecode skill for engine rules and `.ai/style/java.md` for style. This guide supplies commands and evidence procedures. The task contract selected under AGENTS.md §2 owns feature scenarios and expected outcomes; this guide does not add feature requirements.
 
 **Use this guide:** New setup: §§1 and 7. Daily feature work: focused tests in §3, relevant match/scenario checks in §§4-5, then the evidence record in §6. Read sources in §8 only when verifying a detail.
 
@@ -68,9 +68,9 @@ Replace the package/class with the actual existing target. For a new feature tes
 
 Inspect test counts and failures, not only `BUILD SUCCESSFUL`. Default results are `build/reports/tests/test/index.html` and `build/test-results/test/`; verify local overrides. `NO-SOURCE` or zero discovered tests is not feature coverage. `UP-TO-DATE` and `FROM-CACHE` mean results were reused, not freshly executed. For a deliberate fresh run, add `--rerun-tasks`; do not make repeated clean rebuilds the default. Do not use `-x test` as acceptance evidence. [S5-S7]
 
-Write tests under `test/<package path>/`, matching package declarations. Give each test explicit setup, one behavior to check, and observable expected results. Reset robot-local static state and RNG state where tests share a JVM; production robot isolation does not automatically isolate JUnit methods. Avoid dependence on test execution order. [S1, P2-P3]
+Write tests under `test/<package path>/`, matching package declarations. Give each test explicit setup, one behavior to check, and observable expected results. Increase the use of USEFUL comments (e.g., scenario description, controlling rules, and arrange-act-assert phases) so junior developers can quickly scan and understand the test suite and feature changes. Reset robot-local static state and RNG state where tests share a JVM; production robot isolation does not automatically isolate JUnit methods. Avoid dependence on test execution order. [S1, P2-P3]
 
-Test an existing bounded behavior entry point or decision function. Do not call the infinite `RobotPlayer.run()` loop directly in a normal unit test. A small fake can exercise controller interactions, but must not pretend to prove engine collision rules. Do not create an architecture or broad abstraction layer just to write tests; agree on the smallest test seam the implementation needs. [P2-P3]
+Test an existing bounded behavior entry point or decision function. Do not call the infinite `RobotPlayer.run()` loop directly in a normal unit test. A small fake can exercise controller interactions, but must not pretend to prove engine collision rules. Do not create an architecture or broad abstraction layer just to write tests; agree on the smallest test seam the implementation needs. Regression coverage for unchanged behavior does not authorize unrelated production refactoring; use existing entry points or instrumented engine observations. [P2-P3]
 
 ## 4. Instrumented Match Workflow
 
@@ -95,28 +95,23 @@ For a feature, select or construct a valid map and setup that actually reaches t
 
 Preserve logs when collecting evidence. For Bash/WSL, `set -o pipefail` before piping a command through `tee` preserves a failing process status. Record the command's exit status as well as the log. A nonzero result, timeout, or missing replay requires investigation; do not silently count it as a pass or a loss in a strategy sample.
 
-## 5. Initial Rat King Movement Coverage
+## 5. Derive Coverage from the Task Contract
 
-Use the active movement ticket as the acceptance contract. The following maps its scenarios to evidence; these are planned checks, not executed results. Clockwise selection is project policy. [P3]
+Use the contract selected under `AGENTS.md` §2 for scenarios, strategy parameters, action ordering, and expected outcomes. Do not copy a previous feature's checklist into the current task. If the contract omits a material acceptance detail, derive a check from the requested outcome or clarify the missing decision; do not invent strategy. [P1, P3]
 
-| Scenario | Observable expected result | Evidence |
+Map each relevant criterion to the evidence it needs:
+
+| Criterion type | Appropriate evidence | Limit |
 | --- | --- | --- |
-| Facing clear, movement ready | One move in that direction; no second move or unnecessary turn. | Focused test + engine observation. |
-| Facing blocked, multiple legal alternatives | First legal clockwise candidate wins. Include wraparound and a case where only the eighth candidate works. | Focused tests. |
-| All eight blocked | No move call; bounded search returns control. | Focused test + engine turn completion. |
-| Cooldown boundary | At 9, a legal move can occur; at 10 and 11, no move call. | Focused tests + engine readiness observation. |
-| Outer footprint blocked | Reject a direction whose destination center is clear but outer tiles collide with wall, dirt, or another unit. | Instrumented geometry fixture. |
-| Map boundary | Reject any destination with part of the 3×3 footprint off-map. | Instrumented geometry fixture. |
-| Identical decision inputs | Same chosen direction; repeat across starting facings. | Focused tests with reset state. |
-| After a successful move | Engine applies king movement cooldown; subsequent turns obey readiness. | Multi-turn replay/trace. |
-| Baby Rat control | Existing Baby Rat behavior remains unchanged. | Targeted regression test/trace. |
-| Full turn | Normal turn completion with no movement-related exception or bytecode cutoff. | Instrumented observation with relevant measurements. |
+| Selection, ordering, bounded work, or deterministic decisions | Focused tests through the production path with explicit inputs and expected results. | Avoid copying the implementation into expected results. |
+| Geometry, collision, or map limits | An instrumented fixture reaching the specified state. | A fake legality result does not prove engine geometry. |
+| Readiness or cooldown effects | Boundary tests using verified engine values and engine observations where affected. | Hardcoded fake state does not independently establish engine rules. |
+| Turn completion, recovery, or type changes | Relevant integration observations or a minimal bounded test seam. | Do not call the infinite run loop in ordinary JUnit. |
+| Preservation of existing behavior | Targeted regression evidence for affected paths. | Does not authorize restructuring unrelated code. |
 
-Check at most eight candidate directions and reuse the direction table as required by the ticket. A legality query returning false is an expected branch; it is not an attempted illegal movement action. For fake controllers, assert move count, selected direction, and bounded checks without copying the selection implementation into the expected result. [P3]
+A legality query returning false is an expected branch, not an attempted illegal action. Choose only scenarios required by the contract or a concrete risk introduced by the change. Derive numeric engine boundaries from the pinned engine and strategy values from the task contract. [P1-P3]
 
-Measure the complete turn where feasible, not only the movement helper. Keep legality checks close to actions. Bytecode counters reset across rounds: if a measurement spans a round change, flag a cutoff/invalid measurement rather than subtracting counters as if it were one turn. Record diagnostics overhead, peak observed costs, and limitations. Neither a small code diff nor a lack of visible errors proves every runtime limit is satisfied. [P2]
-
-Add other boundary scenarios only when affected: spawning affordability/reserve policy, independent action readiness, carried/flying restrictions, type transitions, formation eligibility at 1200/1201, cat-trap eligibility at backstab +100/+101, or shared-array bounds. Derive exact values and legality from engine 1.2.6 and the relevant ticket. Do not establish a cheese reserve or action ordering in this testing guide. [P2]
+Measure the complete turn where feasible, not only a helper. Keep legality checks close to actions. Bytecode counters reset across rounds: if a measurement spans a round change, flag a cutoff/invalid measurement rather than subtracting counters as if it were one turn. Record diagnostics overhead, peak observed costs, and limitations. Neither a small code diff nor a lack of visible errors proves every runtime limit is satisfied. [P2]
 
 ## 6. Repeatable Runs & Evidence Record
 
@@ -124,7 +119,7 @@ Hold code, engine/toolchain, map, opponent, settings, and RNG behavior fixed whe
 
 The inspected Gradle runner does not forward a `-Pseed` property. Do not invent one. Record map identity and any known embedded/default engine seed, plus bot RNG configuration; mark unknown seed details as unknown until verified against the pinned engine. Do not claim byte-identical reproducibility from an unsupported flag. [S1]
 
-Copy this record into the feature ticket or existing evidence location; do not create a second project-memory system:
+Retain this record in the feature ticket or existing evidence location. At task completion, replace all contents of `output.md` in the repository root with the current task's exact original user request and completed report, following `AGENTS.md` §6. Do not append previous tasks or create a second cumulative log. Preserve historical evidence needed by the ticket before replacement:
 
 ```text
 Ticket / acceptance criteria:
@@ -154,7 +149,7 @@ Before using this guide as a merge checklist:
 1. Compare local `build.gradle`, wrapper properties, and `gradle.properties` with the researched scaffold. Record intentional differences and actual Java/Gradle versions.
 2. Confirm the resolved engine dependency is 1.2.6; retain client 1.0.7. Complete the package/method-cost provenance check separately.
 3. Run the starter JUnit class and confirm its report lists a test. Then implement meaningful tests for the active feature; the arithmetic test is only a discovery check.
-4. Run `verify` for the actual bot package and a Java-only smoke match; retain their results. Create the movement fixtures needed for the ticket's remaining scenarios.
+4. Run `verify` for the actual bot package and a Java-only smoke match; retain their results. Create fixtures required for the task contract's remaining scenarios.
 5. Have a teammate review the relevant replay/trace and acceptance results. Unexecuted required checks remain **not run**; record pre-existing failures separately.
 6. Use `.ai/style/java.md` for manual style review until a formatter/checker is explicitly configured. Do not claim Google-style automation already exists.
 
@@ -164,9 +159,9 @@ Stop extending verification once the ticket's checks and concrete risks are cove
 
 ## 8. Guidance Ownership & Sources
 
-This guide now owns command recipes, scenario selection, measurement procedure, and the run-record format previously retained in skill §4.3. After the team adopts this file, that section can reference `.ai/testing.md` for procedures while retaining its concise engine-validation requirement and rule citations. No skill or other guide was automatically rewritten during this research.
+This guide owns command recipes, evidence selection procedures, measurements, and the run-record format. Feature-specific scenarios and expected outcomes belong to the task contract; versioned rules and sandbox constraints belong to the Battlecode skill. Do not duplicate those requirements here.
 
-Record confirmed decisions and outstanding work in `.ai/project-state.md` when created. Keep numeric game rules and versioned package/method-cost references in the Battlecode skill. This guide does not replace the active ticket's detailed acceptance criteria.
+Record confirmed decisions and outstanding work in `.ai/project-state.md` when created. Keep numeric game rules and versioned package/method-cost references in the Battlecode skill. This guide does not expand or replace the task contract's acceptance criteria.
 
 Sources were reviewed on 2026-10-12. The official scaffold was read directly from the pinned Git checkout where web rendering of individual files was unavailable.
 
@@ -181,4 +176,4 @@ Sources were reviewed on 2026-10-12. The official scaffold was read directly fro
 - **S9:** [Upstream engine pin](https://github.com/battlecode/battlecode26-scaffold/blob/f69e2ab872a0061c9d4a684aa1dd798a0829da85/engine_version.txt) and [upstream client pin](https://github.com/battlecode/battlecode26-scaffold/blob/f69e2ab872a0061c9d4a684aa1dd798a0829da85/client_version.txt): upstream defaults, distinct from the user's reported versions.
 - **P1:** `AGENTS.md` §§2-5; `.ai/style/java.md`; user-reported versions/build and `references/engine-reference-provenance.md` under the Battlecode skill.
 - **P2:** Battlecode skill revision 1.3.0 §§2, 3.3, 4.2-4.3; its `references/specs.pdf`, physical pp. 9-14, 18, 20-22, 25-26 for relevant mechanics and runtime constraints.
-- **P3:** Current edited **Rat King Movement** ticket supplied in this conversation. These scenario and QA requirements are project policy, not an official test suite.
+- **P3:** The active task contract selected under `AGENTS.md` §2: root `feature.md` when present, otherwise the feature supplied in the current user prompt. Feature scenarios are task requirements, not an official engine test suite.
