@@ -8,13 +8,13 @@ All paths below are relative to the repository root, regardless of your working 
 
 Use `.ai/` as the canonical source of shared project guidance:
 
-| File | Read when |
-| --- | --- |
-| `.ai/README.md` | Starting a task; use its index to locate relevant guidance. |
-| `.ai/skills/battlecode-2026/SKILL.md` | Implementing, reviewing, or testing bot behavior. |
-| `.ai/style/java.md` | Editing Java. |
-| `.ai/testing.md` | Selecting build, test, or match commands. |
-| `.ai/project-state.md` | Continuing work that depends on previous decisions or unfinished changes. |
+| File                                  | Read when                                                                 |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| `.ai/README.md`                       | Starting a task; use its index to locate relevant guidance.               |
+| `.ai/skills/battlecode-2026/SKILL.md` | Implementing, reviewing, or testing bot behavior.                         |
+| `.ai/style/java.md`                   | Editing Java.                                                             |
+| `.ai/testing.md`                      | Selecting build, test, or match commands.                                 |
+| `.ai/project-state.md`                | Continuing work that depends on previous decisions or unfinished changes. |
 
 Read supporting skill references only as needed. Do not recursively load all of `.ai/`, the entire specification, or unrelated source files. If native skill loading is unavailable, read the relevant `SKILL.md` directly; do not assume a particular vendor's tools or commands exist.
 
@@ -76,4 +76,4 @@ Update existing project notes only when decisions or handoff state materially ch
 
 For documentation-only tasks, validate the changed document and its references; runtime tests are unnecessary unless runtime behavior also changes.
 
-Game-rule references: the versioned `specs.pdf` accompanying the Battlecode skill, physical pp. 9-10 (execution/state/cooldowns), 14 (king actions), 18 (bytecodes), and 20-22 (exceptions/sandbox/resources). Shared turn lifecycle and workflow requirements are team policy, not engine mandates.
+Game-rule references: the versioned `specs.md` accompanying the Battlecode skill, physical pp. 9-10 (execution/state/cooldowns), 14 (king actions), 18 (bytecodes), and 20-22 (exceptions/sandbox/resources). Shared turn lifecycle and workflow requirements are team policy, not engine mandates.

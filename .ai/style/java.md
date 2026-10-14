@@ -16,17 +16,17 @@ Source: `AGENTS.md` §§1-4; Battlecode skill §§1, 2, 4; user's conditional Go
 
 Use the full official guide for details and exceptions. The following is a short review checklist, not a replacement for it:
 
-| Area | Default | Google guide section |
-| --- | --- | --- |
-| Encoding | UTF-8; spaces for indentation. | §2 |
-| File structure | One top-level class per ordinary source file; matching filename. | §§2.1, 3.4 |
-| Imports | Explicit imports; no wildcard imports, including static imports. | §3.3 |
-| Import order | Static group first, then non-static; ASCII ordering within each, with one blank line between groups. | §3.3.3 |
-| Blocks | Two-space indentation; braces for `if`, `else`, `for`, `do`, and `while`. | §§4.1-4.2 |
-| Statements | One statement per line. | §4.3 |
-| Wrapping | 100-character limit with documented exceptions; continuation indentation of at least four spaces. | §§4.4-4.5 |
-| Naming | Follow Google's category-specific naming rules and constant definition. | §5 |
-| Documentation | Follow Google's Javadoc requirements and exceptions. | §7 |
+| Area           | Default                                                                                              | Google guide section |
+| -------------- | ---------------------------------------------------------------------------------------------------- | -------------------- |
+| Encoding       | UTF-8; spaces for indentation.                                                                       | §2                   |
+| File structure | One top-level class per ordinary source file; matching filename.                                     | §§2.1, 3.4           |
+| Imports        | Explicit imports; no wildcard imports, including static imports.                                     | §3.3                 |
+| Import order   | Static group first, then non-static; ASCII ordering within each, with one blank line between groups. | §3.3.3               |
+| Blocks         | Two-space indentation; braces for `if`, `else`, `for`, `do`, and `while`.                            | §§4.1-4.2            |
+| Statements     | One statement per line.                                                                              | §4.3                 |
+| Wrapping       | 100-character limit with documented exceptions; continuation indentation of at least four spaces.    | §§4.4-4.5            |
+| Naming         | Follow Google's category-specific naming rules and constant definition.                              | §5                   |
+| Documentation  | Follow Google's Javadoc requirements and exceptions.                                                 | §7                   |
 
 Source: [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html), reviewed 2026-10-12. The upstream guide can change; record a reviewed source revision when the team formally adopts or updates this baseline.
 
@@ -52,11 +52,11 @@ Allowed packages, disallowed classes, restricted methods, and bytecode costs are
 
 Recommended destinations, to be populated from the repository's pinned engine:
 
-| Reference | Intended repository location |
-| --- | --- |
-| Allowed packages | `.ai/skills/battlecode-2026/references/AllowedPackages.txt` |
-| Disallowed classes | `.ai/skills/battlecode-2026/references/DisallowedPackages.txt` |
-| Method costs | `.ai/skills/battlecode-2026/references/MethodCosts.txt` |
+| Reference                          | Intended repository location                                           |
+| ---------------------------------- | ---------------------------------------------------------------------- |
+| Allowed packages                   | `.ai/skills/battlecode-2026/references/AllowedPackages.txt`            |
+| Disallowed classes                 | `.ai/skills/battlecode-2026/references/DisallowedClasses.txt`          |
+| Method costs                       | `.ai/skills/battlecode-2026/references/MethodCosts.txt`                |
 | Provenance and verification status | `.ai/skills/battlecode-2026/references/engine-reference-provenance.md` |
 
 These paths are planned locations, not confirmation that the files exist or are verified. Keep their exact upstream contents and record engine version, upstream commit or artifact identity, source path/URL, retrieval date, and verification status. Use the same engine revision for all three files. Link them from the skill when added. Do not substitute current `master` for the installed version.

@@ -175,5 +175,5 @@ Sources were reviewed on 2026-10-12. The official scaffold was read directly fro
 - **S8:** [Scaffold .gitignore](https://github.com/battlecode/battlecode26-scaffold/blob/f69e2ab872a0061c9d4a684aa1dd798a0829da85/.gitignore): generated evidence exclusions.
 - **S9:** [Upstream engine pin](https://github.com/battlecode/battlecode26-scaffold/blob/f69e2ab872a0061c9d4a684aa1dd798a0829da85/engine_version.txt) and [upstream client pin](https://github.com/battlecode/battlecode26-scaffold/blob/f69e2ab872a0061c9d4a684aa1dd798a0829da85/client_version.txt): upstream defaults, distinct from the user's reported versions.
 - **P1:** `AGENTS.md` §§2-5; `.ai/style/java.md`; user-reported versions/build and `references/engine-reference-provenance.md` under the Battlecode skill.
-- **P2:** Battlecode skill revision 1.3.0 §§2, 3.3, 4.2-4.3; its `references/specs.pdf`, physical pp. 9-14, 18, 20-22, 25-26 for relevant mechanics and runtime constraints.
+- **P2:** Battlecode skill revision 1.3.0 §§2, 3.3, 4.2-4.3; its `references/specs.md`, physical pp. 9-14, 18, 20-22, 25-26 for relevant mechanics and runtime constraints.
 - **P3:** The active task contract selected under `AGENTS.md` §2: root `feature.md` when present, otherwise the feature supplied in the current user prompt. Feature scenarios are task requirements, not an official engine test suite.
