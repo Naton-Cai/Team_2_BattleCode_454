@@ -7,7 +7,7 @@ Place this file at `.ai/README.md`. Paths shown below are relative to the reposi
 ## 1. Start here
 
 1. Read the root `AGENTS.md` and any applicable directory-level instructions.
-2. Select the task contract using `AGENTS.md` §2: root `feature.md` when present, otherwise the feature in the current user prompt. Read its scope, acceptance criteria, and test cases; a prompt-only feature is sufficient.
+2. Use the current user request as the task contract, following `AGENTS.md` §2. Read additional task documents only when the user references them.
 3. Use the index below to load only the guidance needed for the task.
 4. Inspect the relevant implementation, tests, and build configuration before making changes.
 
@@ -28,14 +28,16 @@ These are the intended locations. This index does not establish that every docum
 | Path | Purpose | Read when |
 | --- | --- | --- |
 | `AGENTS.md` | Repository working rules, instruction precedence, and evidence requirements. | Starting any development task. |
-| `feature.md` | Authoritative feature contract when present; prompt feature is the fallback. | Implementing or reviewing the active feature. |
 | `.ai/README.md` | Project context and navigation. | Starting a task or onboarding. |
 | `.ai/skills/battlecode-2026/SKILL.md` | Battlecode constraints and implementation/validation guidance, with source references. | Changing or reviewing bot behavior. |
+| [API source references](skills/battlecode-2026/references/common/) | Local `battlecode.common` Java sources with API signatures and Javadoc. | Checking API methods, parameters, constants, and documented preconditions. |
 | `.ai/style/java.md` | Agreed Java conventions and examples. | Editing Java. |
 | `.ai/testing.md` | Verified environment, build, test, and match instructions. | Planning or running validation. |
 | `.ai/project-state.md` | Confirmed decisions, unfinished work, and unresolved questions. | Resuming work or checking decision status. |
 
-Locate the versioned specification through the Battlecode skill's references. Check that its rules and API guidance match the engine dependency used by the repository.
+Locate the versioned specification through the Battlecode skill's references. Check that its rules match the engine dependency used by the repository.
+
+For API lookups, search the local API source references and read only the relevant declarations and surrounding Javadoc. Start with `RobotController.java` for sensing/actions, `GameConstants.java` and `UnitType.java` for constants/stats, and `Clock.java` for turn and execution budgets. Treat these sources as the working API reference unless a difference from the current engine is confirmed. See [engine reference provenance](skills/battlecode-2026/references/engine-reference-provenance.md) for the adoption record.
 
 If a guide is missing, follow the missing-context procedure in `AGENTS.md`: inspect existing equivalents, report the gap, and continue independent work. Never invent commands or claim a missing guide was read.
 
@@ -43,20 +45,19 @@ If a guide is missing, follow the missing-context procedure in `AGENTS.md`: insp
 
 | Information | Canonical location |
 | --- | --- |
-| Feature purpose, scope, design, action ordering, strategy values, acceptance criteria, and planned QA | Root `feature.md`; if absent, the feature supplied in the current user prompt. Authority is defined in `AGENTS.md` §2. |
+| Feature purpose, scope, design, action ordering, strategy values, acceptance criteria, and planned QA | Current user request and any task documents it references, following `AGENTS.md` §2. |
 | Engine rules and their specification references | Battlecode skill and its supporting references. |
 | Verified commands, prerequisites, and expected outputs | `.ai/testing.md`. |
 | Observed implementation, approved decision records, and handoff state (not additional requirements) | `.ai/project-state.md`, with a date and ticket/commit reference when available. |
 | Actual behavior and executable checks | Source code and tests. |
-| Latest task's exact request and completed report (replace each task; no cumulative history) | `output.md` in repository root. |
 
-Trello may supply the text copied into `feature.md` or the prompt, but remote access is not required when that text is available. Do not assume access to Trello, previous chats, or another assistant's memory. Apply `AGENTS.md` §2 to conflicting task sources.
+Do not assume access to Trello, previous chats, or another assistant's memory. Apply `AGENTS.md` §2 to conflicting task sources.
 
 Keep proposed, implemented, and verified work distinct. Record feature design in the task contract and observed implementation in project state. Keep verified engine rules separate from strategy choices; do not turn implementation notes into requirements for future tasks.
 
 ## 5. Work efficiently and leave evidence
 
-Read relevant sections and files as needed instead of loading every guide, source file, or replay. Keep summaries short and link to detailed evidence. Use the handoff format in `AGENTS.md` to report changes, acceptance status, validation, and limits. Replace `output.md` with the current task's exact original input and completed report; do not append or routinely read it at startup. Retain required historical evidence with the ticket or established evidence location.
+Read relevant sections and files as needed instead of loading every guide, source file, or replay. Keep summaries short and link to detailed evidence. Use the handoff format in `AGENTS.md` to report changes, acceptance status, validation, and limits. Retain required historical evidence with the ticket or established evidence location.
 
 A build checks that the code compiles. Focused tests check specific expected behavior. A match runner executes the bot inside the Battlecode engine, where gameplay and runtime constraints can be checked. Use the verified commands in `.ai/testing.md`; these checks provide different evidence and do not substitute for one another.
 

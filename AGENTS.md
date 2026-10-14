@@ -22,7 +22,7 @@ If a listed guide is absent, use an existing equivalent identified by repository
 
 ## 2. Establish facts before changing code
 
-- **Task authority:** For feature implementation, root `feature.md`, when present, is the authoritative contract for scope, behavior, feature-specific structure, action ordering, strategy parameters, and acceptance criteria. If it is absent, use the feature supplied in the current user prompt; do not require a file or Trello access. An explicit user correction or replacement takes precedence over a stale file. If neither supplies the requested feature or a material conflict remains unresolved, clarify only the missing decision and continue independent work.
+- **Task authority:** Use the current user request as the task contract for scope, behavior, structure, action ordering, strategy parameters, and acceptance criteria. Read additional task documents only when the user references them. Clarify only material missing decisions and continue independent work.
 - Shared guides define stable lifecycle, engine, style, and verification constraints; they do not add feature requirements. Follow the task contract over shared feature-specific suggestions, subject to host instruction precedence and verified engine legality. Flag a conflict with a stable constraint rather than silently changing either. Project-state notes describe implementation and handoff state; they do not expand task scope.
 - Inspect the current branch, working-tree changes, relevant code, tests, and build configuration. Preserve unrelated user/team changes.
 - Identify the engine dependency, Java toolchain, source/test roots, and existing wrapper or runner. Derive commands from the repository; do not guess Gradle tasks, package paths, dependencies, or API signatures.
@@ -67,8 +67,6 @@ Finish implementation tasks with a concise report:
 - **Acceptance:** Criteria satisfied, unmet, or unverified.
 - **Validation:** Exact commands, outcomes, relevant measurements, and evidence paths.
 - **Limits:** Checks not run and why; remaining risks or blockers.
-
-**Latest-task output requirement (`output.md`):** At task completion, replace the entire contents of `output.md` in the repository root with the exact original request for the current task and its completed model output report. Do not append prior tasks or retain a cumulative session history. Treat this file as an output artifact, not required startup context. If historical evidence must be retained, attach it to the feature ticket or established evidence location before replacement; do not create another cumulative log.
 
 Do not report tests as passed unless executed, equate a sanity test with feature coverage, or claim improved survival/win rate without match evidence. Mark blocked validation as **not run**; do not declare the feature fully verified.
 

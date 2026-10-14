@@ -1,6 +1,6 @@
 # Engine Reference Provenance
 
-**Last updated:** 2026-10-12 (America/Los_Angeles).
+**Last updated:** 2026-10-14 (America/Los_Angeles).
 
 Place this file at `.ai/skills/battlecode-2026/references/engine-reference-provenance.md`. Repository paths below are relative to the repository root. This is a project record, not an official Battlecode specification.
 
@@ -29,7 +29,9 @@ Do not infer which tests executed, whether tasks were cached, or whether a match
 
 ## 3. Engine Reference Verification
 
-The skill's documented specification baseline extends through engine v1.2.6. The reported version agrees with that baseline label; this does not by itself verify copied package lists, method costs, API signatures, or the resolved engine artifact.
+Local API sources are present in [common/](common/): 13 Java files containing `battlecode.common` declarations and Javadoc, inspected on 2026-10-14. Use them for focused API lookups. The team adopted these supplied sources as the working API reference on 2026-10-14. Use their declarations and Javadoc unless a difference from the current engine is confirmed, then record the discrepancy and correction here. Keep these files unchanged from upstream when refreshing them.
+
+The skill's documented specification baseline extends through engine v1.2.6. The reported version agrees with that baseline label; this does not by itself verify copied package lists, method costs, or the resolved engine artifact.
 
 The following files are intended to reside beside this document. Their presence in the team's repository has not been established.
 
