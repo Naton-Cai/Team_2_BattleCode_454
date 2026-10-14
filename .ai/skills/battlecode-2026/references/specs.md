@@ -212,7 +212,7 @@ Rats can remove dirt from any immediately adjacent location that they can sense.
 
 Every team begins with 1 rat king. It occupies a 3 by 3 square.
 
-Each rat king consumes **2 cheese** at the end of each round, and if the supply of cheese is not enough for any rat king, it will **lose 10 HP** of its health and doesn’t consume any cheese. Rat kings start consuming cheese in the order that they were created. Rat kings also start with **600 HP** . They have a **movement cooldown of 40** (in any direction) and a **turning cooldown of 10** . If all of a team’s rat kings die, the opposing team immediately wins.
+Each rat king consumes **2 cheese** at the end of each round, and if the supply of cheese is not enough for any rat king, it will **lose 10 HP** of its health and doesn’t consume any cheese. Rat kings start consuming cheese in the order that they were created. Initial Rat kings start with **500 HP** . They have a **movement cooldown of 40** (in any direction) and a **turning cooldown of 10** . If all of a team’s rat kings die, the opposing team immediately wins.
 
 Rat kings can attack, place, destroy dirt, and squeak, similar to a baby rat.
 
