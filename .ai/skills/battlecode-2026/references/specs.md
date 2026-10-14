@@ -373,7 +373,7 @@ Every function you could possibly use to interact with the game can be found in 
 
 ### **Java language usage**
 
-Players may use classes from any of the packages listed in AllowedPackages.txt, except for classes listed in DisallowedPackages.txt. These files can be found here.
+Players may use classes from any of the packages listed in AllowedPackages.txt, except for classes listed in DisallowedClasses.txt. These files can be found here.
 
 Furthermore, the following restrictions apply:
 

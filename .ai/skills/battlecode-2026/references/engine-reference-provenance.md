@@ -6,8 +6,8 @@ Place this file at `.ai/skills/battlecode-2026/references/engine-reference-prove
 
 ## 1. Reported Repository Versions
 
-| Component | Version | Repository source | Evidence |
-| --- | --- | --- | --- |
+| Component         | Version | Repository source    | Evidence                                  |
+| ----------------- | ------- | -------------------- | ----------------------------------------- |
 | Battlecode engine | `1.2.6` | `engine_version.txt` | Reported by Jacob Campbell on 2026-10-12. |
 | Battlecode client | `1.0.7` | `client_version.txt` | Reported by Jacob Campbell on 2026-10-12. |
 
@@ -15,15 +15,15 @@ The assistant has not inspected these repository files or resolved build depende
 
 ## 2. Reported Build Evidence
 
-| Field | Recorded value |
-| --- | --- |
-| Command | `./gradlew build` |
-| Outcome | Successful, reported by Jacob Campbell. |
-| Date | 2026-10-12 |
-| Working directory | Not separately recorded; confirm repository root when reproducing. |
-| Source commit / working-tree changes | Not recorded. |
-| Java / Gradle versions | Not recorded. |
-| Build log / task results | Not supplied. |
+| Field                                | Recorded value                                                     |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| Command                              | `./gradlew build`                                                  |
+| Outcome                              | Successful, reported by Jacob Campbell.                            |
+| Date                                 | 2026-10-12                                                         |
+| Working directory                    | Not separately recorded; confirm repository root when reproducing. |
+| Source commit / working-tree changes | Not recorded.                                                      |
+| Java / Gradle versions               | Not recorded.                                                      |
+| Build log / task results             | Not supplied.                                                      |
 
 Do not infer which tests executed, whether tasks were cached, or whether a match ran from this success report alone. No instrumented-match evidence is recorded here. Add the reusable command and its prerequisites to `.ai/testing.md` when that guide is created; keep detailed run evidence with the relevant ticket or execution record.
 
@@ -33,11 +33,11 @@ The skill's documented specification baseline extends through engine v1.2.6. The
 
 The following files are intended to reside beside this document. Their presence in the team's repository has not been established.
 
-| Reference | Upstream revision / artifact | Retrieval date | Verification status |
-| --- | --- | --- | --- |
-| `AllowedPackages.txt` | Not recorded. | Not recorded. | User supplied a candidate list; not checked against engine 1.2.6. |
-| `DisallowedPackages.txt` | Not recorded. | Not recorded. | User supplied a candidate list; not checked against engine 1.2.6. |
-| `MethodCosts.txt` | Not recorded. | Not recorded. | User supplied a candidate table; unresolved inconsistencies prevent adoption. |
+| Reference               | Upstream revision / artifact | Retrieval date | Verification status                                                           |
+| ----------------------- | ---------------------------- | -------------- | ----------------------------------------------------------------------------- |
+| `AllowedPackages.txt`   | Not recorded.                | Not recorded.  | User supplied a candidate list; not checked against engine 1.2.6.             |
+| `DisallowedClasses.txt` | Not recorded.                | Not recorded.  | User supplied a candidate list; not checked against engine 1.2.6.             |
+| `MethodCosts.txt`       | Not recorded.                | Not recorded.  | User supplied a candidate table; unresolved inconsistencies prevent adoption. |
 
 The candidate method table includes flag/crumb APIs and duplicate `MapInfo/getSpawnZoneTeam` rows with costs 2 and 3. Preserve this as an unresolved verification issue; do not choose a value, infer its year, or treat the table as authoritative for engine 1.2.6 without matching source evidence.
 
