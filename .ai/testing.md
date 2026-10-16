@@ -60,12 +60,14 @@ Use these commands after confirming the local scaffold configuration matches the
 | --- | --- |
 | `./gradlew classes` | Compile production classes and process resources. |
 | `./gradlew test --tests 'examplefuncsplayer.RobotPlayerTest'` | Run the existing starter test class. |
-| `./gradlew test` | Run the configured Java unit-test suite. |
-| `./gradlew check` | Run configured verification tasks; not a substitute for a match. |
+| `./gradlew test` | Run the configured Java unit-test suite. Also writes the JaCoCo report and fails when line coverage is below threshold. |
+| `./gradlew check` | Run configured verification tasks, including the coverage gate through `test`; not a substitute for a match. |
 | `./gradlew build` | Run the normal build lifecycle, including tests, unless skipped/reused; this scaffold also downloads/unpacks the client. |
 | `./gradlew verify -Pteam=examplefuncsplayer` | Invoke the engine verifier; the scaffold makes this depend on `build`. |
+| `./gradlew jacocoTestReport` | Write the HTML/XML line-coverage report. `test` already runs this afterward. |
+| `./gradlew jacocoTestCoverageVerification` | Fail when the JaCoCo LINE covered ratio is below threshold. |
 
-JaCoCo lives in `jacoco.gradle` and is applied from `build.gradle` after `sourceSets`. The enforced metric is the LINE covered ratio, minimum 0.70. Reports are `build/reports/jacoco/test/html/index.html` and `build/reports/jacoco/test/jacocoTestReport.xml`. The `test` task finalizes the report and `jacocoTestCoverageVerification`, so `./gradlew test`, `./gradlew check`, and `./gradlew build` fail when the ratio is below 0.70. `./gradlew build -x test` skips that gate with the test task. The ratio counts lines executed by JUnit. It does not count bytecode inside a match. On 2026-10-16 the measured ratio was 0.00 (50 missed lines, 0 covered), so the gate fails until tests cover bot lines.
+JaCoCo lives in `jacoco.gradle` and is applied from `build.gradle` after `sourceSets`. The enforced metric is the LINE covered ratio. Reports are `build/reports/jacoco/test/html/index.html` and `build/reports/jacoco/test/jacocoTestReport.xml`. The `test` task finalizes the report and `jacocoTestCoverageVerification`, so `./gradlew test`, `./gradlew check`, and `./gradlew build` fail when the ratio is below threshold. `./gradlew build -x test` skips that gate with the test task.
 
 Replace the package/class with the actual existing target. For a new feature test, create it first and then use its fully qualified name with `--tests`. Preserve JUnit 4 unless the team explicitly migrates; do not add JUnit 5 imports or a mocking dependency without a corresponding scoped build change. [S1, S4-S6]
 
@@ -157,6 +159,8 @@ Before using this guide as a merge checklist:
 6. Use `.ai/style/java.md` for manual style review until a formatter/checker is explicitly configured. Do not claim Google-style automation already exists.
 
 For later CI integration, use the same wrapper, Java baseline, pins, and verified commands. Start with unit tests and normal build/package verification, then add a bounded smoke match once it works locally. Retain test reports and selected logs/replays on failures; set explicit job timeouts and preserve actual failures. Avoid simultaneous matches writing the same replay. A completed engine process still needs a defined check for bot exceptions and acceptance outcomes. CI configuration and match-result assertions are not installed by this document.
+
+Stop extending verification once the ticket's checks and concrete risks are covered. Broader strategy tournaments, coverage tooling, new mocking libraries, and formatter installation are separate scoped improvements. [P1]
 
 ## 8. Guidance Ownership & Sources
 

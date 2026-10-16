@@ -1,12 +1,6 @@
 # Project state
 
-**Date:** 2026-10-16.
-
-Observed implementation. These notes do not add requirements.
-
 ## Test cases
-
-**Status:** Implemented. Verified on 2026-10-16 with `./gradlew test --rerun-tasks`. JaCoCo line coverage was 42 covered and 14 missed, ratio 0.75. The 0.70 gate passed.
 
 Each turn test calls `playTurn` with a `TestRobotController` and returns. Tests do not call `run`, because that method loops on `Clock.yield()`. `TestRobotController` supplies the answers for one scenario. A true `canMoveForward` does not establish that the engine would allow the step. The `% 100` type print in `RobotPlayer` is not covered by a test.
 
