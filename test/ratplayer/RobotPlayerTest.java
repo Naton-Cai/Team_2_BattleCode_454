@@ -6,6 +6,8 @@ import static org.junit.Assert.assertTrue;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameActionExceptionType;
+import battlecode.common.MapLocation;
+import battlecode.common.UnitType;
 import org.junit.Before;
 import org.junit.Test;
 import support.TestRobotController;
@@ -20,6 +22,7 @@ public class RobotPlayerTest {
   @Before
   public void resetRobotLocalState() {
     RobotPlayer.turnCount = 0;
+    RobotPlayer.rng.setSeed(6147);
   }
 
   @Test
@@ -31,6 +34,32 @@ public class RobotPlayerTest {
 
     assertEquals(1, controller.moveCount());
     assertEquals(0, controller.turnCount());
+    assertEquals(1, RobotPlayer.turnCount);
+  }
+
+  @Test
+  public void dispatchesBabyRatWithoutRunningRatKingSpawnBehavior() {
+    TestRobotController controller = new TestRobotController();
+    controller.setUnitType(UnitType.BABY_RAT);
+    controller.setAllCheese(1000);
+    controller.setAdjacentLocation(new MapLocation(1, 0));
+    controller.setForwardAllowed(true);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(1, controller.moveCount());
+    assertTrue(controller.calls().stream().noneMatch(call -> call.startsWith("buildRat:")));
+    assertEquals(1, RobotPlayer.turnCount);
+  }
+
+  @Test
+  public void ratKingRunsSpawnBehaviorWhenCheeseIsAvailable() {
+    TestRobotController controller = ratKingController();
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(1, controller.moveCount());
+    assertTrue(controller.calls().stream().anyMatch(call -> call.startsWith("buildRat:")));
     assertEquals(1, RobotPlayer.turnCount);
   }
 
@@ -155,6 +184,15 @@ public class RobotPlayerTest {
     TestRobotController controller = new TestRobotController();
     controller.setForwardAllowed(false);
     controller.setTurnAllowed(turnAllowed);
+    return controller;
+  }
+
+  private static TestRobotController ratKingController() {
+    TestRobotController controller = new TestRobotController();
+    controller.setUnitType(UnitType.RAT_KING);
+    controller.setAllCheese(1000);
+    controller.setAdjacentLocation(new MapLocation(1, 0));
+    controller.setForwardAllowed(true);
     return controller;
   }
 
