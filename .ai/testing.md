@@ -17,6 +17,7 @@ Store this file at `.ai/testing.md`. Run commands from the repository root. Foll
 | Upstream wrapper | Gradle 8.10 | Inspected wrapper configuration. |
 | Upstream Java tests | JUnit 4.13.2; sources under `test/` | Inspected dependency and source-set configuration. |
 | Existing test | `examplefuncsplayer.RobotPlayerTest.testSanity` | Checks arithmetic only; no movement coverage. |
+| JaCoCo | 0.8.12 in root `jacoco.gradle` | Measures and enforces minimum code coverage |
 | Formatter / custom test harness | Not established in the team's repository | No commands assumed. |
 | Engine reference tables | Not verified against 1.2.6 | See engine-reference provenance record. |
 
@@ -59,10 +60,14 @@ Use these commands after confirming the local scaffold configuration matches the
 | --- | --- |
 | `./gradlew classes` | Compile production classes and process resources. |
 | `./gradlew test --tests 'examplefuncsplayer.RobotPlayerTest'` | Run the existing starter test class. |
-| `./gradlew test` | Run the configured Java unit-test suite. |
-| `./gradlew check` | Run configured verification tasks; not a substitute for a match. |
+| `./gradlew test` | Run the configured Java unit-test suite. Also writes the JaCoCo report and fails when line coverage is below threshold. |
+| `./gradlew check` | Run configured verification tasks, including the coverage gate through `test`; not a substitute for a match. |
 | `./gradlew build` | Run the normal build lifecycle, including tests, unless skipped/reused; this scaffold also downloads/unpacks the client. |
 | `./gradlew verify -Pteam=examplefuncsplayer` | Invoke the engine verifier; the scaffold makes this depend on `build`. |
+| `./gradlew jacocoTestReport` | Write the HTML/XML line-coverage report. `test` already runs this afterward. |
+| `./gradlew jacocoTestCoverageVerification` | Fail when the JaCoCo LINE covered ratio is below threshold. |
+
+JaCoCo lives in `jacoco.gradle` and is applied from `build.gradle` after `sourceSets`. The enforced metric is the LINE covered ratio. Reports are `build/reports/jacoco/test/html/index.html` and `build/reports/jacoco/test/jacocoTestReport.xml`. The `test` task finalizes the report and `jacocoTestCoverageVerification`, so `./gradlew test`, `./gradlew check`, and `./gradlew build` fail when the ratio is below threshold. `./gradlew build -x test` skips that gate with the test task.
 
 Replace the package/class with the actual existing target. For a new feature test, create it first and then use its fully qualified name with `--tests`. Preserve JUnit 4 unless the team explicitly migrates; do not add JUnit 5 imports or a mocking dependency without a corresponding scoped build change. [S1, S4-S6]
 
