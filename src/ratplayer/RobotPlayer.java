@@ -1,9 +1,6 @@
 package ratplayer;
 
-import battlecode.common.Clock;
-import battlecode.common.Direction;
-import battlecode.common.GameActionException;
-import battlecode.common.RobotController;
+import battlecode.common.*;
 
 import java.util.Random;
 
