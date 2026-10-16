@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -43,3 +44,15 @@ jobs:
       # Headless match: ratplayer (teamA) vs examplefuncsplayer (teamB) on maps from gradle.properties.
       - name: Run match
         run: ./gradlew run --console=plain
+
+      # JUnit HTML/XML and the JaCoCo HTML/XML report. Download from the workflow run's Artifacts list on the PR.
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-and-coverage-reports
+          if-no-files-found: warn
+          path: |
+            build/reports/tests/test/
+            build/test-results/test/
+            build/reports/jacoco/test/

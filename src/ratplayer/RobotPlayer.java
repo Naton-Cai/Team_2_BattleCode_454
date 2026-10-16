@@ -57,46 +57,8 @@ public class RobotPlayer {
             // This code runs during the entire lifespan of the robot, which is why it is in an infinite
             // loop. If we ever leave this loop and return from run(), the robot dies! At the end of the
             // loop, we call Clock.yield(), signifying that we've done everything we want to do.
-
-            turnCount += 1;  // We have now been alive for one more turn!
-
-            // Try/catch blocks stop unhandled exceptions, which cause your robot to explode.
             try {
-                // The same run() function is called for every robot on your team, even if they are
-                // different types. Here, we separate the control depending on the UnitType, so we can
-                // use different strategies on different robots. If you wish, you are free to rewrite
-                // this into a different control structure!
-
-                // Every 10 turns, print out what type of robot we are.
-                if (turnCount % 100 == 0) {
-                    System.out.println("Turn " + turnCount + ": I am a " + rc.getType().toString());
-                }
-
-                // Try to move forward one step.
-                if (rc.canMoveForward()) {
-                    System.out.println("Turn " + turnCount + ": Trying to move " + rc.getDirection());
-                    rc.moveForward();
-                } else {
-                    System.out.println("Couldn't move forward on turn " + turnCount + " at location " + rc.getLocation() + " facing " + rc.getDirection());
-                    // If we can't move forward, try to turn a random direction.
-                    int randomDirection = rng.nextInt(8);
-                    Direction dir = directions[randomDirection];
-
-                    if (rc.canTurn(dir)) {
-                        rc.turn(dir);
-                    }
-                }
-            } catch (GameActionException e) {
-                // Oh no! It looks like we did something illegal in the Battlecode world. You should
-                // handle GameActionExceptions judiciously, in case unexpected events occur in the game
-                // world. Remember, uncaught exceptions cause your robot to explode!
-                System.out.println("GameActionException");
-                e.printStackTrace();
-            } catch (Exception e) {
-                // Oh no! It looks like our code tried to do something bad. This isn't a
-                // GameActionException, so it's more likely to be a bug in our code.
-                System.out.println("Exception");
-                e.printStackTrace();
+                playTurn(rc);
             } finally {
                 // Signify we've done everything we want to do, thereby ending our turn.
                 // This will make our code wait until the next turn, and then perform this loop again.
@@ -106,5 +68,55 @@ public class RobotPlayer {
         }
 
         // Your code should never reach here (unless it's intentional)! Self-destruction imminent...
+    }
+
+    /**
+     * Plays one turn, then returns.
+     *
+     * <p>{@code run} keeps the infinite loop and calls {@code Clock.yield()} in {@code finally}.
+     * This method holds the decision and the catch blocks so a test can run one iteration without
+     * waiting for the engine to resume the robot.
+     */
+    static void playTurn(RobotController rc) {
+        turnCount += 1;  // We have now been alive for one more turn!
+
+        // Try/catch blocks stop unhandled exceptions, which cause your robot to explode.
+        try {
+            // The same run() function is called for every robot on your team, even if they are
+            // different types. Here, we separate the control depending on the UnitType, so we can
+            // use different strategies on different robots. If you wish, you are free to rewrite
+            // this into a different control structure!
+
+            // Every 100 turns, print out what type of robot we are.
+            if (turnCount % 100 == 0) {
+                System.out.println("Turn " + turnCount + ": I am a " + rc.getType().toString());
+            }
+
+            // Try to move forward one step.
+            if (rc.canMoveForward()) {
+                System.out.println("Turn " + turnCount + ": Trying to move " + rc.getDirection());
+                rc.moveForward();
+            } else {
+                System.out.println("Couldn't move forward on turn " + turnCount + " at location " + rc.getLocation() + " facing " + rc.getDirection());
+                // If we can't move forward, try to turn a random direction.
+                int randomDirection = rng.nextInt(8);
+                Direction dir = directions[randomDirection];
+
+                if (rc.canTurn(dir)) {
+                    rc.turn(dir);
+                }
+            }
+        } catch (GameActionException e) {
+            // Oh no! It looks like we did something illegal in the Battlecode world. You should
+            // handle GameActionExceptions judiciously, in case unexpected events occur in the game
+            // world. Remember, uncaught exceptions cause your robot to explode!
+            System.out.println("GameActionException");
+            e.printStackTrace();
+        } catch (Exception e) {
+            // Oh no! It looks like our code tried to do something bad. This isn't a
+            // GameActionException, so it's more likely to be a bug in our code.
+            System.out.println("Exception");
+            e.printStackTrace();
+        }
     }
 }
