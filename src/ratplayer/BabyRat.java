@@ -2,10 +2,9 @@ package ratplayer;
 
 import battlecode.common.*;
 
-import java.util.Random;
-
 public class BabyRat {
     static MapLocation kingLoc = null;
+
     //handles our BabyRat turn logic
     static void run(RobotController rc) throws GameActionException {
         // Every 100 turns, print out what type of robot we are.
@@ -15,6 +14,7 @@ public class BabyRat {
         move(rc);
         pickUpCheese(rc);
     }
+
     //handles our baby rat movement logic
     static void move(RobotController rc) throws GameActionException {
         //PLACEHOLDER CODE
@@ -41,5 +41,6 @@ public class BabyRat {
     }
 
     //update our RatKing Location
-    static void updateRatKingLoc(RobotController rc) throws GameActionException {}
+    static void updateRatKingLoc(RobotController rc) throws GameActionException {
+    }
 }

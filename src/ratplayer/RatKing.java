@@ -1,8 +1,6 @@
 package ratplayer;
 
-import battlecode.common.Direction;
-import battlecode.common.GameActionException;
-import battlecode.common.RobotController;
+import battlecode.common.*;
 
 public class RatKing {
     //handles our Rat King turn logic
