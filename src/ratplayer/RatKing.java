@@ -45,8 +45,11 @@ public class RatKing {
         //PLACEHOLDER CODE
         //spawns a baby rat north of the rat king if cheese is >= 800
         if (rc.getAllCheese() >= 800) {
-            System.out.println("Turn " + RobotPlayer.turnCount + ": I am trying to spawn a baby");
-            rc.buildRat(rc.adjacentLocation(RobotPlayer.directions[0]).translate(0, 1));
+            MapLocation ratSpawnLocation = rc.adjacentLocation(RobotPlayer.directions[0]).translate(0, 1);
+            if (rc.canBuildRat(ratSpawnLocation)) {
+                System.out.println("Turn " + RobotPlayer.turnCount + ": I am trying to spawn a baby");
+                rc.buildRat(ratSpawnLocation);
+            }
         }
         //PLACEHOLDER CODE
     }
