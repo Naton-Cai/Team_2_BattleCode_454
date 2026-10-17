@@ -192,6 +192,7 @@ public class RobotPlayerTest {
     controller.setUnitType(UnitType.RAT_KING);
     controller.setAllCheese(1000);
     controller.setAdjacentLocation(new MapLocation(1, 0));
+    controller.setCanBuildRat(true);
     controller.setForwardAllowed(true);
     return controller;
   }
