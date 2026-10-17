@@ -78,11 +78,11 @@ Sources: Battlecode skill §§1.1, 2.1-2.2, 4.2; user-supplied lists and restric
 
 ## 5. Enforcement & Review
 
-This document supplies review rules; Markdown alone does not install an automated checker.
+CI and `./gradlew check` enforce Google Java **formatting** with Spotless 8.10.4 and google-java-format 1.36.1. Configuration is `spotless.gradle`; commands and scope are in `.ai/testing.md`. Run `./gradlew spotlessCheck` before claiming the format gate passed. Until a repo-wide apply, the check uses `ratchetFrom 'origin/main'` and only covers Java files changed versus main.
 
-Use existing repository formatting and style-check commands when available. Record their exact commands, tool versions, configuration, and scope in `.ai/testing.md`. Do not invent a Gradle task or claim a check passed without running it. If no checker exists, perform a manual review against §2 and report that limitation.
+The formatter covers two-space indent, braces, wrapping, import order, and expanding wildcard imports. It does not establish compliance with naming, Javadoc, sandbox rules, or gameplay requirements. Review those against §2 and the Battlecode skill. google-java-format uses Google's wrapping algorithm rather than a hard 100-character Checkstyle limit.
 
-When the team adopts automated enforcement, pin the formatter/checker versions and configuration, use the same configuration locally and in CI, and make intentional exceptions reviewable. Select tools compatible with the existing toolchain; do not add plugins or dependencies as part of an unrelated feature. Automated formatting does not establish compliance with naming, documentation, sandbox rules, or gameplay requirements.
+Keep formatter versions and configuration the same locally and in CI. Do not add a second style plugin as part of an unrelated feature. Make intentional format exceptions reviewable.
 
 Before completing a Java change, check its style, necessary exceptions, import legality, and diff scope. Report style checks separately from compilation, unit tests, and engine matches. Use the task contract for feature design and `AGENTS.md` for shared lifecycle and scope constraints.
 

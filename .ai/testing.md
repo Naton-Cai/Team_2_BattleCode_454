@@ -18,7 +18,7 @@ Store this file at `.ai/testing.md`. Run commands from the repository root. Foll
 | Upstream Java tests | JUnit 4.13.2; sources under `test/` | Inspected dependency and source-set configuration. |
 | Existing test | `examplefuncsplayer.RobotPlayerTest.testSanity` | Checks arithmetic only; no movement coverage. |
 | JaCoCo | 0.8.12 in root `jacoco.gradle` | Measures and enforces minimum code coverage |
-| Formatter / custom test harness | Not established in the team's repository | No commands assumed. |
+| Formatter | Spotless 8.10.4 with google-java-format 1.36.1 in root `spotless.gradle` | `./gradlew spotlessCheck` fails when Java files that differ from `origin/main` do not match the formatter. |
 | Engine reference tables | Not verified against 1.2.6 | See engine-reference provenance record. |
 
 The inspected upstream pins are engine 1.2.4/client 1.0.6. Preserve the team's reported 1.2.6/1.0.7 pins; do not replace them with upstream defaults. The research environment had Java 17, so build, JUnit, verifier, and match commands were **not run during preparation**. Commands below were checked against source/configuration and Gradle documentation, not executed against the team's repo. [S1-S4, S9, P1]
@@ -59,13 +59,17 @@ Use these commands after confirming the local scaffold configuration matches the
 | Command | Use |
 | --- | --- |
 | `./gradlew classes` | Compile production classes and process resources. |
+| `./gradlew spotlessCheck` | Fail if Java files that differ from `origin/main` do not match google-java-format 1.36.1. Does not rewrite files, compile, or run tests. |
+| `./gradlew spotlessApply` | Rewrite those files to match the formatter, including expanding wildcard imports. |
 | `./gradlew test --tests 'examplefuncsplayer.RobotPlayerTest'` | Run the existing starter test class. |
 | `./gradlew test` | Run the configured Java unit-test suite. Also writes the JaCoCo report and fails when line coverage is below threshold. |
-| `./gradlew check` | Run configured verification tasks, including the coverage gate through `test`; not a substitute for a match. |
+| `./gradlew check` | Run configured verification tasks, including `spotlessCheck` and the coverage gate through `test`; not a substitute for a match. |
 | `./gradlew build` | Run the normal build lifecycle, including tests, unless skipped/reused; this scaffold also downloads/unpacks the client. |
 | `./gradlew verify -Pteam=examplefuncsplayer` | Invoke the engine verifier; the scaffold makes this depend on `build`. |
 | `./gradlew jacocoTestReport` | Write the HTML/XML line-coverage report. `test` already runs this afterward. |
 | `./gradlew jacocoTestCoverageVerification` | Fail when the JaCoCo LINE covered ratio is below threshold. |
+
+Spotless lives in `spotless.gradle` and is applied from `build.gradle` after `sourceSets`. Pins are Spotless 8.10.4 and google-java-format 1.36.1. The Java target is `src/**/*.java` and `test/**/*.java`; `.ai` API copies are not formatted. `ratchetFrom 'origin/main'` limits the gate to Java files that differ from main so a repo-wide reformat can wait until in-flight branches merge. After that apply, remove `ratchetFrom` so every Java file is checked. `spotlessCheck` is attached to `check`, so `./gradlew check` and `./gradlew build` fail on format drift in ratcheted files. CI runs `./gradlew spotlessCheck`. `./gradlew build -x test` still runs `spotlessCheck`.
 
 JaCoCo lives in `jacoco.gradle` and is applied from `build.gradle` after `sourceSets`. The enforced metric is the LINE covered ratio. Reports are `build/reports/jacoco/test/html/index.html` and `build/reports/jacoco/test/jacocoTestReport.xml`. The `test` task finalizes the report and `jacocoTestCoverageVerification`, so `./gradlew test`, `./gradlew check`, and `./gradlew build` fail when the ratio is below threshold. `./gradlew build -x test` skips that gate with the test task.
 
@@ -156,11 +160,11 @@ Before using this guide as a merge checklist:
 3. Run the starter JUnit class and confirm its report lists a test. Then implement meaningful tests for the active feature; the arithmetic test is only a discovery check.
 4. Run `verify` for the actual bot package and a Java-only smoke match; retain their results. Create fixtures required for the task contract's remaining scenarios.
 5. Have a teammate review the relevant replay/trace and acceptance results. Unexecuted required checks remain **not run**; record pre-existing failures separately.
-6. Use `.ai/style/java.md` for manual style review until a formatter/checker is explicitly configured. Do not claim Google-style automation already exists.
+6. Run `./gradlew spotlessCheck` (or rely on CI / `./gradlew check`) for google-java-format. Use `.ai/style/java.md` for naming, Javadoc, sandbox legality, and other rules the formatter does not check.
 
 For later CI integration, use the same wrapper, Java baseline, pins, and verified commands. Start with unit tests and normal build/package verification, then add a bounded smoke match once it works locally. Retain test reports and selected logs/replays on failures; set explicit job timeouts and preserve actual failures. Avoid simultaneous matches writing the same replay. A completed engine process still needs a defined check for bot exceptions and acceptance outcomes. CI configuration and match-result assertions are not installed by this document.
 
-Stop extending verification once the ticket's checks and concrete risks are covered. Broader strategy tournaments, coverage tooling, new mocking libraries, and formatter installation are separate scoped improvements. [P1]
+Stop extending verification once the ticket's checks and concrete risks are covered. Broader strategy tournaments, coverage tooling, and new mocking libraries are separate scoped improvements. [P1]
 
 ## 8. Guidance Ownership & Sources
 
