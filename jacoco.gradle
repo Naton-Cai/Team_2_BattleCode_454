@@ -1,0 +1,44 @@
+// Applied from build.gradle after the Java plugin and sourceSets.
+// Those create the test task and write classes to build/classes.
+//
+// JaCoCo 0.8.12 reads Java 21 class files. The gate uses the LINE covered
+// ratio. JaCoCo's default counter is INSTRUCTION, which is a different
+// percentage. This measures classes executed by JUnit. It does not measure
+// match bytecode.
+
+apply plugin: 'jacoco'
+
+jacoco {
+  toolVersion = '0.8.12'
+}
+
+def coverageClasses = fileTree(dir: "$buildDir/classes", includes: ["**/*.class"])
+
+jacocoTestReport {
+  dependsOn test
+  sourceDirectories.setFrom(files("src"))
+  classDirectories.setFrom(coverageClasses)
+  reports {
+    xml.required = true
+    html.required = true
+  }
+}
+
+jacocoTestCoverageVerification {
+  dependsOn jacocoTestReport
+  sourceDirectories.setFrom(files("src"))
+  classDirectories.setFrom(coverageClasses)
+  violationRules {
+    rule {
+      limit {
+        counter = 'LINE'
+        value = 'COVEREDRATIO'
+        minimum = 0.70
+      }
+    }
+  }
+}
+
+test {
+  finalizedBy jacocoTestReport, jacocoTestCoverageVerification
+}
