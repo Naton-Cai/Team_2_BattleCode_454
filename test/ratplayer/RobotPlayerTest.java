@@ -22,6 +22,7 @@ public class RobotPlayerTest {
   @Before
   public void resetRobotLocalState() {
     RobotPlayer.turnCount = 0;
+    RatKing.locationPublished = false;
     RobotPlayer.rng.setSeed(6147);
   }
 
@@ -190,6 +191,7 @@ public class RobotPlayerTest {
   private static TestRobotController ratKingController() {
     TestRobotController controller = new TestRobotController();
     controller.setUnitType(UnitType.RAT_KING);
+    controller.setMovementReady(true);
     controller.setAllCheese(1000);
     controller.setAdjacentLocation(new MapLocation(1, 0));
     controller.setCanBuildRat(true);

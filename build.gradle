@@ -40,6 +40,11 @@ sourceSets {
 // task created above and reads build/classes.
 apply from: 'jacoco.gradle'
 
+// Instrumented engine tests need the same Unsafe access as runJavaLocal.
+test {
+  jvmArgs '--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED'
+}
+
 
 //////// IDE configuration ////////
 
