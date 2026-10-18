@@ -12,7 +12,9 @@ import battlecode.common.UnitType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Test version of {@link RobotController}.
@@ -121,6 +123,8 @@ public final class TestRobotController implements RobotController {
   private boolean canRemoveCatTrap;
   private GameActionException removeCatTrapFailure;
   private boolean canPickUpCheese;
+  private Set<MapLocation> pickUpCheeseLocations;
+  private int cheesePickupYield;
   private GameActionException pickUpCheeseFailure;
   private GameActionException pickUpCheeseAmountFailure;
   private boolean canAttack;
@@ -130,6 +134,7 @@ public final class TestRobotController implements RobotController {
   private boolean squeakAccepted;
   private Message[] squeaks = NO_MESSAGES;
   private GameActionException writeSharedArrayFailure;
+  private int sharedArrayReads;
   private GameActionException readSharedArrayFailure;
   private boolean canTransferCheese;
   private GameActionException transferCheeseFailure;
@@ -524,6 +529,23 @@ public final class TestRobotController implements RobotController {
 
   public void setCanPickUpCheese(boolean canPickUpCheese) {
     this.canPickUpCheese = canPickUpCheese;
+    pickUpCheeseLocations = null;
+  }
+
+  /**
+   * Restricts {@link #canPickUpCheese(MapLocation)} to these tiles. Adjacent pickup loops every
+   * neighbor, so a global true would claim empty tiles too.
+   */
+  public void setCanPickUpCheeseAt(MapLocation... locations) {
+    pickUpCheeseLocations = new HashSet<>(Arrays.asList(locations));
+  }
+
+  /**
+   * Raw cheese added by {@link #pickUpCheese(MapLocation)} after a successful call. The default 0
+   * leaves the stash unchanged.
+   */
+  public void setCheesePickupYield(int cheesePickupYield) {
+    this.cheesePickupYield = cheesePickupYield;
   }
 
   public void setPickUpCheeseFailure(GameActionException failure) {
@@ -566,6 +588,19 @@ public final class TestRobotController implements RobotController {
 
   public void setSharedArrayValue(int sharedArrayValue) {
     Arrays.fill(sharedArray, sharedArrayValue);
+  }
+
+  /** Sets one shared-array slot. The index must be at least 0 and less than the array length. */
+  public void setSharedArrayValue(int index, int value) {
+    if (index < 0 || index >= sharedArray.length) {
+      throw new IllegalArgumentException("shared array index " + index);
+    }
+    sharedArray[index] = value;
+  }
+
+  /** How many times {@link #readSharedArray(int)} was called on this instance. */
+  public int sharedArrayReadCount() {
+    return sharedArrayReads;
   }
 
   public void setReadSharedArrayFailure(GameActionException failure) {
@@ -1004,6 +1039,9 @@ public final class TestRobotController implements RobotController {
 
   @Override
   public boolean canPickUpCheese(MapLocation loc) {
+    if (pickUpCheeseLocations != null) {
+      return pickUpCheeseLocations.contains(loc);
+    }
     return canPickUpCheese;
   }
 
@@ -1011,6 +1049,7 @@ public final class TestRobotController implements RobotController {
   public void pickUpCheese(MapLocation loc) throws GameActionException {
     record("pickUpCheese:" + loc);
     throwIfSet(pickUpCheeseFailure);
+    rawCheese += cheesePickupYield;
   }
 
   @Override
@@ -1064,6 +1103,7 @@ public final class TestRobotController implements RobotController {
 
   @Override
   public int readSharedArray(int index) throws GameActionException {
+    sharedArrayReads += 1;
     throwIfSet(readSharedArrayFailure);
     return sharedArray[index];
   }
@@ -1077,6 +1117,10 @@ public final class TestRobotController implements RobotController {
   public void transferCheese(MapLocation loc, int amount) throws GameActionException {
     record("transferCheese:" + loc + ":" + amount);
     throwIfSet(transferCheeseFailure);
+    rawCheese -= amount;
+    if (rawCheese < 0) {
+      rawCheese = 0;
+    }
   }
 
   @Override

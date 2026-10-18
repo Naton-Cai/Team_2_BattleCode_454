@@ -2,11 +2,16 @@ package ratplayer;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
+import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import ratplayer.navigation.Navigation;
 
 public class BabyRat {
   static MapLocation kingLoc = null;
+  static MapLocation cheeseTile = null;
+  static boolean pickedUpCheese = false;
+  static boolean kingChecked = false;
 
   // handles our BabyRat turn logic
   static void run(RobotController rc) throws GameActionException {
@@ -14,14 +19,79 @@ public class BabyRat {
     if (RobotPlayer.turnCount % 100 == 0) {
       System.out.println("Turn " + RobotPlayer.turnCount + ": I am a " + rc.getType().toString());
     }
-    move(rc);
+    kingLoc = null;
+    cheeseTile = null;
+    pickedUpCheese = false;
+    kingChecked = false;
+
+    int rawCheese = rc.getRawCheese();
+    if (rawCheese > Config.RAW_CHEESE_MINIMUM) {
+      updateRatKingLoc(rc);
+      kingChecked = true;
+      if (kingLoc != null && rc.canTransferCheese(kingLoc, rawCheese)) {
+        rc.transferCheese(kingLoc, rawCheese);
+      }
+    }
     pickUpCheese(rc);
+    move(rc);
   }
 
   // handles our baby rat movement logic
   static void move(RobotController rc) throws GameActionException {
-    // PLACEHOLDER CODE
-    // Try to move forward one step.
+    int rawCheese = rc.getRawCheese();
+    if (rawCheese > Config.RAW_CHEESE_MINIMUM) {
+      if (!kingChecked) {
+        updateRatKingLoc(rc);
+        kingChecked = true;
+      }
+      if (kingLoc != null) {
+        Navigation.stepToward(rc, kingLoc, Config.KING_PATHING_STRATEGY);
+        return;
+      }
+    } else if (cheeseTile != null && !pickedUpCheese) {
+      Navigation.stepToward(rc, cheeseTile, Config.CHEESE_PATHING_STRATEGY);
+      return;
+    }
+    wander(rc);
+  }
+
+  /**
+   * Closest visible tile that holds cheese. Equal distances keep the earlier sense result, which
+   * preserves the engine's sense order.
+   */
+  static MapLocation closestVisibleCheese(RobotController rc) throws GameActionException {
+    MapInfo[] infos = rc.senseNearbyMapInfos();
+    MapLocation origin = rc.getLocation();
+    MapLocation closest = null;
+    int bestDistance = Integer.MAX_VALUE;
+    for (int i = 0; i < infos.length; i++) {
+      MapInfo info = infos[i];
+      if (info.getCheeseAmount() <= 0) {
+        continue;
+      }
+      MapLocation loc = info.getMapLocation();
+      int distance = origin.distanceSquaredTo(loc);
+      if (closest == null || distance < bestDistance) {
+        closest = loc;
+        bestDistance = distance;
+      }
+    }
+    return closest;
+  }
+
+  /** Selects a cheese pile using {@link Config#CHEESE_TARGET_STRATEGY}. */
+  static MapLocation selectCheese(RobotController rc) throws GameActionException {
+    switch (Config.CHEESE_TARGET_STRATEGY) {
+      case NEAREST_VISIBLE:
+      default:
+        return closestVisibleCheese(rc);
+    }
+  }
+
+  // PLACEHOLDER CODE
+  // Try to move forward one step.
+  static void wander(RobotController rc) throws GameActionException {
+    Navigation.resetFollow();
     if (rc.canMoveForward()) {
       System.out.println("Turn " + RobotPlayer.turnCount + ": Trying to move " + rc.getDirection());
       rc.moveForward();
@@ -41,21 +111,29 @@ public class BabyRat {
         rc.turn(dir);
       }
     }
-    // PLACEHOLDER CODE
   }
 
   // handles our cheese picking up logic
   static void pickUpCheese(RobotController rc) throws GameActionException {
-    MapLocation location = rc.getLocation();
-
-    for (Direction direction : RobotPlayer.directions) {
-      MapLocation adjacent = location.add(direction);
-      if (rc.onTheMap(adjacent) && rc.canPickUpCheese(adjacent)) {
-        rc.pickUpCheese(adjacent);
-      }
+    if (rc.getRawCheese() > Config.RAW_CHEESE_MINIMUM) {
+      return;
+    }
+    cheeseTile = selectCheese(rc);
+    if (cheeseTile != null && rc.canPickUpCheese(cheeseTile)) {
+      rc.pickUpCheese(cheeseTile);
+      pickedUpCheese = true;
     }
   }
 
   // update our RatKing Location
-  static void updateRatKingLoc(RobotController rc) throws GameActionException {}
+  static void updateRatKingLoc(RobotController rc) throws GameActionException {
+    int x = rc.readSharedArray(RatKing.LOCATION_X_SLOT);
+    int y = rc.readSharedArray(RatKing.LOCATION_Y_SLOT);
+    int published = rc.readSharedArray(RatKing.LOCATION_VALID_SLOT);
+    if (published != RatKing.KING_LOCATION_PUBLISHED) {
+      kingLoc = null;
+      return;
+    }
+    kingLoc = new MapLocation(x, y);
+  }
 }

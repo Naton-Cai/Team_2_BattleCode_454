@@ -39,8 +39,6 @@ sourceSets {
   }
 }
 
-// Coverage gate. Apply after sourceSets: jacoco.gradle configures the test
-// task created above and reads build/classes.
 apply from: 'jacoco.gradle'
 
 // Instrumented engine tests need the same Unsafe access as runJavaLocal.
@@ -51,7 +49,6 @@ test {
 // Google Java format. Apply after sourceSets so the Java files under src/
 // and test/ exist as source-set inputs. Pins live in spotless.gradle.
 apply from: 'spotless.gradle'
-
 
 //////// IDE configuration ////////
 
