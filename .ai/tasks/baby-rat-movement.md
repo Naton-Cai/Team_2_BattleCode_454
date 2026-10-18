@@ -39,9 +39,9 @@ Cheese policy is two configs. The starting pair is nearest-visible targeting plu
 
 | Config | Starting value | Role |
 | --- | --- | --- |
-| `Config.CHEESE_TARGET_STRATEGY` | `NEAREST_VISIBLE` | Which visible pile to chase. Only finder implemented: closest by squared distance; ties keep the earlier sense result. |
-| `Config.CHEESE_PATHING_STRATEGY` | `GREEDY` | One step toward that pile. |
-| `Config.KING_PATHING_STRATEGY` | `GREEDY` | One step toward the published king. |
+| `Config.BABY_CHEESE_TARGET_STRATEGY` | `NEAREST_VISIBLE` | Which visible pile to chase. Only finder implemented: closest by squared distance; ties keep the earlier sense result. |
+| `Config.BABY_PATH_TO_CHEESE_STRATEGY` | `GREEDY` | One step toward that pile. |
+| `Config.BABY_PATH_TO_KING_STRATEGY` | `GREEDY` | One step toward the published king. |
 
 `ratplayer.navigation.Navigation.stepToward` takes the pathing config the caller passes and `switch`es to `GreedyPath`, `DistBugPath`, or `VisibleBfsPath` in the same package. Shared follow state and BFS buffers stay on `Navigation`. Baby rats and kings can call it; RatKing still uses its own move loop. A later change may pick configs from game state.
 
@@ -62,5 +62,5 @@ Wander is the existing rule. The rat moves forward when the game allows it. Othe
 ## Limits
 
 - No search past the cheese the rat can currently see.
-- Obstacle paths use only the pathing helper selected for that goal (`CHEESE_PATHING_STRATEGY` or `KING_PATHING_STRATEGY`). DistBug and visible BFS treat a tile as known only when it appears in this turn's `senseNearbyMapInfos` or is off the map.
+- Obstacle paths use only the pathing helper selected for that goal (`BABY_PATH_TO_CHEESE_STRATEGY` or `BABY_PATH_TO_KING_STRATEGY`). DistBug and visible BFS treat a tile as known only when it appears in this turn's `senseNearbyMapInfos` or is off the map.
 - No separate published location per king.

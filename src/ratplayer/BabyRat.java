@@ -45,11 +45,11 @@ public class BabyRat {
         kingChecked = true;
       }
       if (kingLoc != null) {
-        Navigation.stepToward(rc, kingLoc, Config.KING_PATHING_STRATEGY);
+        Navigation.stepToward(rc, kingLoc, Config.BABY_PATH_TO_KING_STRATEGY);
         return;
       }
     } else if (cheeseTile != null && !pickedUpCheese) {
-      Navigation.stepToward(rc, cheeseTile, Config.CHEESE_PATHING_STRATEGY);
+      Navigation.stepToward(rc, cheeseTile, Config.BABY_PATH_TO_CHEESE_STRATEGY);
       return;
     }
     wander(rc);
@@ -79,9 +79,9 @@ public class BabyRat {
     return closest;
   }
 
-  /** Selects a cheese pile using {@link Config#CHEESE_TARGET_STRATEGY}. */
+  /** Selects a cheese pile using {@link Config#BABY_CHEESE_TARGET_STRATEGY}. */
   static MapLocation selectCheese(RobotController rc) throws GameActionException {
-    switch (Config.CHEESE_TARGET_STRATEGY) {
+    switch (Config.BABY_CHEESE_TARGET_STRATEGY) {
       case NEAREST_VISIBLE:
       default:
         return closestVisibleCheese(rc);

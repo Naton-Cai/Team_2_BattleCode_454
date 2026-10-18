@@ -7,9 +7,6 @@ package ratplayer;
  * one rat does not publish it to teammates. Tests may overwrite non-final configs and must restore
  * them with {@link #reset()}.
  *
- * <p>The current cheese policy is nearest-visible targeting plus greedy walking. Those are two
- * configs ({@link #CHEESE_TARGET_STRATEGY} and {@link #CHEESE_PATHING_STRATEGY}), not one combined
- * enum value.
  */
 public final class Config {
   private Config() {}
@@ -24,14 +21,14 @@ public final class Config {
     NEAREST_VISIBLE
   }
 
-  /** How a carrying rat steps toward the published king. Starting value is greedy. */
-  static PathingStrategy KING_PATHING_STRATEGY = PathingStrategy.GREEDY;
+  /** How a carrying rat steps toward the published king. */
+  static PathingStrategy BABY_PATH_TO_KING_STRATEGY = PathingStrategy.GREEDY;
 
-  /** How an empty-handed rat steps toward the selected pile. Starting value is greedy. */
-  static PathingStrategy CHEESE_PATHING_STRATEGY = PathingStrategy.GREEDY;
+  /** How an empty-handed rat (or has cheese below threshold) steps toward the selected pile*/
+  static PathingStrategy BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
 
-  /** Which visible pile to chase. Starting value is nearest by squared distance. */
-  static CheeseTargetStrategy CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
+  /** Which visible pile to chase. */
+  static CheeseTargetStrategy BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
 
   /**
    * Return to the king once raw cheese is above this value. 0 means any cheese. Later this can
@@ -41,8 +38,8 @@ public final class Config {
 
   /** Restore live configs to their starting values. */
   static void reset() {
-    KING_PATHING_STRATEGY = PathingStrategy.GREEDY;
-    CHEESE_PATHING_STRATEGY = PathingStrategy.GREEDY;
-    CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
+    BABY_PATH_TO_KING_STRATEGY = PathingStrategy.GREEDY;
+    BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
+    BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
   }
 }
