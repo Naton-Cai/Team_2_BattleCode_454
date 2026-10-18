@@ -42,7 +42,9 @@ public class RobotPlayerTest {
   public void dispatchesBabyRatWithoutRunningRatKingSpawnBehavior() {
     TestRobotController controller = new TestRobotController();
     controller.setUnitType(UnitType.BABY_RAT);
-    controller.setAllCheese(1000);
+    controller.setGlobalCheese(1000);
+    controller.setActionReady(true);
+    controller.setCurrentRatCost(10);
     controller.setAdjacentLocation(new MapLocation(1, 0));
     controller.setForwardAllowed(true);
 
@@ -192,7 +194,9 @@ public class RobotPlayerTest {
     TestRobotController controller = new TestRobotController();
     controller.setUnitType(UnitType.RAT_KING);
     controller.setMovementReady(true);
-    controller.setAllCheese(1000);
+    controller.setGlobalCheese(1000);
+    controller.setActionReady(true);
+    controller.setCurrentRatCost(10);
     controller.setAdjacentLocation(new MapLocation(1, 0));
     controller.setCanBuildRat(true);
     controller.setForwardAllowed(true);
