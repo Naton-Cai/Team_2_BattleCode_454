@@ -33,6 +33,10 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      # google-java-format 1.36.1 via Spotless 8.10.4.
+      - name: Check Java format
+        run: ./gradlew spotlessCheck --console=plain
+
       # `build` compiles players and unpacks the client. Tests run in the next step.
       - name: Build
         run: ./gradlew build -x test --console=plain

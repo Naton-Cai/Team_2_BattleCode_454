@@ -99,21 +99,26 @@ public class BabyRatCheesePickupTest {
       this.center = center;
       this.corner = corner;
       when(controller.getLocation()).thenReturn(center);
-      when(controller.onTheMap(any(MapLocation.class))).thenAnswer(invocation -> {
-        MapLocation location = invocation.getArgument(0);
-        return !corner || (location.x >= 0 && location.y >= 0);
-      });
-      when(controller.canPickUpCheese(any(MapLocation.class))).thenAnswer(invocation ->
-          cheese.getOrDefault(invocation.getArgument(0), 0) > 0);
+      when(controller.onTheMap(any(MapLocation.class)))
+          .thenAnswer(
+              invocation -> {
+                MapLocation location = invocation.getArgument(0);
+                return !corner || (location.x >= 0 && location.y >= 0);
+              });
+      when(controller.canPickUpCheese(any(MapLocation.class)))
+          .thenAnswer(invocation -> cheese.getOrDefault(invocation.getArgument(0), 0) > 0);
       when(controller.getRawCheese()).thenAnswer(invocation -> rawCheese[0]);
-      doAnswer(invocation -> {
-        MapLocation location = invocation.getArgument(0);
-        int amount = cheese.getOrDefault(location, 0);
-        cheese.put(location, 0);
-        rawCheese[0] += amount;
-        pickupCount[0]++;
-        return null;
-      }).when(controller).pickUpCheese(any(MapLocation.class));
+      doAnswer(
+              invocation -> {
+                MapLocation location = invocation.getArgument(0);
+                int amount = cheese.getOrDefault(location, 0);
+                cheese.put(location, 0);
+                rawCheese[0] += amount;
+                pickupCount[0]++;
+                return null;
+              })
+          .when(controller)
+          .pickUpCheese(any(MapLocation.class));
     }
 
     private void addCheese(Direction direction, int amount) {

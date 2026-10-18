@@ -49,10 +49,17 @@ public class RatKingTest {
     assertEquals(new MapLocation(10, 11), rc.getLocation());
     assertPosition(10, 11);
     assertEquals(777, rc.readSharedArray(63));
-    assertEquals(List.of(
-        "writeSharedArray:2:0", "writeSharedArray:0:10", "writeSharedArray:1:10",
-        "writeSharedArray:2:1", "moveForward", "writeSharedArray:2:0",
-        "writeSharedArray:0:10", "writeSharedArray:1:11", "writeSharedArray:2:1"),
+    assertEquals(
+        List.of(
+            "writeSharedArray:2:0",
+            "writeSharedArray:0:10",
+            "writeSharedArray:1:10",
+            "writeSharedArray:2:1",
+            "moveForward",
+            "writeSharedArray:2:0",
+            "writeSharedArray:0:10",
+            "writeSharedArray:1:11",
+            "writeSharedArray:2:1"),
         rc.calls().subList(0, 9));
     assertTrue(rc.calls().get(9).startsWith("buildRat:"));
     assertNextRandomUnchanged();
@@ -164,8 +171,9 @@ public class RatKingTest {
 
   @Test
   public void nearestCheeseAndCoordinateTiesIgnoreSensingOrder() throws Exception {
-    MapInfo[] targets = {cheese(15, 10, 100), cheese(10, 12, 1),
-        cheese(8, 10, 1), cheese(10, 8, 1)};
+    MapInfo[] targets = {
+      cheese(15, 10, 100), cheese(10, 12, 1), cheese(8, 10, 1), cheese(10, 8, 1)
+    };
     rc.setCanMove(true);
     rc.setNearbyMapInfos(targets);
     RatKing.move(rc);
@@ -187,9 +195,11 @@ public class RatKingTest {
   public void ignoresEmptyMineAndCenterTargetUsesNormalMovement() throws Exception {
     rc.setForwardAllowed(true);
     rc.setCanMove(true);
-    rc.setNearbyMapInfos(new MapInfo[] {
-        new MapInfo(new MapLocation(11, 10), true, null, false, false, 0, TrapType.NONE, true),
-        cheese(10, 10, 1)});
+    rc.setNearbyMapInfos(
+        new MapInfo[] {
+          new MapInfo(new MapLocation(11, 10), true, null, false, false, 0, TrapType.NONE, true),
+          cheese(10, 10, 1)
+        });
     RatKing.move(rc);
     assertEquals(0, rc.turnCount());
     assertPosition(10, 11);
@@ -234,8 +244,8 @@ public class RatKingTest {
   @Test
   public void publishesZeroAndLargestLegalCentersWithoutTouchingOtherSlots() throws Exception {
     // Zero tests encoding; real 3x3 king centers must leave a one-tile map margin.
-    for (MapLocation center : List.of(new MapLocation(0, 0), new MapLocation(1, 1),
-        new MapLocation(58, 58))) {
+    for (MapLocation center :
+        List.of(new MapLocation(0, 0), new MapLocation(1, 1), new MapLocation(58, 58))) {
       setUp();
       rc.setLocation(center);
       RatKing.move(rc);
@@ -324,8 +334,7 @@ public class RatKingTest {
     rc.setCanPickUpCheese(true);
     MapLocation east = new MapLocation(11, 10);
     MapLocation west = new MapLocation(9, 10);
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(11, 10, 2), cheese(9, 10, 3),
-        cheese(10, 11, 0)});
+    rc.setNearbyMapInfos(new MapInfo[] {cheese(11, 10, 2), cheese(9, 10, 3), cheese(10, 11, 0)});
     RatKing.pickUpCheese(rc);
     assertEquals(List.of("pickUpCheese:" + east, "pickUpCheese:" + west), rc.calls());
   }
@@ -358,7 +367,7 @@ public class RatKingTest {
   }
 
   private static MapInfo cheese(int x, int y, int amount) {
-    return new MapInfo(new MapLocation(x, y), true, null, false, false, amount, TrapType.NONE,
-        false);
+    return new MapInfo(
+        new MapLocation(x, y), true, null, false, false, amount, TrapType.NONE, false);
   }
 }

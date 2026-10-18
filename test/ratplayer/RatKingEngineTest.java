@@ -72,8 +72,10 @@ public class RatKingEngineTest {
     start(new MapLocation(1, 1), Direction.SOUTHWEST, null);
     round();
     assertEquals(new MapLocation(1, 1), king.getLocation());
-    assertTrue(king.getDirection() == Direction.NORTH
-        || king.getDirection() == Direction.NORTHEAST || king.getDirection() == Direction.EAST);
+    assertTrue(
+        king.getDirection() == Direction.NORTH
+            || king.getDirection() == Direction.NORTHEAST
+            || king.getDirection() == Direction.EAST);
     round();
     assertTrue(!king.getLocation().equals(new MapLocation(1, 1)));
   }
@@ -181,27 +183,39 @@ public class RatKingEngineTest {
   }
 
   private void start(MapLocation location, Direction facing, MapLocation wall) {
-    String classes = RobotPlayer.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+    String classes =
+        RobotPlayer.class.getProtectionDomain().getCodeSource().getLocation().getPath();
     output = new ByteArrayOutputStream();
-    player = new PlayerControlProvider(Team.A, "ratplayer", CrossPlayLanguage.JAVA, null,
-        classes, output, false);
+    player =
+        new PlayerControlProvider(
+            Team.A, "ratplayer", CrossPlayLanguage.JAVA, null, classes, output, false);
     TeamControlProvider providers = new TeamControlProvider();
     providers.registerControlProvider(Team.A, player);
     providers.registerControlProvider(Team.B, new NullControlProvider());
     providers.registerControlProvider(Team.NEUTRAL, new NullControlProvider());
     RobotInfo[] bodies = {
-        new RobotInfo(1, Team.A, UnitType.RAT_KING, 500, location, facing, 0, 0, null),
-        new RobotInfo(2, Team.B, UnitType.RAT_KING, 500, new MapLocation(17, 17),
-            Direction.SOUTH, 0, 0, null)
+      new RobotInfo(1, Team.A, UnitType.RAT_KING, 500, location, facing, 0, 0, null),
+      new RobotInfo(
+          2, Team.B, UnitType.RAT_KING, 500, new MapLocation(17, 17), Direction.SOUTH, 0, 0, null)
     };
-    LiveMap map = new LiveMap(20, 20, new MapLocation(0, 0), 6147, 100,
-        "RatKingMovementFixture", bodies);
+    LiveMap map =
+        new LiveMap(20, 20, new MapLocation(0, 0), 6147, 100, "RatKingMovementFixture", bodies);
     if (wall != null) {
       map.getWallArray()[wall.x + wall.y * 20] = true;
     }
-    GameInfo game = new GameInfo("ratplayer", CrossPlayLanguage.JAVA, "ratplayer", classes,
-        "stationary", CrossPlayLanguage.JAVA, "stationary", null,
-        new String[] {map.getMapName()}, null, false);
+    GameInfo game =
+        new GameInfo(
+            "ratplayer",
+            CrossPlayLanguage.JAVA,
+            "ratplayer",
+            classes,
+            "stationary",
+            CrossPlayLanguage.JAVA,
+            "stationary",
+            null,
+            new String[] {map.getMapName()},
+            null,
+            false);
     GameMaker maker = new GameMaker(game, null, false);
     maker.makeGameHeader();
     world = new GameWorld(map, providers, maker.getMatchMaker());
@@ -213,7 +227,8 @@ public class RatKingEngineTest {
 
   private void round() {
     world.runRound();
-    assertNotNull("King must remain alive after the instrumented turn",
+    assertNotNull(
+        "King must remain alive after the instrumented turn",
         world.getObjectInfo().getRobotByID(1));
     String log = output.toString(StandardCharsets.UTF_8);
     assertFalse(log, log.contains("Exception"));
@@ -223,9 +238,17 @@ public class RatKingEngineTest {
     int used = king.getBytecodesUsed();
     peakBytecodes = Math.max(peakBytecodes, used);
     // Full turns include initialization, sensing, actions, logging, and Clock.yield().
-    assertTrue("Expected full-turn bytecodes with at least 1,000 headroom, got " + used,
+    assertTrue(
+        "Expected full-turn bytecodes with at least 1,000 headroom, got " + used,
         used > 0 && used < 19000);
-    System.out.println("King fixture round=" + world.getCurrentRound() + " bytecodes=" + used
-        + " peak=" + peakBytecodes + " center=" + king.getLocation());
+    System.out.println(
+        "King fixture round="
+            + world.getCurrentRound()
+            + " bytecodes="
+            + used
+            + " peak="
+            + peakBytecodes
+            + " center="
+            + king.getLocation());
   }
 }
