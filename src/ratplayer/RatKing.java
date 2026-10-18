@@ -11,6 +11,7 @@ public class RatKing {
   static final int LOCATION_X_SLOT = 0;
   static final int LOCATION_Y_SLOT = 1;
   static final int LOCATION_VALID_SLOT = 2;
+  static final int KING_LOCATION_PUBLISHED = 1;
   static boolean locationPublished;
   private static final Direction[] openDirections = new Direction[7];
   private static MapLocation currentLocation;
@@ -122,7 +123,7 @@ public class RatKing {
     rc.writeSharedArray(LOCATION_VALID_SLOT, 0);
     rc.writeSharedArray(LOCATION_X_SLOT, currentLocation.x);
     rc.writeSharedArray(LOCATION_Y_SLOT, currentLocation.y);
-    rc.writeSharedArray(LOCATION_VALID_SLOT, 1);
+    rc.writeSharedArray(LOCATION_VALID_SLOT, KING_LOCATION_PUBLISHED);
     locationPublished = true;
   }
 }

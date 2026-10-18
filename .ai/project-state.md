@@ -2,9 +2,9 @@
 
 ## Test cases
 
-Controller tests call `playTurn` or `RatKing.move` with a `TestRobotController` and return. They do not call `run`, because that method loops on `Clock.yield()`. The controller supplies the answers for one scenario; a true `canMoveForward` does not establish that the engine would allow the step. Engine tests run the real bot loop in the sandbox and inspect the world after yielding. The `% 100` type print in `RobotPlayer` is not covered by a focused test.
+Controller tests call `playTurn` or `RatKing.move` with a `TestRobotController` and return. They do not call `run`, because that method loops on `Clock.yield()`. The controller supplies the answers for one scenario; a true `canMoveForward` or `canMove` does not establish that the engine would allow the step. Engine tests run the real bot loop in the sandbox and inspect the world after yielding. The `% 100` type print in `RobotPlayer` is not covered by a focused test.
 
-`ratplayer.RobotPlayer.playTurn` dispatches on the current unit type each turn. `TestRobotController` starts as `UnitType.BABY_RAT` unless a test changes it. King tests reset the robot-local publication flag and RNG between scenarios.
+`ratplayer.RobotPlayer.playTurn` dispatches on the current unit type each turn. `TestRobotController` starts as `UnitType.BABY_RAT` unless a test changes it. King tests reset the robot-local publication flag and RNG between scenarios. Cheese collection, king return, and pathing configs for this branch are specified in `.ai/tasks/baby-rat-movement.md`, not here.
 
 ### BabyRat
 
@@ -18,14 +18,16 @@ Controller tests call `playTurn` or `RatKing.move` with a `TestRobotController` 
 - `containsGameActionExceptionFromTurn`: a `GameActionException` from `turn` stays inside `playTurn`. The turn was attempted and no move was attempted.
 - `containsUnexpectedExceptionFromForwardCheck`: a `RuntimeException` from `canMoveForward` stays inside `playTurn`. Neither action runs.
 
+Stuck-layout checks are in `ratplayer.GreedyPathTest`. The mock answers `canMove` and does not prove collision geometry. Those cases should keep passing for whichever pathing helper we select (`GREEDY`, `DIST_BUG`, or `VISIBLE_BFS`).
+
 ### Baby Rat cheese pickup
 
 The following focused tests are in `ratplayer.BabyRatCheesePickupTest`. They use a mocked `RobotController` with shared cheese state to check pickup decisions; they do not validate engine action legality.
 
-- `picksUpOneAdjacentPile`: collects and clears one positive adjacent pile.
-- `doesNothingWhenNoAdjacentCheeseExists`: makes no pickup attempt when adjacent tiles contain no cheese.
-- `collectsPilesFromAllAdjacentTiles`: collects multiple piles around the baby rat and clears each tile.
-- `skipsOffMapNeighborsAtCorner`: ignores off-map neighbors while collecting an on-map adjacent pile.
+- `picksUpOneAdjacentPile`: collects and clears one positive visible pile.
+- `doesNothingWhenNoAdjacentCheeseExists`: makes no pickup attempt when sensing finds no cheese.
+- `collectsPilesFromAllAdjacentTiles`: when several piles are visible, collects only the closest (ties keep the earlier sense result) and leaves the others because the return threshold is then crossed.
+- `skipsOffMapNeighborsAtCorner`: collects the sensed on-map pile at a corner.
 - `secondRatDoesNotAttemptToClaimAlreadyCollectedPile`: a second sequential rat does not claim cheese already removed from the shared map state.
 
 ### RatKing
