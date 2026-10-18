@@ -1,8 +1,20 @@
 package ratplayer;
 
-import battlecode.common.*;
+import battlecode.common.Direction;
+import battlecode.common.GameActionException;
+import battlecode.common.MapInfo;
+import battlecode.common.MapLocation;
+import battlecode.common.RobotController;
 
 public class RatKing {
+    // Single-king shared-array protocol; static fields themselves are robot-local.
+    static final int LOCATION_X_SLOT = 0;
+    static final int LOCATION_Y_SLOT = 1;
+    static final int LOCATION_VALID_SLOT = 2;
+    static boolean locationPublished;
+    private static final Direction[] openDirections = new Direction[7];
+    private static MapLocation currentLocation;
+
     //handles our Rat King turn logic
     static void run(RobotController rc) throws GameActionException {
         // Every 100 turns, print out what type of robot we are.
@@ -16,27 +28,74 @@ public class RatKing {
 
     //handles our King rat movement logic
     static void move(RobotController rc) throws GameActionException {
-        //PLACEHOLDER CODE
-        // Try to move forward one step.
-        if (rc.canMoveForward()) {
-            System.out.println("Turn " + RobotPlayer.turnCount + ": Trying to move " + rc.getDirection());
-            rc.moveForward();
-        } else {
-            System.out.println("Couldn't move forward on turn " + RobotPlayer.turnCount + " at location " + rc.getLocation() + " facing " + rc.getDirection());
-            // If we can't move forward, try to turn a random direction.
-            int randomDirection = RobotPlayer.rng.nextInt(8);
-            Direction dir = RobotPlayer.directions[randomDirection];
+        if (!locationPublished) {
+            updateLoc(rc);
+        }
+        // Cooldown is not an obstacle and must not cause random redirection.
+        if (!rc.isMovementReady()) {
+            return;
+        }
 
-            if (rc.canTurn(dir)) {
-                rc.turn(dir);
+        MapLocation current = rc.getLocation();
+        MapLocation nearest = null;
+        int nearestDistance = Integer.MAX_VALUE;
+        for (MapInfo info : rc.senseNearbyMapInfos()) {
+            if (info.getCheeseAmount() <= 0) {
+                continue;
+            }
+            MapLocation cheese = info.getMapLocation();
+            int distance = current.distanceSquaredTo(cheese);
+            if (nearest == null || distance < nearestDistance
+                    || (distance == nearestDistance
+                    && (cheese.x < nearest.x
+                    || (cheese.x == nearest.x && cheese.y < nearest.y)))) {
+                nearest = cheese;
+                nearestDistance = distance;
             }
         }
-        //PLACEHOLDER CODE
+
+        Direction facing = rc.getDirection();
+        if (nearest != null) {
+            Direction towardCheese = current.directionTo(nearest);
+            if (towardCheese != Direction.CENTER && rc.canMove(towardCheese)
+                    && towardCheese != facing) {
+                if (rc.canTurn(towardCheese)) {
+                    rc.turn(towardCheese);
+                }
+                return;
+            }
+        }
+
+        if (rc.canMoveForward()) {
+            rc.moveForward();
+            updateLoc(rc);
+            return;
+        }
+
+        int openCount = 0;
+        for (Direction direction : RobotPlayer.directions) {
+            if (direction != facing && rc.canMove(direction)) {
+                openDirections[openCount++] = direction;
+            }
+        }
+        if (openCount > 0) {
+            Direction direction = openDirections[RobotPlayer.rng.nextInt(openCount)];
+            if (rc.canTurn(direction)) {
+                rc.turn(direction);
+            }
+        }
     }
 
     //handles our cheese picking up logic
     static void pickUpCheese(RobotController rc) throws GameActionException {
         System.out.println("Turn " + RobotPlayer.turnCount + ": Rat King Picking Up Cheese");
+        // Re-sense after movement; pickup range includes tiles beyond the center.
+        for (MapInfo info : rc.senseNearbyMapInfos()) {
+            MapLocation cheese = info.getMapLocation();
+            if (info.getCheeseAmount() > 0 && rc.canPickUpCheese(cheese)) {
+                rc.pickUpCheese(cheese);
+            }
+        }
     }
 
     //spawns our baby rats
@@ -56,5 +115,15 @@ public class RatKing {
 
     //update our RatKing Location to the global array
     static void updateLoc(RobotController rc) throws GameActionException {
+        // Retry from the actual location next turn if any write fails.
+        locationPublished = false;
+        currentLocation = rc.getLocation();
+
+        // Baby rats should only read from global array if slot 2 equals 1
+        rc.writeSharedArray(LOCATION_VALID_SLOT, 0);
+        rc.writeSharedArray(LOCATION_X_SLOT, currentLocation.x);
+        rc.writeSharedArray(LOCATION_Y_SLOT, currentLocation.y);
+        rc.writeSharedArray(LOCATION_VALID_SLOT, 1);
+        locationPublished = true;
     }
 }

@@ -10,6 +10,8 @@ import battlecode.common.RobotInfo;
 import battlecode.common.Team;
 import battlecode.common.UnitType;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 
 /**
@@ -88,6 +90,11 @@ public final class TestRobotController implements RobotController {
   private boolean forwardAllowed;
   private RuntimeException forwardFailure;
   private boolean canMove;
+  private final EnumMap<Direction, Boolean> directionalMoves = new EnumMap<>(Direction.class);
+  private boolean simulateMovement;
+  private final int[] sharedArray = new int[64];
+  private int failedWriteNumber = -1;
+  private int sharedWriteCount;
   private int moveCount;
   private GameActionException moveFailure;
   private GameActionException moveToFailure;
@@ -123,7 +130,6 @@ public final class TestRobotController implements RobotController {
   private boolean squeakAccepted;
   private Message[] squeaks = NO_MESSAGES;
   private GameActionException writeSharedArrayFailure;
-  private int sharedArrayValue;
   private GameActionException readSharedArrayFailure;
   private boolean canTransferCheese;
   private GameActionException transferCheeseFailure;
@@ -162,6 +168,22 @@ public final class TestRobotController implements RobotController {
   /** Makes {@link #turn(Direction)} throw after the call is recorded. */
   public void setTurnFailure(GameActionException failure) {
     turnFailure = failure;
+  }
+
+  /** Opt-in state changes keep legacy tests' canned controller answers unchanged. */
+  public void setSimulateMovement(boolean simulateMovement) {
+    this.simulateMovement = simulateMovement;
+  }
+
+  /** Arranges a footprint-legality answer for one direction, without modeling engine geometry. */
+  public void setDirectionAllowed(Direction direction, boolean allowed) {
+    directionalMoves.put(direction, allowed);
+  }
+
+  /** Fails a particular write, counting from the next write as 1. */
+  public void failSharedWrite(int number, GameActionException failure) {
+    failedWriteNumber = sharedWriteCount + number;
+    writeSharedArrayFailure = failure;
   }
 
   public int moveCount() {
@@ -543,7 +565,7 @@ public final class TestRobotController implements RobotController {
   }
 
   public void setSharedArrayValue(int sharedArrayValue) {
-    this.sharedArrayValue = sharedArrayValue;
+    Arrays.fill(sharedArray, sharedArrayValue);
   }
 
   public void setReadSharedArrayFailure(GameActionException failure) {
@@ -842,12 +864,12 @@ public final class TestRobotController implements RobotController {
     if (forwardFailure != null) {
       throw forwardFailure;
     }
-    return forwardAllowed;
+    return directionalMoves.getOrDefault(direction, forwardAllowed);
   }
 
   @Override
   public boolean canMove(Direction moveDirection) {
-    return canMove;
+    return directionalMoves.getOrDefault(moveDirection, canMove);
   }
 
   @Override
@@ -855,6 +877,9 @@ public final class TestRobotController implements RobotController {
     moveCount += 1;
     record("moveForward");
     throwIfSet(moveFailure);
+    if (simulateMovement) {
+      location = location.add(direction);
+    }
   }
 
   @Override
@@ -879,6 +904,9 @@ public final class TestRobotController implements RobotController {
     turns.add(turnDirection);
     record("turn:" + turnDirection);
     throwIfSet(turnFailure);
+    if (simulateMovement) {
+      direction = turnDirection;
+    }
   }
 
   @Override
@@ -1027,13 +1055,17 @@ public final class TestRobotController implements RobotController {
   @Override
   public void writeSharedArray(int index, int value) throws GameActionException {
     record("writeSharedArray:" + index + ":" + value);
-    throwIfSet(writeSharedArrayFailure);
+    sharedWriteCount++;
+    if (failedWriteNumber == -1 || failedWriteNumber == sharedWriteCount) {
+      throwIfSet(writeSharedArrayFailure);
+    }
+    sharedArray[index] = value;
   }
 
   @Override
   public int readSharedArray(int index) throws GameActionException {
     throwIfSet(readSharedArrayFailure);
-    return sharedArrayValue;
+    return sharedArray[index];
   }
 
   @Override
