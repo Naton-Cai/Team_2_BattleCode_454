@@ -182,6 +182,102 @@ public class RatKingEngineTest {
     assertEquals(new MapLocation(8, 8), king.getLocation());
   }
 
+  @Test
+  public void reachesSixteenStopsAndReplacesDeathOutsideVision() throws Exception {
+    // Arrange 15 real allied babies far from a stationary king, with ample global cheese.
+    start(new MapLocation(8, 8), Direction.NORTH, null);
+    seedBabies(15);
+    world.getTeamInfo().addCheese(Team.A, 2000);
+    king.setMovementCooldownTurns(1000);
+    assertEquals(40, king.getController().getCurrentRatCost());
+    round();
+    assertEquals(16, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertEquals(50, king.getController().getCurrentRatCost());
+    round();
+    assertEquals(16, world.getTeamInfo().getNumBabyRats(Team.A));
+
+    // Removing a real baby outside vision must reopen recruitment without a heartbeat.
+    MapLocation victim = world.getObjectInfo().getRobotByID(300).getLocation();
+    assertTrue(king.getLocation().distanceSquaredTo(victim) > 25);
+    world.destroyRobot(300);
+    assertEquals(40, king.getController().getCurrentRatCost());
+    round();
+    assertEquals(16, world.getTeamInfo().getNumBabyRats(Team.A));
+    round();
+    assertEquals(16, world.getTeamInfo().getNumBabyRats(Team.A));
+    // Two more losses require two separate king turns, then recruitment stops again.
+    world.destroyRobot(301);
+    world.destroyRobot(302);
+    round();
+    assertEquals(15, world.getTeamInfo().getNumBabyRats(Team.A));
+    // The previous newborn can occupy the fixed spawn tile. Free it with a legal engine move
+    // so this assertion tests replenishment, rather than assuming uncongested placement.
+    InternalRobot occupant = world.getRobot(new MapLocation(8, 10));
+    if (occupant != null) {
+      occupant.setMovementCooldownTurns(0);
+      assertTrue(occupant.getController().canMove(Direction.EAST));
+      occupant.getController().move(Direction.EAST);
+    }
+    round();
+    assertEquals(16, world.getTeamInfo().getNumBabyRats(Team.A));
+    round();
+    assertEquals(16, world.getTeamInfo().getNumBabyRats(Team.A));
+  }
+
+  @Test
+  public void engineReserveBoundaryAndPickupFundOneReplacement() {
+    start(new MapLocation(8, 8), Direction.NORTH, null);
+    seedBabies(15);
+    king.setMovementCooldownTurns(1000);
+    world.getTeamInfo().addCheese(Team.A, 439); // Initial 400 becomes 839.
+    round();
+    assertEquals(15, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertEquals(837, world.getTeamInfo().getCheese(Team.A));
+    // Pickup happens before the guard: 837 + 3 - 40 leaves 800, then upkeep spends 2.
+    world.addCheese(new MapLocation(8, 9), 3);
+    round();
+    assertEquals(16, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertEquals(798, world.getTeamInfo().getCheese(Team.A));
+    assertNotNull(world.getRobot(new MapLocation(8, 10)));
+  }
+
+  @Test
+  public void engineActionCooldownAndBlockedSpawnRetryOnLaterTurns() {
+    start(new MapLocation(8, 8), Direction.NORTH, null);
+    world.getTeamInfo().addCheese(Team.A, 1000);
+    king.setMovementCooldownTurns(1000);
+    king.setActionCooldownTurns(20);
+    round();
+    assertEquals(0, world.getTeamInfo().getNumBabyRats(Team.A));
+    world.setDirt(new MapLocation(8, 10), true);
+    round();
+    assertEquals(0, world.getTeamInfo().getNumBabyRats(Team.A));
+    world.setDirt(new MapLocation(8, 10), false);
+    round();
+    assertEquals(1, world.getTeamInfo().getNumBabyRats(Team.A));
+  }
+
+  @Test
+  public void movedKingSpawnsNorthOfActualNewCenter() {
+    // A real forward move must precede placement; the old north candidate becomes king footprint.
+    start(new MapLocation(8, 8), Direction.NORTH, null);
+    world.getTeamInfo().addCheese(Team.A, 1000);
+    round();
+    assertEquals(new MapLocation(8, 9), king.getLocation());
+    InternalRobot baby = world.getRobot(new MapLocation(8, 11));
+    assertNotNull(baby);
+    assertEquals(UnitType.BABY_RAT, baby.getType());
+    assertEquals(1, world.getTeamInfo().getNumBabyRats(Team.A));
+  }
+
+  private void seedBabies(int count) {
+    for (int i = 0; i < count; i++) {
+      world.spawnRobot(
+          300 + i, UnitType.BABY_RAT, new MapLocation(1 + i, 1), Direction.NORTH, 0, Team.A);
+      world.getObjectInfo().getRobotByID(300 + i).setMovementCooldownTurns(1000);
+    }
+  }
+
   private void start(MapLocation location, Direction facing, MapLocation wall) {
     String classes =
         RobotPlayer.class.getProtectionDomain().getCodeSource().getLocation().getPath();
