@@ -18,6 +18,16 @@ Controller tests call `playTurn` or `RatKing.move` with a `TestRobotController` 
 - `containsGameActionExceptionFromTurn`: a `GameActionException` from `turn` stays inside `playTurn`. The turn was attempted and no move was attempted.
 - `containsUnexpectedExceptionFromForwardCheck`: a `RuntimeException` from `canMoveForward` stays inside `playTurn`. Neither action runs.
 
+### Baby Rat cheese pickup
+
+The following focused tests are in `ratplayer.BabyRatCheesePickupTest`. They use a mocked `RobotController` with shared cheese state to check pickup decisions; they do not validate engine action legality.
+
+- `picksUpOneAdjacentPile`: collects and clears one positive adjacent pile.
+- `doesNothingWhenNoAdjacentCheeseExists`: makes no pickup attempt when adjacent tiles contain no cheese.
+- `collectsPilesFromAllAdjacentTiles`: collects multiple piles around the baby rat and clears each tile.
+- `skipsOffMapNeighborsAtCorner`: ignores off-map neighbors while collecting an on-map adjacent pile.
+- `secondRatDoesNotAttemptToClaimAlreadyCollectedPile`: a second sequential rat does not claim cheese already removed from the shared map state.
+
 ### RatKing
 
 The following tests are in `ratplayer.RatKingTest` unless another class is named. Shared slots 0 and 1 store the center coordinates; slot 2 stores validity.

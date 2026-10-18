@@ -37,7 +37,14 @@ public class BabyRat {
 
     //handles our cheese picking up logic
     static void pickUpCheese(RobotController rc) throws GameActionException {
-        System.out.println("Turn " + RobotPlayer.turnCount + ": Baby Rat Picking Up Cheese");
+        MapLocation location = rc.getLocation();
+
+        for (Direction direction : RobotPlayer.directions) {
+            MapLocation adjacent = location.add(direction);
+            if (rc.onTheMap(adjacent) && rc.canPickUpCheese(adjacent)) {
+                rc.pickUpCheese(adjacent);
+            }
+        }
     }
 
     //update our RatKing Location
