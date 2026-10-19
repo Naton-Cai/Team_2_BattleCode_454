@@ -10,7 +10,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameActionExceptionType;
 import battlecode.common.MapInfo;
@@ -35,7 +34,7 @@ public class RatKingSpawningTest {
     when(rc.isActionReady()).thenReturn(true);
     when(rc.getGlobalCheese()).thenReturn(840);
     when(rc.getCurrentRatCost()).thenReturn(40);
-    when(rc.adjacentLocation(Direction.NORTH)).thenReturn(new MapLocation(10, 11));
+    when(rc.getLocation()).thenReturn(new MapLocation(10, 10));
     when(rc.canBuildRat(candidate)).thenReturn(true);
     RatKing.locationPublished = false;
     RobotPlayer.turnCount = 0;
@@ -99,6 +98,52 @@ public class RatKingSpawningTest {
     when(rc.canBuildRat(candidate)).thenReturn(true);
     RatKing.spawnBabyRat(rc);
     verify(rc, times(1)).buildRat(candidate);
+  }
+
+  @Test
+  public void triesEightDirectionsClockwiseAndStopsAtFirstLegalSpawn() throws Exception {
+    // Verify N, NE, E, SE, S, SW, W, NW ordering and stop at the first engine-approved tile.
+    MapLocation[] clockwise = {
+      candidate,
+      new MapLocation(12, 12),
+      new MapLocation(12, 10),
+      new MapLocation(12, 8),
+      new MapLocation(10, 8),
+      new MapLocation(8, 8),
+      new MapLocation(8, 10),
+      new MapLocation(8, 12)
+    };
+    for (int opening = 0; opening < clockwise.length; opening++) {
+      setUp();
+      when(rc.canBuildRat(candidate)).thenReturn(false);
+      when(rc.canBuildRat(clockwise[opening])).thenReturn(true);
+      RatKing.spawnBabyRat(rc);
+      InOrder order = inOrder(rc);
+      for (int i = 0; i <= opening; i++) {
+        order.verify(rc).canBuildRat(clockwise[i]);
+      }
+      order.verify(rc).buildRat(clockwise[opening]);
+      order.verifyNoMoreInteractions();
+      verify(rc, times(1)).buildRat(any());
+    }
+  }
+
+  @Test
+  public void allBlockedChecksEightTilesWithoutBuilding() throws Exception {
+    // A trapped king finishes its bounded scan without spending cheese or attempting a build.
+    when(rc.canBuildRat(candidate)).thenReturn(false);
+    RatKing.spawnBabyRat(rc);
+    InOrder order = inOrder(rc);
+    order.verify(rc).canBuildRat(candidate);
+    order.verify(rc).canBuildRat(new MapLocation(12, 12));
+    order.verify(rc).canBuildRat(new MapLocation(12, 10));
+    order.verify(rc).canBuildRat(new MapLocation(12, 8));
+    order.verify(rc).canBuildRat(new MapLocation(10, 8));
+    order.verify(rc).canBuildRat(new MapLocation(8, 8));
+    order.verify(rc).canBuildRat(new MapLocation(8, 10));
+    order.verify(rc).canBuildRat(new MapLocation(8, 12));
+    order.verifyNoMoreInteractions();
+    verify(rc, never()).buildRat(any());
   }
 
   @Test

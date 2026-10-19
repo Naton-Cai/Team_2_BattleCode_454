@@ -242,19 +242,22 @@ public class RatKingEngineTest {
   }
 
   @Test
-  public void engineActionCooldownAndBlockedSpawnRetryOnLaterTurns() {
+  public void engineActionCooldownThenBlockedNorthFallsBackClockwise() {
     start(new MapLocation(8, 8), Direction.NORTH, null);
     world.getTeamInfo().addCheese(Team.A, 1000);
     king.setMovementCooldownTurns(1000);
     king.setActionCooldownTurns(20);
     round();
     assertEquals(0, world.getTeamInfo().getNumBabyRats(Team.A));
+    // North is blocked; northeast is the first clockwise opening in the real engine.
     world.setDirt(new MapLocation(8, 10), true);
     round();
-    assertEquals(0, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertEquals(1, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertNotNull(world.getRobot(new MapLocation(10, 10)));
     world.setDirt(new MapLocation(8, 10), false);
     round();
-    assertEquals(1, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertEquals(2, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertNotNull(world.getRobot(new MapLocation(8, 10)));
   }
 
   @Test

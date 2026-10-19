@@ -120,9 +120,14 @@ public class RatKing {
     if (cost >= stopPrice || (long) rc.getGlobalCheese() - cost < Config.MIN_CHEESE_RESERVE) {
       return;
     }
-    MapLocation ratSpawnLocation = rc.adjacentLocation(RobotPlayer.directions[0]).translate(0, 1);
-    if (rc.canBuildRat(ratSpawnLocation)) {
-      rc.buildRat(ratSpawnLocation);
+    // Check all eight directions clockwise from north; the engine validates each candidate.
+    MapLocation center = rc.getLocation();
+    for (Direction direction : RobotPlayer.directions) {
+      MapLocation ratSpawnLocation = center.translate(2 * direction.dx, 2 * direction.dy);
+      if (rc.canBuildRat(ratSpawnLocation)) {
+        rc.buildRat(ratSpawnLocation);
+        return;
+      }
     }
   }
 
