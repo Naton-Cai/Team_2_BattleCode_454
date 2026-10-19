@@ -50,9 +50,10 @@ public class BabyRat {
     MapLocation forward = rc.getLocation().add(direction);
     Direction left = direction.rotateLeft().rotateLeft();
     Direction right = direction.rotateRight().rotateRight();
-    if (tryAttackAt(rc, forward, backstabbing)
-        || tryAttackAt(rc, forward.add(left), backstabbing)
-        || tryAttackAt(rc, forward.add(right), backstabbing)) {}
+    // check starting from center, then left ,than right for targets.
+    if (tryAttackAt(rc, forward, backstabbing)) return;
+    if (tryAttackAt(rc, forward.add(left), backstabbing)) return;
+    tryAttackAt(rc, forward.add(right), backstabbing);
   }
 
   private static boolean tryAttackAt(RobotController rc, MapLocation location, boolean backstabbing)
@@ -71,9 +72,9 @@ public class BabyRat {
     }
 
     // Determines cheese spend; increasing cat bite strength improves the team's points.
+    // spending 3-7 cheese will optimize our points gain when attacking a cat.
     int cheeseToSpend = 0;
     if (isCat) {
-      // spending 3-7 cheese will optimize our points gain when attacking a cat.
       int maxCheese = backstabbing ? 3 : 7;
       cheeseToSpend = Math.min(maxCheese, rc.getRawCheese() + rc.getGlobalCheese());
     }
