@@ -99,17 +99,11 @@ public class RatKing {
     }
   }
 
-  // spawns our baby rats
+  // Spawns a baby rat within the configured population and reserve limits.
   static void spawnBabyRat(RobotController rc) throws GameActionException {
-    spawnBabyRat(rc, Config.MAX_BABY_RATS, Config.MIN_CHEESE_RESERVE);
-  }
-
-  // Parameter seam keeps experimental limits testable without changing decision logic.
-  static void spawnBabyRat(RobotController rc, int maxBabyRats, int minCheeseReserve)
-      throws GameActionException {
-    if (maxBabyRats < 0
-        || maxBabyRats % GameConstants.NUM_ROBOTS_FOR_COST_INCREASE != 0
-        || minCheeseReserve < 0) {
+    if (Config.MAX_BABY_RATS < 0
+        || Config.MAX_BABY_RATS % GameConstants.NUM_ROBOTS_FOR_COST_INCREASE != 0
+        || Config.MIN_CHEESE_RESERVE < 0) {
       throw new IllegalArgumentException(
           "Baby cap must be a nonnegative multiple of the cost step; reserve must be nonnegative");
     }
@@ -121,9 +115,9 @@ public class RatKing {
     long stopPrice =
         GameConstants.BUILD_ROBOT_BASE_COST
             + (long) GameConstants.BUILD_ROBOT_COST_INCREASE
-                * (maxBabyRats / GameConstants.NUM_ROBOTS_FOR_COST_INCREASE);
+                * (Config.MAX_BABY_RATS / GameConstants.NUM_ROBOTS_FOR_COST_INCREASE);
     int cost = rc.getCurrentRatCost();
-    if (cost >= stopPrice || (long) rc.getGlobalCheese() - cost < minCheeseReserve) {
+    if (cost >= stopPrice || (long) rc.getGlobalCheese() - cost < Config.MIN_CHEESE_RESERVE) {
       return;
     }
     MapLocation ratSpawnLocation = rc.adjacentLocation(RobotPlayer.directions[0]).translate(0, 1);

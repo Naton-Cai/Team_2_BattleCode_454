@@ -18,6 +18,7 @@ import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.TrapType;
 import battlecode.common.UnitType;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -29,6 +30,7 @@ public class RatKingSpawningTest {
 
   @Before
   public void setUp() {
+    Config.reset();
     rc = mock(RobotController.class);
     when(rc.isActionReady()).thenReturn(true);
     when(rc.getGlobalCheese()).thenReturn(840);
@@ -38,6 +40,11 @@ public class RatKingSpawningTest {
     RatKing.locationPublished = false;
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
+  }
+
+  @After
+  public void tearDown() {
+    Config.reset();
   }
 
   @Test
@@ -98,23 +105,30 @@ public class RatKingSpawningTest {
   public void supportsEightZeroAndIndependentReserveLimits() throws Exception {
     // Seven babies have price 20; eight have price 30. Reserve changes require no logic edit.
     when(rc.getCurrentRatCost()).thenReturn(30, 20, 10, 20, 20);
-    RatKing.spawnBabyRat(rc, 8, 800);
+    Config.MAX_BABY_RATS = 8;
+    RatKing.spawnBabyRat(rc);
     verify(rc, never()).buildRat(any());
-    RatKing.spawnBabyRat(rc, 8, 800);
-    RatKing.spawnBabyRat(rc, 0, 800);
+    RatKing.spawnBabyRat(rc);
+    Config.MAX_BABY_RATS = 0;
+    RatKing.spawnBabyRat(rc);
+    Config.MAX_BABY_RATS = 8;
+    Config.MIN_CHEESE_RESERVE = 900;
     when(rc.getGlobalCheese()).thenReturn(919, 920);
-    RatKing.spawnBabyRat(rc, 8, 900);
-    RatKing.spawnBabyRat(rc, 8, 900);
+    RatKing.spawnBabyRat(rc);
+    RatKing.spawnBabyRat(rc);
     verify(rc, times(2)).buildRat(candidate);
   }
 
   @Test
-  public void rejectsUnsupportedParametersWithoutActions() throws Exception {
+  public void rejectsUnsupportedConfigWithoutActions() throws Exception {
     // Reject invalid experiments explicitly, rather than silently rounding the cap.
     for (int cap : new int[] {-4, 15, 17}) {
-      assertThrows(IllegalArgumentException.class, () -> RatKing.spawnBabyRat(rc, cap, 800));
+      Config.MAX_BABY_RATS = cap;
+      assertThrows(IllegalArgumentException.class, () -> RatKing.spawnBabyRat(rc));
     }
-    assertThrows(IllegalArgumentException.class, () -> RatKing.spawnBabyRat(rc, 16, -1));
+    Config.MAX_BABY_RATS = 16;
+    Config.MIN_CHEESE_RESERVE = -1;
+    assertThrows(IllegalArgumentException.class, () -> RatKing.spawnBabyRat(rc));
     verify(rc, never()).buildRat(any());
   }
 
