@@ -67,6 +67,61 @@ public class BabyRatAttackTest {
     assertEquals("attack:" + targetLocation + ":0", controller.calls().get(0));
   }
 
+  /**
+   * Forward-then-left/right of the forward tile is adjacent when facing a cardinal, but not when
+   * facing a diagonal. Facing NE, adjacent north is still in vision and biteable (spec p.10/155).
+   *
+   * <pre>
+   *       | 4 | 5 | 6 | 7 |
+   *     6 |   | o | F |   |     o = cat on adjacent north (5,6)
+   *     5 |   | R |   |   |     R facing NE; F = forward (6,6)
+   * </pre>
+   *
+   * Arrange: cat on north, facing NE, bite legal. Assert: one bite at {@code o}. The scan must step
+   * 45° from the rat, not add left to {@code F} (that tile is two north).
+   */
+  @Test
+  public void attacksAdjacentNorthCatWhenFacingNortheast() throws Exception {
+    MapLocation targetLocation = ORIGIN.add(Direction.NORTH);
+    TestRobotController controller =
+        controllerWithTargetAt(UnitType.CAT, Team.NEUTRAL, targetLocation);
+    controller.setDirection(Direction.NORTHEAST);
+    controller.setCooperation(true);
+    controller.setCanAttackWithCheese(true);
+
+    BabyRat.attack(controller);
+
+    assertEquals(1, controller.calls().size());
+    assertEquals("attack:" + targetLocation + ":0", controller.calls().get(0));
+  }
+
+  /**
+   * Same diagonal miss on the other side: adjacent east while facing NE.
+   *
+   * <pre>
+   *       | 4 | 5 | 6 | 7 |
+   *     6 |   |   | F |   |
+   *     5 |   | R | o |   |     o = cat on adjacent east (6,5)
+   * </pre>
+   *
+   * Arrange: cat on east, facing NE, bite legal. Assert: one bite at {@code o}. The scan must step
+   * 45° from the rat, not add right to {@code F} (that tile is two east).
+   */
+  @Test
+  public void attacksAdjacentEastCatWhenFacingNortheast() throws Exception {
+    MapLocation targetLocation = ORIGIN.add(Direction.EAST);
+    TestRobotController controller =
+        controllerWithTargetAt(UnitType.CAT, Team.NEUTRAL, targetLocation);
+    controller.setDirection(Direction.NORTHEAST);
+    controller.setCooperation(true);
+    controller.setCanAttackWithCheese(true);
+
+    BabyRat.attack(controller);
+
+    assertEquals(1, controller.calls().size());
+    assertEquals("attack:" + targetLocation + ":0", controller.calls().get(0));
+  }
+
   /** Backstabbing mode caps a cat bite at three cheese even when more is available. */
   @Test
   public void limitsBackstabbingCatBiteToThreeCheese() throws Exception {

@@ -47,13 +47,14 @@ public class BabyRat {
     // a baby rat can attack the 3 tiles in front of it without having to turn so we should check
     // all 3 tiles for valid targets.
     Direction direction = rc.getDirection();
-    MapLocation forward = rc.getLocation().add(direction);
-    Direction left = direction.rotateLeft().rotateLeft();
-    Direction right = direction.rotateRight().rotateRight();
+    MapLocation center = rc.getLocation();
+    MapLocation forward = center.add(direction);
+    MapLocation left = center.add(direction.rotateLeft());
+    MapLocation right = center.add(direction.rotateRight());
     // check starting from center, then left ,than right for targets.
     if (tryAttackAt(rc, forward, backstabbing)) return;
-    if (tryAttackAt(rc, forward.add(left), backstabbing)) return;
-    tryAttackAt(rc, forward.add(right), backstabbing);
+    if (tryAttackAt(rc, left, backstabbing)) return;
+    tryAttackAt(rc, right, backstabbing);
   }
 
   private static boolean tryAttackAt(RobotController rc, MapLocation location, boolean backstabbing)
