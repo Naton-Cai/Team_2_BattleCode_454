@@ -5,6 +5,8 @@ import battlecode.common.GameActionException;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.RobotInfo;
+import battlecode.common.UnitType;
 import ratplayer.navigation.Navigation;
 
 public class BabyRat {
@@ -33,7 +35,54 @@ public class BabyRat {
       }
     }
     pickUpCheese(rc);
+    attack(rc);
     move(rc);
+  }
+
+  /**
+   * Bites an adjacent cat, or a rat after cooperation has ended.
+   */
+  static void attack(RobotController rc) throws GameActionException {
+    boolean backstabbing = rc.getBackstabbingTeam() != null;
+    // a baby rat can attack the 3 tiles in front of it without having to turn so we should check
+    // all 3 tiles for valid targets.
+    Direction direction = rc.getDirection();
+    MapLocation forward = rc.getLocation().add(direction);
+    Direction left = direction.rotateLeft().rotateLeft();
+    Direction right = direction.rotateRight().rotateRight();
+    // check starting from center, then left ,than right for targets.
+    if (tryAttackAt(rc, forward, backstabbing)) return;
+    if (tryAttackAt(rc, forward.add(left), backstabbing)) return;
+    tryAttackAt(rc, forward.add(right), backstabbing);
+  }
+
+  private static boolean tryAttackAt(RobotController rc, MapLocation location, boolean backstabbing)
+      throws GameActionException {
+    if (!rc.canSenseRobotAtLocation(location)) {
+      return false;
+    }
+    RobotInfo target = rc.senseRobotAtLocation(location);
+    if (target == null) {
+      return false;
+    }
+    boolean isCat = target.getType() == UnitType.CAT;
+    boolean isRat = target.getType() == UnitType.BABY_RAT || target.getType() == UnitType.RAT_KING;
+    if (!isCat && (!backstabbing || !isRat || target.getTeam() == rc.getTeam())) {
+      return false;
+    }
+
+    // Determines cheese spend; increasing cat bite strength improves the team's points.
+    // spending 3-7 cheese will optimize our points gain when attacking a cat.
+    int cheeseToSpend = 0;
+    if (isCat) {
+      int maxCheese = backstabbing ? 3 : 7;
+      cheeseToSpend = Math.min(maxCheese, rc.getRawCheese() + rc.getGlobalCheese());
+    }
+    if (!rc.canAttack(location, cheeseToSpend)) {
+      return false;
+    }
+    rc.attack(location, cheeseToSpend);
+    return true;
   }
 
   // handles our baby rat movement logic
@@ -79,7 +128,9 @@ public class BabyRat {
     return closest;
   }
 
-  /** Selects a cheese pile using {@link Config#BABY_CHEESE_TARGET_STRATEGY}. */
+  /**
+   * Selects a cheese pile using {@link Config#BABY_CHEESE_TARGET_STRATEGY}.
+   */
   static MapLocation selectCheese(RobotController rc) throws GameActionException {
     switch (Config.BABY_CHEESE_TARGET_STRATEGY) {
       case NEAREST_VISIBLE:
