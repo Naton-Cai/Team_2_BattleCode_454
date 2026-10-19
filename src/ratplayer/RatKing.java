@@ -8,7 +8,7 @@ import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 
 public class RatKing {
-  // Change after testing 
+  // Change after testing
   static final int MAX_BABY_RATS = 16;
   static final int MIN_CHEESE_RESERVE = 800;
   // Single-king shared-array protocol; static fields themselves are robot-local.
