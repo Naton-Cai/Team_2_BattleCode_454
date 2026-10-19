@@ -74,11 +74,6 @@ These tests are in `ratplayer.RatKingEngineTest`. Each observed turn checks that
 - `picksUpMultipleTilesAroundNewFootprintButLeavesDistantCheese`: after movement, collects two tiles within legal pickup range, leaves distant cheese untouched, and increases global cheese by the collected amount minus upkeep.
 - `cooldownsStillAllowEngineApprovedPickup`: movement and action cooldowns leave the king stationary while engine-approved cheese pickup still succeeds in engine 1.2.6.
 
-### RatKing baby spawning guard
-
-Implemented 2026-10-18 from the approved spawning card in the conversation. The separate card file is absent from this checkout; `feature.md` still describes movement. The agreed spawning contract is a target of 16 living allied babies, replacement after deaths, and at least 800 global cheese immediately after spawn payment. `RatKing.MAX_BABY_RATS` and `MIN_CHEESE_RESERVE` hold these experimental limits together. An overload accepts explicit limits for focused tests without modifying constants or decision logic.
-
-Engine 1.2.6 `RobotControllerImpl.getCurrentRatCost` uses the team's living baby count: base 10 plus 10 per four babies (specification amended through v1.2.6, physical p.14). At 15 babies the price is 40; at 16 it is 50. The price guard therefore enforces this cap without local sensing, shared counters, or death reporting. Caps must be nonnegative multiples of four; zero disables spawning. Invalid caps and negative reserves are rejected. The reserve check uses current global cheese after pickup. Upkeep and other spending can subsequently reduce that balance below 800.
 
 The following tests are in `ratplayer.RatKingSpawningTest`. They use Mockito with engine-consistent prices; real engine scenarios below establish actual population changes and legality.
 
