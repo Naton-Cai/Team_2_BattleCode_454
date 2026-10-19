@@ -21,6 +21,15 @@ public final class Config {
     NEAREST_VISIBLE
   }
 
+<<<<<<< HEAD
+=======
+  /** Living allied baby rat cap; must be nonnegative and a multiple of four. Zero stops spawning. */
+  static final int MAX_BABY_RATS = 16;
+
+  /** Minimum global cheese left after paying for a spawn, before round-end upkeep. */
+  static final int MIN_CHEESE_RESERVE = 800;
+
+>>>>>>> 46f4b5d (Added integers to Config.java)
   /** How a carrying rat steps toward the published king. */
   static PathingStrategy BABY_PATH_TO_KING_STRATEGY = PathingStrategy.GREEDY;
 

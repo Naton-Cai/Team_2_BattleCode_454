@@ -8,9 +8,6 @@ import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 
 public class RatKing {
-  // Change after testing
-  static final int MAX_BABY_RATS = 16;
-  static final int MIN_CHEESE_RESERVE = 800;
   // Single-king shared-array protocol; static fields themselves are robot-local.
   static final int LOCATION_X_SLOT = 0;
   static final int LOCATION_Y_SLOT = 1;
@@ -104,7 +101,7 @@ public class RatKing {
 
   // spawns our baby rats
   static void spawnBabyRat(RobotController rc) throws GameActionException {
-    spawnBabyRat(rc, MAX_BABY_RATS, MIN_CHEESE_RESERVE);
+    spawnBabyRat(rc, Config.MAX_BABY_RATS, Config.MIN_CHEESE_RESERVE);
   }
 
   // Parameter seam keeps experimental limits testable without changing decision logic.
