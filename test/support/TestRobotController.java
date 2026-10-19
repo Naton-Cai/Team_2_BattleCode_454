@@ -777,7 +777,9 @@ public final class TestRobotController implements RobotController {
   @Override
   public RobotInfo senseRobotAtLocation(MapLocation loc) throws GameActionException {
     throwIfSet(robotAtLocationFailure);
-    return robotAtLocation;
+    return robotAtLocation != null && robotAtLocation.getLocation().equals(loc)
+        ? robotAtLocation
+        : null;
   }
 
   @Override

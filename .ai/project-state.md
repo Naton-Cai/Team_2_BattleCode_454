@@ -1,5 +1,25 @@
 # Project state
 
+## Baby Rat attacks (implemented 2026-10-18)
+
+`BabyRat.run` picks up cheese, checks sensed nearby robots for a legal bite, then moves. It always
+considers cats and considers opposing baby rats or rat kings only while `getBackstabbingTeam()` is
+non-null. Cat bites spend up to seven cheese in cooperation mode or three in backstabbing mode;
+rat bites spend none. `BabyRatAttackTest` covers target selection and cheese spend. Controller tests
+verify calls and target selection, not damage or instrumented engine behavior.
+
+Engine 1.2.6 references and the supplied specification v1.2.6 identify `getBackstabbingTeam()` as
+the cooperation-state check. The attack only senses the forward tile and its left/right neighbors
+when `canSenseRobotAtLocation()` permits each, then checks bite legality with `canAttack`. `classes`,
+`spotlessCheck`,
+and the six focused attack tests passed. The focused Gradle command skips the aggregate 70% coverage
+gate because a class-only run cannot meet the whole-bundle threshold. No instrumented scenario was
+run, so the 17,500-bytecode headroom and in-engine bite damage remain unverified.
+
+The full test run completed 77 tests with five failures in existing `RobotPlayerTest` expectations for
+raw-cheese threshold behavior. The current uncommitted `Config.RAW_CHEESE_MINIMUM = 20` change
+explains those expectation mismatches; it predates this attack change and was left intact.
+
 ## Test cases
 
 Controller tests call `playTurn` or `RatKing.move` with a `TestRobotController` and return. They do not call `run`, because that method loops on `Clock.yield()`. The controller supplies the answers for one scenario; a true `canMoveForward` or `canMove` does not establish that the engine would allow the step. Engine tests run the real bot loop in the sandbox and inspect the world after yielding. The `% 100` type print in `RobotPlayer` is not covered by a focused test.
