@@ -2,6 +2,7 @@ package ratplayer;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
+import battlecode.common.GameConstants;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
@@ -98,19 +99,36 @@ public class RatKing {
     }
   }
 
-  // spawns our baby rats
+  // Spawns a baby rat within the configured population and reserve limits.
   static void spawnBabyRat(RobotController rc) throws GameActionException {
-    System.out.println("Turn " + RobotPlayer.turnCount + ": Rat King Spawning Baby Rat");
-    // PLACEHOLDER CODE
-    // spawns a baby rat north of the rat king if cheese is >= 800
-    if (rc.getAllCheese() >= 800) {
-      MapLocation ratSpawnLocation = rc.adjacentLocation(RobotPlayer.directions[0]).translate(0, 1);
+    if (Config.MAX_BABY_RATS < 0
+        || Config.MAX_BABY_RATS % GameConstants.NUM_ROBOTS_FOR_COST_INCREASE != 0
+        || Config.MIN_CHEESE_RESERVE < 0) {
+      throw new IllegalArgumentException(
+          "Baby cap must be a nonnegative multiple of the cost step; reserve must be nonnegative");
+    }
+    if (!rc.isActionReady()) {
+      return;
+    }
+    // v1.2.6, spec p.14: price tracks living allied babies, including unseen losses.
+    // shortcut: exact caps require multiples of four; arbitrary caps need population tracking.
+    long stopPrice =
+        GameConstants.BUILD_ROBOT_BASE_COST
+            + (long) GameConstants.BUILD_ROBOT_COST_INCREASE
+                * (Config.MAX_BABY_RATS / GameConstants.NUM_ROBOTS_FOR_COST_INCREASE);
+    int cost = rc.getCurrentRatCost();
+    if (cost >= stopPrice || (long) rc.getGlobalCheese() - cost < Config.MIN_CHEESE_RESERVE) {
+      return;
+    }
+    // Check all eight directions clockwise from north; the engine validates each candidate.
+    MapLocation center = rc.getLocation();
+    for (Direction direction : RobotPlayer.directions) {
+      MapLocation ratSpawnLocation = center.translate(2 * direction.dx, 2 * direction.dy);
       if (rc.canBuildRat(ratSpawnLocation)) {
-        System.out.println("Turn " + RobotPlayer.turnCount + ": I am trying to spawn a baby");
         rc.buildRat(ratSpawnLocation);
+        return;
       }
     }
-    // PLACEHOLDER CODE
   }
 
   // update our RatKing Location to the global array

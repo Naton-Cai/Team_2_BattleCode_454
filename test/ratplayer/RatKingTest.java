@@ -36,9 +36,11 @@ public class RatKingTest {
 
   @Test
   public void publishesInitialAndMovedCentersBeforeSpawning() throws Exception {
-    // Arrange an open path and the existing spawning conditions; spawning policy is unchanged.
+    // Arrange an open path and an affordable spawn below the population cap.
     rc.setForwardAllowed(true);
-    rc.setAllCheese(1000);
+    rc.setGlobalCheese(1000);
+    rc.setActionReady(true);
+    rc.setCurrentRatCost(10);
     rc.setCanBuildRat(true);
     rc.setAdjacentLocation(new MapLocation(10, 12));
     rc.writeSharedArray(63, 777);

@@ -21,6 +21,12 @@ public final class Config {
     NEAREST_VISIBLE
   }
 
+  /** Living allied baby rat cap; must be nonnegative and a multiple of four. Zero stops spawning. */
+  static int MAX_BABY_RATS = 16;
+
+  /** Minimum global cheese left after paying for a spawn, before round-end upkeep. */
+  static int MIN_CHEESE_RESERVE = 800;
+
   /** How a carrying rat steps toward the published king. */
   static PathingStrategy BABY_PATH_TO_KING_STRATEGY = PathingStrategy.GREEDY;
 
@@ -38,6 +44,8 @@ public final class Config {
 
   /** Restore live configs to their starting values. */
   static void reset() {
+    MAX_BABY_RATS = 16;
+    MIN_CHEESE_RESERVE = 800;
     BABY_PATH_TO_KING_STRATEGY = PathingStrategy.GREEDY;
     BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
     BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
