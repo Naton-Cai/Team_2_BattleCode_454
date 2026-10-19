@@ -75,14 +75,16 @@ These tests are in `ratplayer.RatKingEngineTest`. Each observed turn checks that
 - `cooldownsStillAllowEngineApprovedPickup`: movement and action cooldowns leave the king stationary while engine-approved cheese pickup still succeeds in engine 1.2.6.
 
 
-The following tests are in `ratplayer.RatKingSpawningTest`. They use Mockito with engine-consistent prices; real engine scenarios below establish actual population changes and legality.
+The following tests are in `ratplayer.RatKingSpawningTest`. They use Mockito with engine-consistent prices; real engine scenarios below establish actual population changes and legality. Spawning reads `Config.MAX_BABY_RATS` and `Config.MIN_CHEESE_RESERVE` directly; setup and teardown call `Config.reset()` to isolate configuration changes.
 
 - `allowsEachPriceBelowCapAndChecksLegalityImmediately`: prices 10, 20, 30, and 40 each permit exactly one spawn, with the legality query immediately before the build.
 - `preservesReserveAtEqualityAndRefusesOneBelow`: with 15 babies, 839 global cheese blocks spawning; 840 allows one spawn leaving 800 before upkeep.
 - `stopsAtCapAndReplacesSeveralUnseenLossesOverLaterTurns`: prices at/above the cap block recruitment; later lower prices permit replacements on separate calls and the restored cap stops recruitment again.
 - `readinessAndBlockedCandidateReturnWithoutBuilding`: action cooldown skips the cost query; a refused candidate produces no build; later legal placement can succeed. Off-map candidates use this same refusal branch; a separate real off-map spawn fixture was not run.
+- `triesEightDirectionsClockwiseAndStopsAtFirstLegalSpawn`: exercises each possible first legal candidate in N, NE, E, SE, S, SW, W, NW order, verifies the exact legality-check prefix, and confirms exactly one build with no further checks. Candidates are two direction steps from the current king center. Mock approval checks ordering; it does not establish engine legality.
+- `allBlockedChecksEightTilesWithoutBuilding`: all eight candidates are refused; checks the full clockwise sequence and confirms no build.
 - `supportsEightZeroAndIndependentReserveLimits`: an eight-baby cap stops at price 30 and permits price 20; zero disables spawning; a changed reserve of 900 is checked at 919/920 cheese.
-- `rejectsUnsupportedParametersWithoutActions`: negative caps, caps 15/17, and a negative reserve fail explicitly without a build.
+- `rejectsUnsupportedConfigWithoutActions`: negative caps, caps 15/17, and a negative reserve fail explicitly without a build.
 - `pickupFundsSpawnDespiteMovementCooldownThroughCurrentTypeDispatch`: the normal king dispatch picks up cheese before reading the balance and can spawn while movement is cooling down.
 - `buildFailureRecoversOnNextTurnWithoutDisablingSpawns`: an unexpected build exception reaches the existing turn boundary; a later turn can attempt spawning again.
 
@@ -90,7 +92,7 @@ Existing `RobotPlayerTest.ratKingRunsSpawnBehaviorWhenCheeseIsAvailable` and `Ra
 
 The following added tests are in `ratplayer.RatKingEngineTest`. They run the actual sandboxed bot loop and verify normal completion/yield, live king, correct shared position, no logged exception, and full-turn bytecode headroom.
 
-- `reachesSixteenStopsAndReplacesDeathOutsideVision`: starts with 15 real allied babies, reaches 16, stops, removes a baby outside king vision, replaces it, then replaces two further losses over separate turns and stops again. A previous newborn occupied the fixed candidate during the first multiple-loss test attempt; the fixture now frees that tile with a legal engine move before testing the second replacement. Production placement behavior was preserved.
+- `reachesSixteenStopsAndReplacesDeathOutsideVision`: starts with 15 real allied babies, reaches 16, stops, removes a baby outside king vision, replaces it, then replaces two further losses over separate turns and stops again. The fixture frees an occupied north candidate with a legal engine move before testing the second replacement; clockwise fallback is covered separately.
 - `engineReserveBoundaryAndPickupFundOneReplacement`: 839 cheese prevents a spawn; after upkeep leaves 837, pickup of 3 funds a cost-40 spawn. The balance is 800 after payment and 798 after king upkeep.
-- `engineActionCooldownAndBlockedSpawnRetryOnLaterTurns`: action cooldown prevents spawning, then dirt blocks the north candidate, then removal of that dirt allows a spawn while movement remains cooling down.
+- `engineActionCooldownThenBlockedNorthFallsBackClockwise`: action cooldown initially prevents spawning. With the king stationary at (8,8), dirt blocks north at (8,10); the next turn spawns northeast at (10,10). Removing the dirt allows a second baby at north on the following turn. This confirms diagonal spawn legality in engine 1.2.6 despite the local API comment describing a radius of two.
 - `movedKingSpawnsNorthOfActualNewCenter`: the king moves from (8,8) to (8,9), then creates a baby at (8,11), using its actual new location.
