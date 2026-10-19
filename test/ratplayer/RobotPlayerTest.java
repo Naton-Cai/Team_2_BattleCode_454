@@ -237,7 +237,7 @@ public class RobotPlayerTest {
   /**
    * An empty-handed baby rat with nothing in vision wanders forward.
    *
-   * <p>{@code RAW_CHEESE_MINIMUM} is 0, so a stash of 0 still collects rather than returning.
+   * <p>A stash at or below {@code RAW_CHEESE_MINIMUM} collects instead of returning.
    * It does not read the shared array. Existing wander tests cover the blocked-forward cases
    * on this same empty-handed path.
    */
@@ -320,9 +320,11 @@ public class RobotPlayerTest {
    */
   @Test
   public void transfersAllRawCheeseToPublishedKing() {
-    // Arrange: 7 raw cheese and a published king at (10, 4). Transfer and forward move are legal.
+    int carryingCheese = Config.RAW_CHEESE_MINIMUM + 1;
+    // Arrange: cheese above the return threshold and a published king at (10, 4).
+    // Transfer and forward move are legal.
     TestRobotController controller = babyRat();
-    controller.setRawCheese(7);
+    controller.setRawCheese(carryingCheese);
     publishKing(controller, 10, 4);
     controller.setCanTransferCheese(true);
     controller.setForwardAllowed(true);
@@ -330,8 +332,10 @@ public class RobotPlayerTest {
     // Act.
     RobotPlayer.playTurn(controller);
 
-    // Assert: one transfer of 7, then wander forward, and no pickup.
-    assertEquals(Arrays.asList("transferCheese:[10, 4]:7", "moveForward"), controller.calls());
+    // Assert: the full stash transfers, then the rat wanders forward without picking up cheese.
+    assertEquals(
+        Arrays.asList("transferCheese:[10, 4]:" + carryingCheese, "moveForward"),
+        controller.calls());
     assertEquals(0, controller.getRawCheese());
     assertEquals(3, controller.sharedArrayReadCount());
     assertFalse(controller.calls().toString().contains("pickUpCheese"));
@@ -345,10 +349,11 @@ public class RobotPlayerTest {
    */
   @Test
   public void stepsTowardPublishedKingWhenTransferIsRefused() {
-    // Arrange: carrying, king published at (0, 5), transfer refused, direct step allowed.
+    int carryingCheese = Config.RAW_CHEESE_MINIMUM + 1;
+    // Arrange: cheese above the return threshold, king published at (0, 5), and transfer refused.
     TestRobotController controller = babyRat();
     controller.setLocation(new MapLocation(0, 0));
-    controller.setRawCheese(4);
+    controller.setRawCheese(carryingCheese);
     publishKing(controller, 0, 5);
     controller.setCanTransferCheese(false);
     controller.setCanMove(true);
@@ -360,7 +365,7 @@ public class RobotPlayerTest {
     // Assert: one north step, no forward wander, no transfer, and no pickup.
     assertEquals(Arrays.asList("move:NORTH"), controller.calls());
     assertEquals(0, controller.turnCount());
-    assertEquals(4, controller.getRawCheese());
+    assertEquals(carryingCheese, controller.getRawCheese());
   }
 
   /**
@@ -372,12 +377,13 @@ public class RobotPlayerTest {
    */
   @Test
   public void stepsTowardKingAfterPickingUpCheese() {
-    // Arrange: empty-handed, one eastern pile, pickup yield 4, king published to the north.
+    int carryingCheese = Config.RAW_CHEESE_MINIMUM + 1;
+    // Arrange: empty-handed, one eastern pile, pickup above threshold, king published north.
     TestRobotController controller = babyRat();
     controller.setLocation(new MapLocation(0, 0));
-    controller.setNearbyMapInfos(new MapInfo[] {tileWithCheese(1, 0, 4)});
+    controller.setNearbyMapInfos(new MapInfo[] {tileWithCheese(1, 0, carryingCheese)});
     controller.setCanPickUpCheese(true);
-    controller.setCheesePickupYield(4);
+    controller.setCheesePickupYield(carryingCheese);
     publishKing(controller, 0, 6);
     controller.setCanMove(true);
 
@@ -387,7 +393,7 @@ public class RobotPlayerTest {
     // Assert: pickup, then a north step. The array is read only after the stash is filled.
     assertEquals(Arrays.asList("pickUpCheese:[1, 0]", "move:NORTH"), controller.calls());
     assertEquals(3, controller.sharedArrayReadCount());
-    assertEquals(4, controller.getRawCheese());
+    assertEquals(carryingCheese, controller.getRawCheese());
     assertEquals(0, controller.turnCount());
   }
 
@@ -399,9 +405,10 @@ public class RobotPlayerTest {
    */
   @Test
   public void wandersWhenCarryingAndKingIsUnpublished() {
-    // Arrange: raw cheese, unpublished center, forward allowed.
+    int carryingCheese = Config.RAW_CHEESE_MINIMUM + 1;
+    // Arrange: cheese above the return threshold, unpublished center, forward allowed.
     TestRobotController controller = babyRat();
-    controller.setRawCheese(3);
+    controller.setRawCheese(carryingCheese);
     controller.setSharedArrayValue(RatKing.LOCATION_X_SLOT, 8);
     controller.setSharedArrayValue(RatKing.LOCATION_Y_SLOT, 8);
     controller.setForwardAllowed(true);
@@ -412,7 +419,7 @@ public class RobotPlayerTest {
     // Assert: the three reads happened, then wander, with the stash unchanged.
     assertEquals(Arrays.asList("moveForward"), controller.calls());
     assertEquals(3, controller.sharedArrayReadCount());
-    assertEquals(3, controller.getRawCheese());
+    assertEquals(carryingCheese, controller.getRawCheese());
     assertEquals(0, controller.turnCount());
   }
 
@@ -451,10 +458,11 @@ public class RobotPlayerTest {
    */
   @Test
   public void containsGameActionExceptionFromTransfer() {
-    // Arrange: carrying, king published, transfer throws, and a step would otherwise be legal.
+    int carryingCheese = Config.RAW_CHEESE_MINIMUM + 1;
+    // Arrange: cheese above threshold, published king, throwing transfer, and legal movement.
     TestRobotController controller = babyRat();
     controller.setLocation(new MapLocation(0, 0));
-    controller.setRawCheese(6);
+    controller.setRawCheese(carryingCheese);
     publishKing(controller, 2, 2);
     controller.setCanTransferCheese(true);
     controller.setTransferCheeseFailure(
@@ -465,9 +473,9 @@ public class RobotPlayerTest {
     // Act.
     RobotPlayer.playTurn(controller);
 
-    // Assert: only the transfer was attempted, and the stash is still 6.
-    assertEquals(Arrays.asList("transferCheese:[2, 2]:6"), controller.calls());
-    assertEquals(6, controller.getRawCheese());
+    // Assert: only the transfer was attempted, and the stash remains unchanged.
+    assertEquals(Arrays.asList("transferCheese:[2, 2]:" + carryingCheese), controller.calls());
+    assertEquals(carryingCheese, controller.getRawCheese());
     assertEquals(0, controller.moveCount());
     assertEquals(0, controller.turnCount());
     assertEquals(1, RobotPlayer.turnCount);
