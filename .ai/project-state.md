@@ -50,6 +50,12 @@ The following focused tests are in `ratplayer.BabyRatCheesePickupTest`. They use
 - `skipsOffMapNeighborsAtCorner`: collects the sensed on-map pile at a corner.
 - `secondRatDoesNotAttemptToClaimAlreadyCollectedPile`: a second sequential rat does not claim cheese already removed from the shared map state.
 
+### BabyRat attack
+- `attacksAdjacentNorthCatWhenFacingNortheast`: cat on adjacent north `(5,6)`; expect one zero-cheese
+  bite there. Adding left to the forward tile would look two north and miss this square.
+- `attacksAdjacentEastCatWhenFacingNortheast`: cat on adjacent east `(6,5)`; expect one zero-cheese
+  bite there. Adding right to the forward tile would look two east and miss this square.
+
 ### RatKing
 
 The following tests are in `ratplayer.RatKingTest` unless another class is named. Shared slots 0 and 1 store the center coordinates; slot 2 stores validity.
