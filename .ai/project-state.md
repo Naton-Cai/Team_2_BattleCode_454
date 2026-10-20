@@ -38,7 +38,32 @@ Controller tests call `playTurn` or `RatKing.move` with a `TestRobotController` 
 - `containsGameActionExceptionFromTurn`: a `GameActionException` from `turn` stays inside `playTurn`. The turn was attempted and no move was attempted.
 - `containsUnexpectedExceptionFromForwardCheck`: a `RuntimeException` from `canMoveForward` stays inside `playTurn`. Neither action runs.
 
-Stuck-layout checks are in `ratplayer.GreedyPathTest`. The mock answers `canMove` and does not prove collision geometry. Those cases should keep passing for whichever pathing helper we select (`GREEDY`, `DIST_BUG`, or `VISIBLE_BFS`).
+Shared checks that every helper must match live in abstract `ratplayer.CommonPathingTest`. `GreedyPathTest`, `DistBugPathTest`, and `VisibleBfsPathTest` each run those inherited cases for one `PathingStrategy`. These tests tell the mock which steps are allowed; they do not prove engine collision. In those maps the robot has not seen a wall this turn, so DistBug does not hug a wall and BFS does not search extra tiles. All three pick the next legal step the same way greedy does.
+
+### Baby Rat pathing helpers (implemented 2026-10-19)
+
+`DistBugPath` and `VisibleBfsPath` now implement the bodies behind `Navigation.stepToward`. Follow
+state and BFS buffers stay on `Navigation`. King return uses DistBug
+(`BABY_PATH_TO_KING_STRATEGY`) because the published king is often outside the 90-degree cone.
+Cheese chase uses visible BFS (`BABY_PATH_TO_CHEESE_STRATEGY`) because the pile is already seen
+this turn. DistBug follow/leave and BFS
+tests for tiles the robot can see live on those helper classes. Shared tests for maps where the
+robot has not seen a wall are inherited from `CommonPathingTest`. Match evidence for DistBug and
+visible BFS is **not run**.
+
+DistBug tests for a wall the robot has seen are in `ratplayer.DistBugPathTest`, which also inherits
+the shared `CommonPathingTest` cases:
+
+- `distBugFollowsSensedWallInsteadOfBlockedHeading`: a wall the robot has seen on the desired tile starts follow and takes the left-hand open step.
+- `distBugDoesNotFollowWhenBlockedTileIsUnsensed`: a blocked tile the robot has not seen does not start follow; greedy may still side-step.
+- `distBugDoesNotFollowWhenSensedTileIsPassable`: another robot or cooldown on a passable tile is not a wall.
+- `distBugLeavesFollowWhenCloserAndHeadingIsOpen`: follow ends when the way toward the goal is open and the rat is closer than when it first hit the wall.
+
+BFS tests for tiles the robot can see are in `ratplayer.VisibleBfsPathTest`, which also inherits the
+shared `CommonPathingTest` cases:
+
+- `visibleBfsTakesSensedDetourInsteadOfUnsensedShortcut`: BFS walks the southern corridor the robot can see and does not use a northern shortcut it has not seen.
+- `visibleBfsDoesNotInventUnsensedTiles`: with only the current tile seen, BFS matches greedy.
 
 ### Baby Rat cheese pickup
 
