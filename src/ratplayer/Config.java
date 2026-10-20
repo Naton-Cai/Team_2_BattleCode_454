@@ -30,12 +30,12 @@ public final class Config {
   /**
    * How a carrying rat steps toward the published king.
    */
-  static PathingStrategy BABY_PATH_TO_KING_STRATEGY = PathingStrategy.GREEDY;
+  static PathingStrategy BABY_PATH_TO_KING_STRATEGY = PathingStrategy.DIST_BUG;
 
   /**
    * How an empty-handed rat (or has cheese below threshold) steps toward the selected pile
    */
-  static PathingStrategy BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
+  static PathingStrategy BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.VISIBLE_BFS;
 
   /**
    * Which visible pile to chase.
@@ -54,8 +54,8 @@ public final class Config {
   static void reset() {
     MAX_BABY_RATS = 16;
     MIN_CHEESE_RESERVE = 800;
-    BABY_PATH_TO_KING_STRATEGY = PathingStrategy.GREEDY;
-    BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
+    BABY_PATH_TO_KING_STRATEGY = PathingStrategy.DIST_BUG;
+    BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.VISIBLE_BFS;
     BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
   }
 }
