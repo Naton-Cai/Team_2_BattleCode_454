@@ -49,7 +49,7 @@ public final class Config {
    * Return to the king once raw cheese is above this value. 0 means any cheese. Later this can
    * become a function of stash size or distance to the king.
    */
-  static final int RAW_CHEESE_MINIMUM = 20;
+  static final int RAW_CHEESE_MINIMUM = 40;
 
   /**
    * Restore live configs to their starting values.

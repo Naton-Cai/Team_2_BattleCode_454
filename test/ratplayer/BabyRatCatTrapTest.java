@@ -25,7 +25,7 @@ public class BabyRatCatTrapTest {
     assertEquals(0, controller.calls().size());
   }
 
-  /** A cat four tiles north gets a trap at the midpoint between it and the baby rat. */
+  /** A cat four tiles north gets a trap on the adjacent tile toward it. */
   @Test
   public void placesAtMidpointTowardVisibleCat() throws Exception {
     TestRobotController controller = readyController();
@@ -34,7 +34,7 @@ public class BabyRatCatTrapTest {
     BabyRat.placeCatTrap(controller);
 
     assertEquals(1, controller.calls().size());
-    assertEquals("placeCatTrap:[10, 12]", controller.calls().get(0));
+    assertEquals("placeCatTrap:[10, 11]", controller.calls().get(0));
   }
 
   /** Multiple visible cats still produce at most one placement in a turn. */

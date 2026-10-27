@@ -84,21 +84,12 @@ public class BabyRat {
 
       int stepX = Integer.compare(deltaX, 0);
       int stepY = Integer.compare(deltaY, 0);
-      // Start near the midpoint, then check the remaining in-between tiles if blocked.
-      int midpoint = (lineLength + 1) / 2;
-      for (int offset = 0; offset < lineLength - 1; offset++) {
-        int distanceFromRat = midpoint + (offset % 2 == 0 ? offset / 2 : -(offset + 1) / 2);
-        if (distanceFromRat < 1 || distanceFromRat >= lineLength) {
-          continue;
-        }
-        MapLocation trapLocation =
-            new MapLocation(
-                ratLocation.x + stepX * distanceFromRat, ratLocation.y + stepY * distanceFromRat);
-        // The engine check rejects walls, dirt, mines, occupied tiles, cooldown, and phase limits.
-        if (rc.canPlaceCatTrap(trapLocation)) {
-          rc.placeCatTrap(trapLocation);
-          return;
-        }
+      // Traps must be adjacent to the rat, so only the first tile toward the cat can qualify.
+      MapLocation trapLocation = new MapLocation(ratLocation.x + stepX, ratLocation.y + stepY);
+      // The engine check rejects blocked tiles, cooldown, and phase limits.
+      if (rc.canPlaceCatTrap(trapLocation)) {
+        rc.placeCatTrap(trapLocation);
+        return;
       }
     }
   }
