@@ -6,6 +6,7 @@ import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import battlecode.common.Team;
 import battlecode.common.UnitType;
 import ratplayer.navigation.Navigation;
 
@@ -36,7 +37,70 @@ public class BabyRat {
     }
     pickUpCheese(rc);
     attack(rc);
+    placeCatTrap(rc);
     move(rc);
+  }
+
+  /** Returns the cats currently visible to this rat. */
+  static RobotInfo[] detectCats(RobotController rc) {
+    RobotInfo[] visibleRobots = rc.senseNearbyRobots();
+    int catCount = 0;
+    for (int i = 0; i < visibleRobots.length; i++) {
+      if (visibleRobots[i].getType() == UnitType.CAT) {
+        catCount++;
+      }
+    }
+    RobotInfo[] cats = new RobotInfo[catCount];
+    int nextCat = 0;
+    for (int i = 0; i < visibleRobots.length; i++) {
+      if (visibleRobots[i].getType() == UnitType.CAT) {
+        cats[nextCat++] = visibleRobots[i];
+      }
+    }
+    return cats;
+  }
+
+  /** Places at most one trap on a valid tile between this rat and a visible cat. */
+  static void placeCatTrap(RobotController rc) throws GameActionException {
+    Team backstabbingTeam = rc.getBackstabbingTeam();
+    boolean recentlyBackstabbedSide = backstabbingTeam != null && backstabbingTeam != rc.getTeam();
+    if (!rc.isCooperation() && !recentlyBackstabbedSide) {
+      return;
+    }
+    if (!rc.isActionReady() || (long) rc.getGlobalCheese() - 10 < Config.MIN_CHEESE_RESERVE) {
+      return;
+    }
+
+    MapLocation ratLocation = rc.getLocation();
+    RobotInfo[] cats = detectCats(rc);
+    for (int catIndex = 0; catIndex < cats.length; catIndex++) {
+      MapLocation catLocation = cats[catIndex].getLocation();
+      int deltaX = catLocation.x - ratLocation.x;
+      int deltaY = catLocation.y - ratLocation.y;
+      int lineLength = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+      if (lineLength < 2) {
+        continue;
+      }
+
+      int stepX = Integer.compare(deltaX, 0);
+      int stepY = Integer.compare(deltaY, 0);
+      // Start near the midpoint, then check the remaining in-between tiles if blocked.
+      int midpoint = (lineLength + 1) / 2;
+      for (int offset = 0; offset < lineLength - 1; offset++) {
+        int distanceFromRat = midpoint + (offset % 2 == 0 ? offset / 2 : -(offset + 1) / 2);
+        if (distanceFromRat < 1 || distanceFromRat >= lineLength) {
+          continue;
+        }
+        MapLocation trapLocation =
+            new MapLocation(
+                ratLocation.x + stepX * distanceFromRat, ratLocation.y + stepY * distanceFromRat);
+        // The engine check rejects walls, dirt, mines, occupied tiles, cooldown, and phase limits.
+        if (rc.canPlaceCatTrap(trapLocation)) {
+          rc.placeCatTrap(trapLocation);
+          return;
+        }
+      }
+    }
   }
 
   /**
@@ -140,7 +204,6 @@ public class BabyRat {
     }
   }
 
-  // PLACEHOLDER CODE
   // Try to move forward one step.
   static void wander(RobotController rc) throws GameActionException {
     Navigation.resetFollow();
