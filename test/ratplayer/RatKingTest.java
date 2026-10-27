@@ -35,6 +35,27 @@ public class RatKingTest {
   }
 
   @Test
+  public void recordsEmptyMinesOnCooldownButNotLooseCheese() throws Exception {
+    // Mine presence is independent of cheese quantity; discovery must run on cooldown turns.
+    rc.setMapWidth(60);
+    rc.setMapHeight(60);
+    rc.setMovementReady(false);
+    rc.setNearbyMapInfos(
+        new MapInfo[] {
+          new MapInfo(new MapLocation(0, 0), true, null, false, false, 0, TrapType.NONE, true),
+          cheese(14, 10, 20)
+        });
+    RobotPlayer.playTurn(rc);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(0, 0), CheeseMines.read(rc, 0));
+    assertEquals(null, CheeseMines.read(rc, 1));
+    // Losing visibility never clears an earlier discovery.
+    rc.setNearbyMapInfos(new MapInfo[0]);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(0, 0), CheeseMines.read(rc, 0));
+  }
+
+  @Test
   public void publishesInitialAndMovedCentersBeforeSpawning() throws Exception {
     // Arrange an open path and an affordable spawn below the population cap.
     rc.setForwardAllowed(true);

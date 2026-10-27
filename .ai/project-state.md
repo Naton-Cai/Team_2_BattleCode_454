@@ -147,3 +147,18 @@ The following added tests are in `ratplayer.RatKingEngineTest`. They run the act
 - `engineReserveBoundaryAndPickupFundOneReplacement`: 839 cheese prevents a spawn; after upkeep leaves 837, pickup of 3 funds a cost-40 spawn. The balance is 800 after payment and 798 after king upkeep.
 - `engineActionCooldownThenBlockedNorthFallsBackClockwise`: action cooldown initially prevents spawning. With the king stationary at (8,8), dirt blocks north at (8,10); the next turn spawns northeast at (10,10). Removing the dirt allows a second baby at north on the following turn. This confirms diagonal spawn legality in engine 1.2.6 despite the local API comment describing a radius of two.
 - `movedKingSpawnsNorthOfActualNewCenter`: the king moves from (8,8) to (8,9), then creates a baby at (8,11), using its actual new location.
+
+#### Global shared-array layout (default `MAX_CHEESE_MINES = 18`)
+
+64 entries total; each entry holds 0–1023. Only kings write; all rats can read.
+
+| Slots | Entries | Purpose / encoding | Status |
+| --- | ---: | --- | --- |
+| 0–2 | 3 | Existing king location: x, y, valid (`1` = published) | Active single-record protocol |
+| 3–5 | 3 | Reserved for a second king location | Reserved; not implemented |
+| 6–8 | 3 | Reserved for a third king location | Reserved; not implemented |
+| 9–44 | 36 | Mines 1–18: two entries each, x then y+1 | Allocated |
+| 45–63 | 19 | Available for future uses or increased mine capacity | Free |
+
+**Budget: 3 active king entries + 6 reserved king entries + 36 mine entries + 19 free = 64.**
+A mine's second entry is zero until committed; y+1 commits its exact coordinate.
