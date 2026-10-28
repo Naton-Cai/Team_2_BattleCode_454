@@ -27,6 +27,9 @@ public final class Config {
   /** Living allied baby rat cap; must be nonnegative and a multiple of four. Zero stops spawning. */
   static int MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
 
+  /** Retained mine cap, 0–27. Change for the whole team between matches, not during a game. */
+  static int MAX_CHEESE_MINES = 18;
+
   /** Minimum global cheese left after paying for a spawn, before round-end upkeep. */
   static int MIN_CHEESE_RESERVE = DEFAULT_MIN_CHEESE_RESERVE;
 
@@ -56,6 +59,7 @@ public final class Config {
    */
   static void reset() {
     MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
+    MAX_CHEESE_MINES = 18;
     MIN_CHEESE_RESERVE = DEFAULT_MIN_CHEESE_RESERVE;
     BABY_PATH_TO_KING_STRATEGY = PathingStrategy.DIST_BUG;
     BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;

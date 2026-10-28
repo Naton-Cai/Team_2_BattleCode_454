@@ -23,9 +23,19 @@ public class RatKing {
     if (RobotPlayer.turnCount % 100 == 0) {
       System.out.println("Turn " + RobotPlayer.turnCount + ": I am a " + rc.getType().toString());
     }
+    identifyCheeseMines(rc);
     move(rc);
     pickUpCheese(rc);
     spawnBabyRat(rc);
+  }
+
+  // Pre-move sensing also runs while movement is cooling down.
+  static void identifyCheeseMines(RobotController rc) throws GameActionException {
+    for (MapInfo info : rc.senseNearbyMapInfos()) {
+      if (info.hasCheeseMine()) {
+        CheeseMines.publish(rc, info.getMapLocation());
+      }
+    }
   }
 
   // handles our King rat movement logic
@@ -92,6 +102,9 @@ public class RatKing {
     System.out.println("Turn " + RobotPlayer.turnCount + ": Rat King Picking Up Cheese");
     // Re-sense after movement; pickup range includes tiles beyond the center.
     for (MapInfo info : rc.senseNearbyMapInfos()) {
+      if (info.hasCheeseMine()) {
+        CheeseMines.publish(rc, info.getMapLocation());
+      }
       MapLocation cheese = info.getMapLocation();
       if (info.getCheeseAmount() > 0 && rc.canPickUpCheese(cheese)) {
         rc.pickUpCheese(cheese);

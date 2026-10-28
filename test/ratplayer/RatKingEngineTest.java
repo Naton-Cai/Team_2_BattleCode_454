@@ -41,6 +41,38 @@ public class RatKingEngineTest {
   }
 
   @Test
+  public void emptyMinesBeforeAndAfterMovementPersistForBabyReaders() throws Exception {
+    // South is visible only before moving north; north becomes visible only after that move.
+    MapLocation south = new MapLocation(8, 3);
+    MapLocation north = new MapLocation(8, 14);
+    start(
+        new MapLocation(8, 8),
+        Direction.NORTH,
+        null,
+        south,
+        north,
+        new MapLocation(11, 16),
+        new MapLocation(11, 5));
+    round();
+    java.util.List<MapLocation> records = new java.util.ArrayList<>();
+    for (int i = 0; i < Config.MAX_CHEESE_MINES; i++) {
+      records.add(CheeseMines.read(king.getController(), i));
+    }
+    assertTrue(records.contains(south));
+    assertTrue(records.contains(north));
+    // A later-created baby reads the same engine team memory without sensing either mine.
+    world.spawnRobot(200, UnitType.BABY_RAT, new MapLocation(2, 2), Direction.WEST, 0, Team.A);
+    InternalRobot baby = world.getObjectInfo().getRobotByID(200);
+    for (int i = 0; i < Config.MAX_CHEESE_MINES; i++) {
+      assertEquals(records.get(i), CheeseMines.read(baby.getController(), i));
+    }
+    round();
+    for (int i = 0; i < Config.MAX_CHEESE_MINES; i++) {
+      assertEquals(records.get(i), CheeseMines.read(baby.getController(), i));
+    }
+  }
+
+  @Test
   public void openTravelPublishesActualCentersAndWaitsThroughCooldown() {
     start(new MapLocation(8, 8), Direction.NORTH, null);
     round();
@@ -299,7 +331,8 @@ public class RatKingEngineTest {
     world.getTeamInfo().addCheese(Team.A, amount - current);
   }
 
-  private void start(MapLocation location, Direction facing, MapLocation wall) {
+  private void start(
+      MapLocation location, Direction facing, MapLocation wall, MapLocation... mines) {
     String classes =
         RobotPlayer.class.getProtectionDomain().getCodeSource().getLocation().getPath();
     output = new ByteArrayOutputStream();
@@ -317,6 +350,9 @@ public class RatKingEngineTest {
     };
     LiveMap map =
         new LiveMap(20, 20, new MapLocation(0, 0), 6147, 100, "RatKingMovementFixture", bodies);
+    for (MapLocation mine : mines) {
+      map.getCheeseMineArray()[mine.x + mine.y * 20] = true;
+    }
     if (wall != null) {
       map.getWallArray()[wall.x + wall.y * 20] = true;
     }
