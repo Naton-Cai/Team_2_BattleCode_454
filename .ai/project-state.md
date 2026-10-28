@@ -1,5 +1,14 @@
 # Project state
 
+## Baby Rat dirt collection (proposed 2026-10-26)
+
+Requirements are in `.ai/tasks/baby-rat-dirt-collection.md`. Planned tests are in
+`.ai/test-cases.md`. Baby rats dig adjacent in-cone dirt into the team stash while global cheese
+stays at or above a dig reserve. The reserve lives in `Config.MIN_CHEESE_RESERVE_FOR_DIG`
+(agreed 2026-10-26; starts at 800). Biting and digging run from a configurable
+`Config.BABY_ACTION_ORDER`. Placing dirt to block cats is deferred. Nothing is implemented or
+tested yet.
+
 ## Baby Rat attacks (implemented 2026-10-18)
 
 `BabyRat.run` picks up cheese, checks sensed nearby robots for a legal bite, then moves. It always
