@@ -39,13 +39,29 @@ public final class Navigation {
     Direction.NORTHWEST
   };
 
+  /** Deltas aligned with {@link #MOVE_DIRECTIONS} so BFS neighbors skip {@code MapLocation.add}. */
+  static final int[] MOVE_DX = {0, 1, 1, 1, 0, -1, -1, -1};
+
+  static final int[] MOVE_DY = {1, 1, 0, -1, -1, -1, 0, 1};
+
   /**
    * Visible-tile BFS buffers. 96 is above a king's 360-degree disk of radius squared 25 and a baby
    * rat's 90-degree cone of radius squared 20.
    */
   static final int MAX_VISIBLE_TILES = 96;
 
+  /**
+   * Local offset grid for O(1) neighbor lookup. Radius 5 covers king vision r²=25. Empty cells are
+   * -1; 0 is a valid tile index.
+   */
+  static final int GRID_RADIUS = 5;
+
+  static final int GRID_WIDTH = 11;
+
   static final MapLocation[] bfsTiles = new MapLocation[MAX_VISIBLE_TILES];
+  static final int[] bfsX = new int[MAX_VISIBLE_TILES];
+  static final int[] bfsY = new int[MAX_VISIBLE_TILES];
+  static final int[] bfsIndexGrid = new int[GRID_WIDTH * GRID_WIDTH];
   static final int[] bfsQueue = new int[MAX_VISIBLE_TILES];
   static final int[] bfsParent = new int[MAX_VISIBLE_TILES];
   static final boolean[] bfsVisited = new boolean[MAX_VISIBLE_TILES];
