@@ -168,7 +168,7 @@ Stop extending verification once the ticket's checks and concrete risks are cove
 
 ## 8. Guidance Ownership & Sources
 
-This guide owns command recipes, evidence selection procedures, measurements, and the run-record format. Feature-specific scenarios and expected outcomes belong to the task contract; versioned rules and sandbox constraints belong to the Battlecode skill. Do not duplicate those requirements here.
+This guide owns command recipes, evidence selection procedures, measurements, and the run-record format. Feature-specific scenarios and expected outcomes belong to the task contract; named test cases belong in `.ai/test-cases.md`; versioned rules and sandbox constraints belong to the Battlecode skill. Do not duplicate those requirements here.
 
 Record confirmed decisions and outstanding work in `.ai/project-state.md` when created. Keep numeric game rules and versioned package/method-cost references in the Battlecode skill. This guide does not expand or replace the task contract's acceptance criteria.
 
