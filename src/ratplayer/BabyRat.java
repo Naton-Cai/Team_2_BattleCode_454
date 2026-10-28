@@ -6,7 +6,6 @@ import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
-import battlecode.common.Team;
 import battlecode.common.UnitType;
 import ratplayer.navigation.Navigation;
 
@@ -15,6 +14,7 @@ public class BabyRat {
   static MapLocation cheeseTile = null;
   static boolean pickedUpCheese = false;
   static boolean kingChecked = false;
+  static int turnsSinceBackstab = 0;
 
   // handles our BabyRat turn logic
   static void run(RobotController rc) throws GameActionException {
@@ -26,6 +26,11 @@ public class BabyRat {
     cheeseTile = null;
     pickedUpCheese = false;
     kingChecked = false;
+
+    // Keep track of turns while backstabbing is active.
+    if (!rc.isCooperation()) {
+      turnsSinceBackstab += 1;
+    }
 
     int rawCheese = rc.getRawCheese();
     if (rawCheese > Config.RAW_CHEESE_MINIMUM) {
@@ -62,9 +67,8 @@ public class BabyRat {
 
   /** Places at most one trap on a valid tile between this rat and a visible cat. */
   static void placeCatTrap(RobotController rc) throws GameActionException {
-    Team backstabbingTeam = rc.getBackstabbingTeam();
-    boolean recentlyBackstabbedSide = backstabbingTeam != null && backstabbingTeam != rc.getTeam();
-    if (!rc.isCooperation() && !recentlyBackstabbedSide) {
+    // Check if we can place traps within 100 turns after backstabbing started.
+    if (turnsSinceBackstab >= 100) {
       return;
     }
     if (!rc.isActionReady() || (long) rc.getGlobalCheese() - 10 < Config.MIN_CHEESE_RESERVE) {
