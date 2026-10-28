@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import battlecode.common.GameActionException;
 import battlecode.common.GameActionExceptionType;
+import battlecode.common.GameConstants;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
@@ -32,7 +33,7 @@ public class RatKingSpawningTest {
     Config.reset();
     rc = mock(RobotController.class);
     when(rc.isActionReady()).thenReturn(true);
-    when(rc.getGlobalCheese()).thenReturn(840);
+    when(rc.getGlobalCheese()).thenReturn(Config.MIN_CHEESE_RESERVE + 40);
     when(rc.getCurrentRatCost()).thenReturn(40);
     when(rc.getLocation()).thenReturn(new MapLocation(10, 10));
     when(rc.canBuildRat(candidate)).thenReturn(true);
@@ -63,8 +64,9 @@ public class RatKingSpawningTest {
 
   @Test
   public void preservesReserveAtEqualityAndRefusesOneBelow() throws Exception {
-    // Fifteen babies cost 40: 839 is insufficient, but 840 leaves exactly 800.
-    when(rc.getGlobalCheese()).thenReturn(839, 840);
+    // At the configured reserve, one less than reserve plus cost blocks; equality allows it.
+    when(rc.getGlobalCheese())
+        .thenReturn(Config.MIN_CHEESE_RESERVE + 39, Config.MIN_CHEESE_RESERVE + 40);
     RatKing.spawnBabyRat(rc);
     verify(rc, never()).buildRat(any());
     RatKing.spawnBabyRat(rc);
@@ -73,9 +75,17 @@ public class RatKingSpawningTest {
 
   @Test
   public void stopsAtCapAndReplacesSeveralUnseenLossesOverLaterTurns() throws Exception {
-    // Price 50 means 16–19 babies; 60 means 20–23. A later price drop permits rebuilding.
+    // Reaching the configured cap blocks recruitment; a later price drop permits replacements.
     when(rc.getGlobalCheese()).thenReturn(10000);
-    when(rc.getCurrentRatCost()).thenReturn(50, 60, 40, 40, 50);
+    int capCost = spawnCostForPopulation(Config.MAX_BABY_RATS);
+    int belowCapCost = spawnCostForPopulation(Config.MAX_BABY_RATS - 1);
+    when(rc.getCurrentRatCost())
+        .thenReturn(
+            capCost,
+            capCost + GameConstants.BUILD_ROBOT_COST_INCREASE,
+            belowCapCost,
+            belowCapCost,
+            capCost);
     RatKing.spawnBabyRat(rc);
     RatKing.spawnBabyRat(rc);
     verify(rc, never()).canBuildRat(any());
@@ -158,7 +168,8 @@ public class RatKingSpawningTest {
     RatKing.spawnBabyRat(rc);
     Config.MAX_BABY_RATS = 8;
     Config.MIN_CHEESE_RESERVE = 900;
-    when(rc.getGlobalCheese()).thenReturn(919, 920);
+    when(rc.getGlobalCheese())
+        .thenReturn(Config.MIN_CHEESE_RESERVE + 19, Config.MIN_CHEESE_RESERVE + 20);
     RatKing.spawnBabyRat(rc);
     RatKing.spawnBabyRat(rc);
     verify(rc, times(2)).buildRat(candidate);
@@ -171,7 +182,7 @@ public class RatKingSpawningTest {
       Config.MAX_BABY_RATS = cap;
       assertThrows(IllegalArgumentException.class, () -> RatKing.spawnBabyRat(rc));
     }
-    Config.MAX_BABY_RATS = 16;
+    Config.MAX_BABY_RATS = Config.DEFAULT_MAX_BABY_RATS;
     Config.MIN_CHEESE_RESERVE = -1;
     assertThrows(IllegalArgumentException.class, () -> RatKing.spawnBabyRat(rc));
     verify(rc, never()).buildRat(any());
@@ -183,7 +194,7 @@ public class RatKingSpawningTest {
     when(rc.getType()).thenReturn(UnitType.RAT_KING);
     when(rc.getLocation()).thenReturn(new MapLocation(10, 10));
     when(rc.isMovementReady()).thenReturn(false);
-    when(rc.getGlobalCheese()).thenReturn(839);
+    when(rc.getGlobalCheese()).thenReturn(Config.MIN_CHEESE_RESERVE + 39);
     MapLocation pile = new MapLocation(10, 11);
     when(rc.senseNearbyMapInfos())
         .thenReturn(
@@ -191,7 +202,7 @@ public class RatKingSpawningTest {
     when(rc.canPickUpCheese(pile)).thenReturn(true);
     doAnswer(
             invocation -> {
-              when(rc.getGlobalCheese()).thenReturn(840);
+              when(rc.getGlobalCheese()).thenReturn(Config.MIN_CHEESE_RESERVE + 40);
               return null;
             })
         .when(rc)
@@ -218,5 +229,11 @@ public class RatKingSpawningTest {
     RobotPlayer.playTurn(rc);
     RobotPlayer.playTurn(rc);
     verify(rc, times(2)).buildRat(candidate);
+  }
+
+  private static int spawnCostForPopulation(int population) {
+    return GameConstants.BUILD_ROBOT_BASE_COST
+        + GameConstants.BUILD_ROBOT_COST_INCREASE
+            * (population / GameConstants.NUM_ROBOTS_FOR_COST_INCREASE);
   }
 }

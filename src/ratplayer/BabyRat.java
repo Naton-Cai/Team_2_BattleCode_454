@@ -14,6 +14,7 @@ public class BabyRat {
   static MapLocation cheeseTile = null;
   static boolean pickedUpCheese = false;
   static boolean kingChecked = false;
+  static int turnsSinceBackstab = 0;
 
   // handles our BabyRat turn logic
   static void run(RobotController rc) throws GameActionException {
@@ -26,6 +27,11 @@ public class BabyRat {
     pickedUpCheese = false;
     kingChecked = false;
 
+    // Keep track of turns while backstabbing is active.
+    if (!rc.isCooperation()) {
+      turnsSinceBackstab += 1;
+    }
+
     int rawCheese = rc.getRawCheese();
     if (rawCheese > Config.RAW_CHEESE_MINIMUM) {
       updateRatKingLoc(rc);
@@ -36,7 +42,60 @@ public class BabyRat {
     }
     pickUpCheese(rc);
     attack(rc);
+    placeCatTrap(rc);
     move(rc);
+  }
+
+  /** Returns the cats currently visible to this rat. */
+  static RobotInfo[] detectCats(RobotController rc) {
+    RobotInfo[] visibleRobots = rc.senseNearbyRobots();
+    int catCount = 0;
+    for (int i = 0; i < visibleRobots.length; i++) {
+      if (visibleRobots[i].getType() == UnitType.CAT) {
+        catCount++;
+      }
+    }
+    RobotInfo[] cats = new RobotInfo[catCount];
+    int nextCat = 0;
+    for (int i = 0; i < visibleRobots.length; i++) {
+      if (visibleRobots[i].getType() == UnitType.CAT) {
+        cats[nextCat++] = visibleRobots[i];
+      }
+    }
+    return cats;
+  }
+
+  /** Places at most one trap on a valid tile between this rat and a visible cat. */
+  static void placeCatTrap(RobotController rc) throws GameActionException {
+    // Check if we can place traps within 100 turns after backstabbing started.
+    if (turnsSinceBackstab >= 100) {
+      return;
+    }
+    if (!rc.isActionReady() || (long) rc.getGlobalCheese() - 10 < Config.MIN_CHEESE_RESERVE) {
+      return;
+    }
+
+    MapLocation ratLocation = rc.getLocation();
+    RobotInfo[] cats = detectCats(rc);
+    for (int catIndex = 0; catIndex < cats.length; catIndex++) {
+      MapLocation catLocation = cats[catIndex].getLocation();
+      int deltaX = catLocation.x - ratLocation.x;
+      int deltaY = catLocation.y - ratLocation.y;
+      int lineLength = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+      if (lineLength < 2) {
+        continue;
+      }
+
+      int stepX = Integer.compare(deltaX, 0);
+      int stepY = Integer.compare(deltaY, 0);
+      // Traps must be adjacent to the rat, so only the first tile toward the cat can qualify.
+      MapLocation trapLocation = new MapLocation(ratLocation.x + stepX, ratLocation.y + stepY);
+      // The engine check rejects blocked tiles, cooldown, and phase limits.
+      if (rc.canPlaceCatTrap(trapLocation)) {
+        rc.placeCatTrap(trapLocation);
+        return;
+      }
+    }
   }
 
   /**
@@ -140,7 +199,6 @@ public class BabyRat {
     }
   }
 
-  // PLACEHOLDER CODE
   // Try to move forward one step.
   static void wander(RobotController rc) throws GameActionException {
     Navigation.resetFollow();
