@@ -59,6 +59,7 @@ public final class Config {
    */
   static void reset() {
     MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
+    MAX_CHEESE_MINES = 18;
     MIN_CHEESE_RESERVE = DEFAULT_MIN_CHEESE_RESERVE;
     BABY_PATH_TO_KING_STRATEGY = PathingStrategy.DIST_BUG;
     BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;

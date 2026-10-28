@@ -331,7 +331,8 @@ public class RatKingEngineTest {
     world.getTeamInfo().addCheese(Team.A, amount - current);
   }
 
-  private void start(MapLocation location, Direction facing, MapLocation wall) {
+  private void start(
+      MapLocation location, Direction facing, MapLocation wall, MapLocation... mines) {
     String classes =
         RobotPlayer.class.getProtectionDomain().getCodeSource().getLocation().getPath();
     output = new ByteArrayOutputStream();

@@ -32,6 +32,14 @@ public class CheeseMinesTest {
   }
 
   @Test
+  public void resetRestoresMineCapacityAfterOverride() {
+    // A test or match override must not leak into the next default configuration.
+    Config.MAX_CHEESE_MINES = 5;
+    Config.reset();
+    assertEquals(18, Config.MAX_CHEESE_MINES);
+  }
+
+  @Test
   public void defaultCapacityRetainsLargestBundledMapPopulation() throws Exception {
     // TheHeist and cheeseguardians each contain 18 mines in engine 1.2.6.
     assertEquals(18, Config.MAX_CHEESE_MINES);
