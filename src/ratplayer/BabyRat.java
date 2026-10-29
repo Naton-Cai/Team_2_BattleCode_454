@@ -41,21 +41,7 @@ public class BabyRat {
       }
     }
     pickUpCheese(rc);
-    Config.BabyAction[] actions = Config.BABY_ACTION_ORDER;
-    for (int i = 0; i < actions.length; i++) {
-      boolean acted = false;
-      switch (actions[i]) {
-        case ATTACK:
-          acted = attack(rc);
-          break;
-        case DIG_DIRT:
-          acted = digDirt(rc);
-          break;
-      }
-      if (acted) {
-        break;
-      }
-    }
+    tryConfiguredActions(rc);
     placeCatTrap(rc);
     move(rc);
   }
@@ -77,6 +63,28 @@ public class BabyRat {
       }
     }
     return cats;
+  }
+
+  /**
+   * Tries each action in {@link Config#BABY_ACTION_ORDER} and stops after the first success. An
+   * omitted action does not run.
+   */
+  static void tryConfiguredActions(RobotController rc) throws GameActionException {
+    Config.BabyAction[] actions = Config.BABY_ACTION_ORDER;
+    for (int i = 0; i < actions.length; i++) {
+      boolean acted = false;
+      switch (actions[i]) {
+        case ATTACK:
+          acted = attack(rc);
+          break;
+        case DIG_DIRT:
+          acted = digDirt(rc);
+          break;
+      }
+      if (acted) {
+        break;
+      }
+    }
   }
 
   /** Places at most one trap on a valid tile between this rat and a visible cat. */
