@@ -44,11 +44,16 @@ public final class Config {
    */
   static int MIN_CHEESE_RESERVE_FOR_DIG = DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG;
 
+  /** Default baby-rat action order: attack, then dig. */
+  static final BabyAction[] DEFAULT_BABY_ACTION_ORDER = {
+    BabyAction.ATTACK, BabyAction.DIG_DIRT
+  };
+
   /**
    * Baby-rat actions tried in list order; the first success ends the action phase. An omitted
    * action does not run.
    */
-  static BabyAction[] BABY_ACTION_ORDER = defaultBabyActionOrder();
+  static BabyAction[] BABY_ACTION_ORDER = DEFAULT_BABY_ACTION_ORDER;
 
   /**
    * How a carrying rat steps toward the published king.
@@ -79,13 +84,9 @@ public final class Config {
     MAX_CHEESE_MINES = 18;
     MIN_CHEESE_RESERVE = DEFAULT_MIN_CHEESE_RESERVE;
     MIN_CHEESE_RESERVE_FOR_DIG = DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG;
-    BABY_ACTION_ORDER = defaultBabyActionOrder();
+    BABY_ACTION_ORDER = DEFAULT_BABY_ACTION_ORDER;
     BABY_PATH_TO_KING_STRATEGY = PathingStrategy.DIST_BUG;
     BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
     BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
-  }
-
-  private static BabyAction[] defaultBabyActionOrder() {
-    return new BabyAction[] {BabyAction.ATTACK, BabyAction.DIG_DIRT};
   }
 }
