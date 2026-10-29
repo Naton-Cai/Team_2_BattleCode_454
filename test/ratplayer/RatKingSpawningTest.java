@@ -16,6 +16,7 @@ import battlecode.common.GameConstants;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.RobotInfo;
 import battlecode.common.TrapType;
 import battlecode.common.UnitType;
 import org.junit.After;
@@ -32,6 +33,7 @@ public class RatKingSpawningTest {
   public void setUp() {
     Config.reset();
     rc = mock(RobotController.class);
+    when(rc.senseNearbyRobots()).thenReturn(new RobotInfo[0]);
     when(rc.isActionReady()).thenReturn(true);
     when(rc.getGlobalCheese()).thenReturn(Config.MIN_CHEESE_RESERVE + 40);
     when(rc.getCurrentRatCost()).thenReturn(40);

@@ -17,11 +17,14 @@ import battlecode.server.GameMaker;
 import battlecode.world.GameWorld;
 import battlecode.world.InternalRobot;
 import battlecode.world.LiveMap;
+import battlecode.world.MapSymmetry;
 import battlecode.world.control.NullControlProvider;
 import battlecode.world.control.PlayerControlProvider;
 import battlecode.world.control.TeamControlProvider;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 
@@ -50,11 +53,13 @@ public class RatKingEngineTest {
         Direction.NORTH,
         null,
         south,
+        new MapLocation(8, 8),
         north,
         new MapLocation(11, 16),
         new MapLocation(11, 5));
+    world.addCheese(new MapLocation(8, 10), 1);
     round();
-    java.util.List<MapLocation> records = new java.util.ArrayList<>();
+    List<MapLocation> records = new ArrayList<>();
     for (int i = 0; i < Config.MAX_CHEESE_MINES; i++) {
       records.add(CheeseMines.read(king.getController(), i));
     }
@@ -146,13 +151,32 @@ public class RatKingEngineTest {
   }
 
   @Test
-  public void dirtBlocksCheeseStepAndKingFallsBackToOpenForward() {
-    start(new MapLocation(8, 8), Direction.NORTH, null);
-    world.addCheese(new MapLocation(11, 8), 10);
-    world.setDirt(new MapLocation(10, 7), true);
+  public void engineDetourAroundOffCenterWallEventuallyCollectsCheese() {
+    // Direct northwestern steering is blocked; the visible route goes around the wall.
+    start(new MapLocation(8, 8), Direction.NORTH, new MapLocation(7, 10));
+    MapLocation cheese = new MapLocation(5, 11);
+    world.addCheese(cheese, 10);
+    for (int turn = 0; turn < 24 && world.getCheeseAmount(cheese) > 0; turn++) {
+      round();
+    }
+    assertEquals(0, world.getCheeseAmount(cheese));
+  }
+
+  @Test
+  public void openFirstStepDoesNotApproveLaterNarrowPassage() {
+    start(new MapLocation(8, 8), Direction.EAST, null);
+    // The first destination footprint is clear. Farther east, two off-center walls
+    // leave a corridor only two tiles wide, so center-tile pathfinding would be wrong.
+    boolean[] walls = world.getGameMap().getWallArray();
+    walls[11 + 7 * 20] = true;
+    walls[11 + 10 * 20] = true;
+    MapLocation cheese = new MapLocation(12, 8);
+    world.addCheese(cheese, 10);
+    king.setMovementCooldownTurns(0);
+    assertTrue(king.getController().canMove(Direction.EAST));
     round();
-    assertEquals(Direction.NORTH, king.getDirection());
-    assertEquals(new MapLocation(8, 9), king.getLocation());
+    assertEquals(new MapLocation(8, 8), king.getLocation());
+    assertEquals(10, world.getCheeseAmount(cheese));
   }
 
   @Test
@@ -310,6 +334,90 @@ public class RatKingEngineTest {
     assertEquals(1, world.getTeamInfo().getNumBabyRats(Team.A));
   }
 
+  @Test
+  public void engineHomeHoldsButStillCollectsAndSpawns() {
+    start(new MapLocation(8, 8), Direction.NORTH, null, new MapLocation(8, 8));
+    setTeamCheese(1000);
+    MapLocation cheese = new MapLocation(9, 9);
+    world.addCheese(cheese, 10);
+    round();
+    round();
+    assertEquals(new MapLocation(8, 8), king.getLocation());
+    assertEquals(0, world.getCheeseAmount(cheese));
+    assertTrue(world.getTeamInfo().getNumBabyRats(Team.A) > 0);
+  }
+
+  @Test
+  public void engineNoMineEscapeWaitsFiveCatFreeTurnsThenReturnsHome() throws Exception {
+    start(new MapLocation(8, 8), Direction.NORTH, null);
+    MapLocation home = new MapLocation(2, 8);
+    CheeseMines.publish(king.getController(), home);
+    // Cooldowns keep the engine cat stationary while testing real sensing and occupancy.
+    world.spawnRobot(200, UnitType.CAT, new MapLocation(12, 8), Direction.WEST, 0, Team.NEUTRAL);
+    InternalRobot cat = world.getObjectInfo().getRobotByID(200);
+    cat.setMovementCooldownTurns(1000);
+    cat.setActionCooldownTurns(1000);
+    round();
+    assertEquals(new MapLocation(8, 8), king.getLocation());
+    assertTrue(king.getDirection().dx < 0);
+    round();
+    MapLocation escaped = king.getLocation();
+    assertTrue(escaped.x < 8);
+    assertTrue(escaped.distanceSquaredTo(home) > 16);
+    world.destroyRobot(200);
+    // Force readiness to prove waiting comes from retreat timing, not movement cooldown.
+    for (int turn = 1; turn <= 4; turn++) {
+      king.setMovementCooldownTurns(0);
+      round();
+      assertEquals(escaped, king.getLocation());
+    }
+    king.setMovementCooldownTurns(0);
+    round();
+    assertEquals(escaped, king.getLocation()); // Turn toward home before moving.
+    assertTrue(
+        escaped.add(king.getDirection()).distanceSquaredTo(home) < escaped.distanceSquaredTo(home));
+    round();
+    assertTrue(king.getLocation().distanceSquaredTo(home) <= 16);
+  }
+
+  @Test
+  public void engineRetreatUsesOtherKnownMineAndKeepsMovingDuringDelay() throws Exception {
+    start(new MapLocation(8, 8), Direction.NORTH, null);
+    // Home is already near; the other shared coordinate offers a safer retreat direction.
+    CheeseMines.publish(king.getController(), new MapLocation(8, 8));
+    CheeseMines.publish(king.getController(), new MapLocation(2, 2));
+    world.spawnRobot(200, UnitType.CAT, new MapLocation(12, 8), Direction.WEST, 0, Team.NEUTRAL);
+    InternalRobot cat = world.getObjectInfo().getRobotByID(200);
+    cat.setMovementCooldownTurns(1000);
+    cat.setActionCooldownTurns(1000);
+    round();
+    assertEquals(Direction.SOUTHWEST, king.getDirection());
+    round();
+    MapLocation escaped = king.getLocation();
+    assertEquals(new MapLocation(7, 7), escaped);
+    world.destroyRobot(200);
+    king.setMovementCooldownTurns(0);
+    round();
+    assertTrue(
+        king.getLocation().distanceSquaredTo(new MapLocation(2, 2))
+            < escaped.distanceSquaredTo(new MapLocation(2, 2)));
+  }
+
+  @Test
+  public void engineDistantHomeUsesVisibleProgressAndStopsNearMine() throws Exception {
+    start(new MapLocation(8, 8), Direction.EAST, null);
+    CheeseMines.publish(king.getController(), new MapLocation(16, 8));
+    for (int turn = 0; turn < 24; turn++) {
+      round();
+    }
+    assertTrue(king.getLocation().distanceSquaredTo(new MapLocation(16, 8)) <= 16);
+    MapLocation arrived = king.getLocation();
+    for (int turn = 0; turn < 5; turn++) {
+      round();
+      assertEquals(arrived, king.getLocation());
+    }
+  }
+
   private void seedBabies(int count) {
     for (int i = 0; i < count; i++) {
       int x = 1 + i % 18;
@@ -349,7 +457,21 @@ public class RatKingEngineTest {
           2, Team.B, UnitType.RAT_KING, 500, new MapLocation(17, 17), Direction.SOUTH, 0, 0, null)
     };
     LiveMap map =
-        new LiveMap(20, 20, new MapLocation(0, 0), 6147, 100, "RatKingMovementFixture", bodies);
+        new LiveMap(
+            20,
+            20,
+            new MapLocation(0, 0),
+            6147,
+            100,
+            "RatKingMovementFixture",
+            MapSymmetry.ROTATIONAL,
+            new boolean[400],
+            new boolean[400],
+            new boolean[400],
+            new int[400],
+            new ArrayList<>(List.of(200)),
+            new ArrayList<>(List.of(new int[] {172, 42})),
+            bodies);
     for (MapLocation mine : mines) {
       map.getCheeseMineArray()[mine.x + mine.y * 20] = true;
     }

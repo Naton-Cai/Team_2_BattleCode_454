@@ -4,15 +4,22 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameActionExceptionType;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
+import battlecode.common.RobotInfo;
+import battlecode.common.Team;
 import battlecode.common.TrapType;
 import battlecode.common.UnitType;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import support.TestRobotController;
@@ -24,14 +31,26 @@ public class RatKingTest {
   @Before
   public void setUp() {
     // Each scenario starts with a fresh robot, including its publication flag and RNG.
+    resetKingState();
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
     RatKing.locationPublished = false;
     rc = new TestRobotController();
     rc.setUnitType(UnitType.RAT_KING);
+    rc.setMapWidth(60);
+    rc.setMapHeight(60);
     rc.setLocation(new MapLocation(10, 10));
     rc.setMovementReady(true);
     rc.setSimulateMovement(true);
+  }
+
+  @After
+  public void resetKingState() {
+    Config.reset();
+    RatKing.home = null;
+    RatKing.retreatMine = null;
+    RatKing.retreating = false;
+    RatKing.catFreeTurns = 0;
   }
 
   @Test
@@ -172,18 +191,17 @@ public class RatKingTest {
   }
 
   @Test
-  public void cheeseOverridesOpenForwardThenMovesAndForgetsVanishedTarget() throws Exception {
+  public void cheeseRouteTurnsThenMovesAndRechecksVanishedTarget() throws Exception {
+    // A complete visible disk is needed to establish hypothetical 3×3 footprints.
+    rc.setCanMove(true);
     rc.setForwardAllowed(true);
-    rc.setDirectionAllowed(Direction.EAST, true);
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(14, 10, 20)});
+    rc.setNearbyMapInfos(visibleCheese(14, 10));
     RatKing.move(rc);
     assertEquals(Direction.EAST, rc.getDirection());
     assertEquals(0, rc.moveCount());
     RatKing.move(rc);
     assertPosition(11, 10);
-    // A newly sensed target wins; the previous east target is no longer remembered.
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(11, 14, 1)});
-    rc.setDirectionAllowed(Direction.NORTH, true);
+    rc.setNearbyMapInfos(visibleCheese(11, 14));
     RatKing.move(rc);
     assertEquals(Direction.NORTH, rc.getDirection());
     rc.setNearbyMapInfos(new MapInfo[0]);
@@ -194,74 +212,327 @@ public class RatKingTest {
 
   @Test
   public void nearestCheeseAndCoordinateTiesIgnoreSensingOrder() throws Exception {
-    MapInfo[] targets = {
-      cheese(15, 10, 100), cheese(10, 12, 1), cheese(8, 10, 1), cheese(10, 8, 1)
-    };
+    // Equal distances choose lowest x, then lowest y, independent of sensing order.
     rc.setCanMove(true);
-    rc.setNearbyMapInfos(targets);
+    MapInfo[] infos = visibleCheese(8, 10, 10, 12, 10, 8);
+    rc.setNearbyMapInfos(infos);
     RatKing.move(rc);
     assertEquals(Direction.WEST, rc.getDirection());
     setUp();
     rc.setCanMove(true);
-    rc.setNearbyMapInfos(new MapInfo[] {targets[3], targets[2], targets[1], targets[0]});
+    Collections.reverse(Arrays.asList(infos));
+    rc.setNearbyMapInfos(infos);
     RatKing.move(rc);
     assertEquals(Direction.WEST, rc.getDirection());
-    // Same x: the lower y is selected, so SOUTH beats NORTH.
     setUp();
     rc.setCanMove(true);
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(10, 12, 1), cheese(10, 8, 1)});
+    rc.setNearbyMapInfos(visibleCheese(10, 12, 10, 8));
     RatKing.move(rc);
     assertEquals(Direction.SOUTH, rc.getDirection());
   }
 
   @Test
-  public void ignoresEmptyMineAndCenterTargetUsesNormalMovement() throws Exception {
+  public void alreadyCollectibleCheeseHoldsWithoutTravelOrRandomDraw() throws Exception {
     rc.setForwardAllowed(true);
-    rc.setCanMove(true);
-    rc.setNearbyMapInfos(
-        new MapInfo[] {
-          new MapInfo(new MapLocation(11, 10), true, null, false, false, 0, TrapType.NONE, true),
-          cheese(10, 10, 1)
-        });
+    rc.setNearbyMapInfos(visibleCheese(11, 11));
     RatKing.move(rc);
+    assertEquals(0, rc.moveCount());
     assertEquals(0, rc.turnCount());
-    assertPosition(10, 11);
     assertNextRandomUnchanged();
   }
 
   @Test
-  public void blockedCheeseFallsBackToForwardRatherThanSecondTarget() throws Exception {
+  public void uncertainNearestTargetHoldsWithoutTryingAnotherCheese() throws Exception {
+    // Sparse observations cannot certify a footprint, even though the fake allows a move.
+    rc.setCanMove(true);
     rc.setForwardAllowed(true);
-    rc.setDirectionAllowed(Direction.EAST, false);
-    rc.setDirectionAllowed(Direction.WEST, true);
     rc.setNearbyMapInfos(new MapInfo[] {cheese(12, 10, 1), cheese(6, 10, 1)});
     RatKing.move(rc);
-    assertEquals(Direction.NORTH, rc.getDirection());
-    assertPosition(10, 11);
+    assertEquals(KingNavigation.RouteResult.UNCONFIRMED, KingNavigation.routeResult);
+    assertPosition(10, 10);
+    assertEquals(0, rc.turnCount());
     assertNextRandomUnchanged();
   }
 
   @Test
-  public void blockedCheeseAndForwardUseOpenAlternative() throws Exception {
-    rc.setDirectionAllowed(Direction.SOUTH, true);
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(12, 10, 1)});
-    RatKing.move(rc);
-    assertEquals(Direction.SOUTH, rc.getDirection());
-    assertPosition(10, 10);
-    assertEquals(0, rc.moveCount());
-  }
-
-  @Test
-  public void unavailableCheeseTurnWaitsEvenWithOpenForward() throws Exception {
+  public void unavailableRouteTurnWaitsEvenWithOpenForward() throws Exception {
     rc.setCanMove(true);
     rc.setForwardAllowed(true);
     rc.setTurnAllowed(false);
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(12, 10, 1)});
+    rc.setNearbyMapInfos(visibleCheese(12, 10));
     RatKing.move(rc);
     assertEquals(0, rc.moveCount());
     assertEquals(0, rc.turnCount());
     assertPosition(10, 10);
+  }
+
+  @Test
+  public void visibleDetourAvoidsBlockedDirectStep() {
+    // The northwestern cheese is reachable around the off-center wall. Compass ordering
+    // searches around it rather than requiring a direct northwestern step.
+    MapInfo[] infos = visibleCheese(7, 13);
+    block(infos, 9, 12);
+    Direction step = search(infos, new MapLocation(7, 13));
+    assertEquals(KingNavigation.RouteResult.CONFIRMED, KingNavigation.routeResult);
+    assertEquals(Direction.WEST, step);
+    assertTrue(rc.calls().isEmpty());
     assertNextRandomUnchanged();
+  }
+
+  @Test
+  public void completeFootprintRejectsAnEnclosedCheeseAndOffCenterObstacles() {
+    MapInfo[] infos = visibleCheese(13, 10);
+    // Ring immediately outside the king's footprint: every center-only route looks open.
+    for (int x = 8; x <= 12; x++) {
+      for (int y = 8; y <= 12; y++) {
+        if (x == 8 || x == 12 || y == 8 || y == 12) {
+          block(infos, x, y);
+        }
+      }
+    }
+    Direction step = search(infos, new MapLocation(13, 10));
+    assertEquals(KingNavigation.RouteResult.BLOCKED, KingNavigation.routeResult);
+    assertEquals(null, step);
+  }
+
+  @Test
+  public void collectionGoalAcceptsOffsetAndFreshObservationsReplaceOldRoute() {
+    // One eastward step puts diagonal cheese inside pickup radius; center-on-cheese is unnecessary.
+    Direction step = search(visibleCheese(12, 11), new MapLocation(12, 11));
+    assertEquals(KingNavigation.RouteResult.CONFIRMED, KingNavigation.routeResult);
+    assertTrue(rc.getLocation().add(step).distanceSquaredTo(new MapLocation(12, 11)) <= 2);
+    step = search(new MapInfo[0], new MapLocation(12, 11));
+    assertEquals(KingNavigation.RouteResult.UNCONFIRMED, KingNavigation.routeResult);
+    assertEquals(null, step);
+  }
+
+  @Test
+  public void occupiedOffCenterFootprintBlocksHypotheticalRoute() {
+    MapInfo[] infos = visibleCheese(12, 10);
+    // A robot on the cheese blocks every legal collection footprint, including positions
+    // whose center is empty. The search must not consider center-tile passability sufficient.
+    RobotInfo baby = robot(UnitType.BABY_RAT, 12, 10);
+    Direction step =
+        KingNavigation.findRoute(
+            rc,
+            infos,
+            new RobotInfo[] {baby},
+            new MapLocation(12, 10),
+            null,
+            KingNavigation.Purpose.CHEESE);
+    assertTrue(KingNavigation.routeResult != KingNavigation.RouteResult.CONFIRMED);
+    assertEquals(null, step);
+  }
+
+  @Test
+  public void knownMineBecomesHomeAndIdleKingHolds() throws Exception {
+    // Discovery is not needed here: a different king could have committed this coordinate.
+    CheeseMines.publish(rc, new MapLocation(12, 10));
+    rc.setForwardAllowed(true);
+    rc.setNearbyMapInfos(visibleCheese());
+    RatKing.move(rc);
+    assertEquals(new MapLocation(12, 10), RatKing.home);
+    assertEquals(0, rc.moveCount());
+    assertEquals(0, rc.turnCount());
+    assertNextRandomUnchanged();
+  }
+
+  @Test
+  public void homeSelectionUsesDistanceThenCoordinatesAndRemainsStable() throws Exception {
+    CheeseMines.publish(rc, new MapLocation(12, 10));
+    CheeseMines.publish(rc, new MapLocation(8, 10));
+    RatKing.move(rc);
+    assertEquals(new MapLocation(8, 10), RatKing.home);
+    rc.setLocation(new MapLocation(12, 10));
+    RatKing.move(rc);
+    assertEquals(new MapLocation(8, 10), RatKing.home);
+  }
+
+  @Test
+  public void distantHomeUsesConfirmedLocalProgressWithoutClaimingCompleteRoute() throws Exception {
+    CheeseMines.publish(rc, new MapLocation(30, 10));
+    rc.setCanMove(true);
+    rc.setNearbyMapInfos(visibleCheese());
+    RatKing.move(rc);
+    assertEquals(Direction.EAST, rc.getDirection());
+    assertEquals(KingNavigation.RouteResult.UNCONFIRMED, KingNavigation.routeResult);
+    assertPosition(10, 10); // Turning does not move.
+  }
+
+  @Test
+  public void homeCollectionStaysInRadiusAndIgnoresOutsideCheese() throws Exception {
+    RatKing.home = rc.getLocation();
+    rc.setCanMove(true);
+    rc.setForwardAllowed(true);
+    rc.setNearbyMapInfos(visibleCheese(15, 10));
+    RatKing.move(rc);
+    assertEquals(0, rc.moveCount());
+    assertEquals(0, rc.turnCount());
+    rc.setNearbyMapInfos(visibleCheese(14, 10));
+    RatKing.move(rc);
+    assertEquals(Direction.EAST, rc.getDirection());
+  }
+
+  @Test
+  public void everyVisibleCatOverridesCheeseAndNoMineEscapeMovesAway() throws Exception {
+    RatKing.home = rc.getLocation();
+    rc.setNearbyMapInfos(visibleCheese(13, 10));
+    rc.setNearbyRobots(new RobotInfo[] {robot(UnitType.CAT, 14, 10)});
+    rc.setCanMove(true);
+    RatKing.move(rc);
+    assertTrue(RatKing.retreating);
+    assertEquals(0, RatKing.catFreeTurns);
+    assertTrue(
+        rc.getLocation().add(rc.getDirection()).distanceSquaredTo(new MapLocation(14, 10)) > 16);
+    assertEquals(0, rc.moveCount());
+    assertEquals(new MapLocation(10, 10), RatKing.home);
+  }
+
+  @Test
+  public void saferMineIsPreferredAndOriginalHomeSurvivesRetreat() throws Exception {
+    RatKing.home = rc.getLocation();
+    CheeseMines.publish(rc, new MapLocation(3, 10));
+    CheeseMines.publish(rc, new MapLocation(14, 10));
+    rc.setNearbyMapInfos(visibleCheese());
+    rc.setNearbyRobots(new RobotInfo[] {robot(UnitType.CAT, 14, 10)});
+    rc.setCanMove(true);
+    RatKing.move(rc);
+    assertEquals(new MapLocation(3, 10), RatKing.retreatMine);
+    assertEquals(new MapLocation(10, 10), RatKing.home);
+    assertTrue(rc.getLocation().add(rc.getDirection()).x < 10);
+  }
+
+  @Test
+  public void multipleCatsUseNearestThreatAndNoSafeStepHolds() throws Exception {
+    RatKing.home = rc.getLocation();
+    rc.setNearbyRobots(new RobotInfo[] {robot(UnitType.CAT, 14, 10), robot(UnitType.CAT, 6, 10)});
+    rc.setDirectionAllowed(Direction.EAST, true);
+    // East moves toward one cat, so it cannot be selected merely to flee the other.
+    RatKing.move(rc);
+    assertEquals(0, rc.moveCount());
+    assertEquals(0, rc.turnCount());
+  }
+
+  @Test
+  public void fiveCatFreeTurnsIncludingCooldownPermitReturnExactlyAtThreshold() throws Exception {
+    RatKing.home = new MapLocation(2, 10);
+    rc.setNearbyRobots(new RobotInfo[] {robot(UnitType.CAT, 14, 10)});
+    rc.setMovementReady(false);
+    RatKing.move(rc);
+    rc.setNearbyRobots(new RobotInfo[0]);
+    for (int turn = 1; turn <= 4; turn++) {
+      RatKing.move(rc);
+      assertTrue(RatKing.retreating);
+      assertEquals(turn, RatKing.catFreeTurns);
+    }
+    rc.setMovementReady(true);
+    rc.setCanMove(true);
+    rc.setNearbyMapInfos(visibleCheese());
+    RatKing.move(rc);
+    assertFalse(RatKing.retreating);
+    assertEquals(5, RatKing.catFreeTurns);
+    assertEquals(Direction.WEST, rc.getDirection());
+  }
+
+  @Test
+  public void catReappearanceResetsDelayAndInterruptsReturn() throws Exception {
+    RatKing.home = new MapLocation(2, 10);
+    rc.setMovementReady(false);
+    rc.setNearbyRobots(new RobotInfo[] {robot(UnitType.CAT, 14, 10)});
+    RatKing.move(rc);
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RatKing.move(rc);
+    RatKing.move(rc);
+    rc.setNearbyRobots(new RobotInfo[] {robot(UnitType.CAT, 14, 10)});
+    RatKing.move(rc);
+    assertEquals(0, RatKing.catFreeTurns);
+    assertTrue(RatKing.retreating);
+    Config.KING_CAT_FREE_TURNS_BEFORE_RETURN = 1;
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RatKing.move(rc);
+    assertFalse(RatKing.retreating);
+    rc.setNearbyRobots(new RobotInfo[] {robot(UnitType.CAT, 14, 10)});
+    RatKing.move(rc);
+    assertTrue(RatKing.retreating);
+    assertEquals(new MapLocation(2, 10), RatKing.home);
+  }
+
+  @Test
+  public void zeroDelayStillRetreatsWhileCatVisibleAndConfigResetRestoresDefaults()
+      throws Exception {
+    Config.KING_CAT_FREE_TURNS_BEFORE_RETURN = 0;
+    rc.setMovementReady(false);
+    rc.setNearbyRobots(new RobotInfo[] {robot(UnitType.CAT, 14, 10)});
+    RatKing.move(rc);
+    assertTrue(RatKing.retreating);
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RatKing.move(rc);
+    assertFalse(RatKing.retreating);
+    Config.KING_HOME_RADIUS_SQUARED = 1;
+    Config.reset();
+    assertEquals(5, Config.KING_CAT_FREE_TURNS_BEFORE_RETURN);
+    assertEquals(16, Config.KING_HOME_RADIUS_SQUARED);
+  }
+
+  @Test
+  public void negativeKingConfigIsRejectedBeforeActions() {
+    Config.KING_CAT_FREE_TURNS_BEFORE_RETURN = -1;
+    org.junit.Assert.assertThrows(IllegalArgumentException.class, () -> RatKing.move(rc));
+    Config.reset();
+    Config.KING_HOME_RADIUS_SQUARED = -1;
+    org.junit.Assert.assertThrows(IllegalArgumentException.class, () -> RatKing.move(rc));
+    assertTrue(rc.calls().isEmpty());
+  }
+
+  @Test
+  public void exhaustedSearchBudgetIsUnconfirmedAndHasNoSideEffects() {
+    // A full-turn absolute ceiling reserves work for pickup/spawning rather than overrunning.
+    try (org.mockito.MockedStatic<Clock> clock = org.mockito.Mockito.mockStatic(Clock.class)) {
+      clock.when(Clock::getBytecodeNum).thenReturn(15000);
+      Direction step = search(visibleCheese(13, 10), new MapLocation(13, 10));
+      assertEquals(KingNavigation.RouteResult.UNCONFIRMED, KingNavigation.routeResult);
+      assertEquals(null, step);
+      assertTrue(rc.calls().isEmpty());
+    }
+  }
+
+  private Direction search(MapInfo[] infos, MapLocation goal) {
+    return KingNavigation.findRoute(
+        rc, infos, new RobotInfo[0], goal, null, KingNavigation.Purpose.CHEESE);
+  }
+
+  private MapInfo[] visibleCheese(int... coordinates) {
+    List<MapInfo> infos = new ArrayList<>();
+    MapLocation center = rc.getLocation();
+    for (int dx = -5; dx <= 5; dx++) {
+      for (int dy = -5; dy <= 5; dy++) {
+        if (dx * dx + dy * dy > 25) {
+          continue;
+        }
+        int amount = 0;
+        for (int i = 0; i < coordinates.length; i += 2) {
+          if (center.x + dx == coordinates[i] && center.y + dy == coordinates[i + 1]) {
+            amount = 1;
+          }
+        }
+        infos.add(cheese(center.x + dx, center.y + dy, amount));
+      }
+    }
+    return infos.toArray(new MapInfo[0]);
+  }
+
+  private static void block(MapInfo[] infos, int x, int y) {
+    for (int i = 0; i < infos.length; i++) {
+      if (infos[i].getMapLocation().equals(new MapLocation(x, y))) {
+        infos[i] =
+            new MapInfo(new MapLocation(x, y), false, null, true, false, 0, TrapType.NONE, false);
+      }
+    }
+  }
+
+  private static RobotInfo robot(UnitType type, int x, int y) {
+    return new RobotInfo(
+        200, Team.NEUTRAL, type, 100, new MapLocation(x, y), Direction.NORTH, 0, 0, null);
   }
 
   @Test
