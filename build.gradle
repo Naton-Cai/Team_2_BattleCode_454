@@ -44,9 +44,6 @@ apply from: 'jacoco.gradle'
 // Instrumented engine tests need the same Unsafe access as runJavaLocal.
 test {
   jvmArgs '--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED'
-  testLogging {
-    showStandardStreams = true
-  }
 }
 
 // Google Java format. Apply after sourceSets so the Java files under src/

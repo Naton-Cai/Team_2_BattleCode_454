@@ -2,7 +2,6 @@ package ratplayer;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
-import battlecode.common.GameConstants;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
@@ -143,32 +142,7 @@ public class BabyRat {
    * @return true if a dig was issued
    */
   static boolean digDirt(RobotController rc) throws GameActionException {
-    int globalAfterPay =
-        rc.getGlobalCheese() - Math.max(0, GameConstants.DIG_DIRT_CHEESE_COST - rc.getRawCheese());
-    if (globalAfterPay < Config.MIN_CHEESE_RESERVE_FOR_DIG) {
-      return false;
-    }
-    Direction direction = rc.getDirection();
-    MapLocation center = rc.getLocation();
-    MapLocation forward = center.add(direction);
-    MapLocation left = center.add(direction.rotateLeft());
-    MapLocation right = center.add(direction.rotateRight());
-    if (tryRemoveDirt(rc, forward)) {
-      return true;
-    }
-    if (tryRemoveDirt(rc, left)) {
-      return true;
-    }
-    return tryRemoveDirt(rc, right);
-  }
-
-  private static boolean tryRemoveDirt(RobotController rc, MapLocation location)
-      throws GameActionException {
-    if (!rc.canRemoveDirt(location)) {
-      return false;
-    }
-    rc.removeDirt(location);
-    return true;
+    return Dirt.digInVisionCone(rc);
   }
 
   private static boolean tryAttackAt(RobotController rc, MapLocation location, boolean backstabbing)

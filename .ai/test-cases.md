@@ -30,8 +30,6 @@ Mock comparisons of greedy, DistBug, and visible BFS stepping are in `GreedyPath
 
 ## Baby Rat dirt collection
 
-Task: `.ai/tasks/baby-rat-dirt-collection.md`. Status: **implemented and run** (2026-10-28).
-
 ### Controller tests
 
 These tests go in a new `ratplayer.BabyRatDirtTest`. They call `RobotPlayer.playTurn` with a `TestRobotController`, which already has `setDirt`, `setCanRemoveDirt`, and `setRemoveDirtFailure`. Setup and teardown call `Config.reset()`. Unless a test says otherwise, the rat is at (5,5) facing north, has 0 raw cheese and 1,000 global cheese, and has no adjacent robot.
@@ -59,3 +57,31 @@ These tests run the real sandboxed bot loop, following `BabyRatBytecodeEngineTes
 | `engineDigIncreasesTeamDirtAndCharges5Cheese` | One dirt tile directly ahead of the rat. Global cheese is above the reserve plus 5. | After one turn, the tile is passable, the team dirt stash is up by 1, and team cheese is down by 5 plus any king upkeep in the fixture. |
 | `engineRespectsCooldownBetweenDigs` | Dirt on the forward tile and on the left tile. | The second dig waits until the action cooldown has dropped below 10. Neither turn logs an exception. |
 | `engineDigTurnBytecodeHeadroom` | Same fixture as the first engine test. | The peak bytecodes on a dig turn leave at least 1,000 under the 17,500 baby rat limit. Measured: 1,851. |
+
+## Rat King dirt collection
+
+Kings share `Dirt` and `Config.MIN_CHEESE_RESERVE_FOR_DIG` with baby rats. Spawn still uses the action first. These tests refuse or wall spawn so digging is the action under test.
+
+### Controller tests
+
+These tests go in `ratplayer.RatKingDirtTest`. They call `RobotPlayer.playTurn` with a `TestRobotController` set to `UnitType.RAT_KING`. Setup and teardown call `Config.reset()` and clear `RatKing.locationPublished`. Unless a test says otherwise, the king is at (10,10) facing north, has 0 raw cheese and 1,000 global cheese, action ready, spawn refused, and movement allowed.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `digsNorthSpawnRingWhenAllowed` | Digging is allowed on the north spawn-ring tile (10,12). | One `removeDirt` at (10,12), and no `buildRat`. |
+| `digsNortheastWhenNorthRefused` | North is refused and northeast (12,12) is allowed. | One dig at (12,12). |
+| `doesNotDigWhenNothingDiggable` | All tiles are refused. | No `removeDirt`, and the movement step still runs. |
+| `reserveBoundary` | Raw cheese 0 with global cheese `reserve + 5`, then `reserve + 4`. | The first digs; the second does not. |
+| `rawCheesePaysFirst` | Raw cheese 5, global cheese exactly the reserve. | One dig. |
+| `spawnBeatsDigWhenBuildLegal` | `canBuildRat` is true and dirt is diggable. | One `buildRat` and no dig. |
+| `digFailureContainedAtTurnBoundary` | `removeDirt` throws on the first turn and is cleared before the second. | First turn returns from `playTurn` with one dig attempt. Second turn makes one dig. |
+
+### Engine tests
+
+These tests are in `ratplayer.RatKingDirtEngineTest`. The king starts at (8,8). The eight spawn-ring tiles are walls so spawning cannot take the action. Dirt is on in-range tiles that are not spawn candidates: (9,10) then (10,9). Movement and turning are held. The sandbox uses compiled `Config` values.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `engineDigIncreasesTeamDirtAndCharges5Cheese` | Dirt at (9,10), 1000 global cheese. | After one turn, the tile is passable, team dirt is up by 1, no baby is spawned, and cheese is down by 5 plus king upkeep (2). |
+| `engineRespectsCooldownBetweenDigs` | Dirt at (9,10) and (10,9). | The second dig waits until action cooldown is below 10. No baby is spawned. |
+| `engineDigTurnBytecodeHeadroom` | Same fixture as the first engine test. | Peak bytecodes on a dig turn leave at least 1,000 under the 20,000 king limit. Measured: 4,320. |

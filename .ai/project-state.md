@@ -1,19 +1,16 @@
 # Project state
 
-## Baby Rat dirt collection (implemented 2026-10-28)
+## Dirt collection (baby rats 2026-10-28, kings 2026-10-29)
 
 Requirements are in `.ai/tasks/baby-rat-dirt-collection.md`. Named tests are in `.ai/test-cases.md`.
-`BabyRat.run` still hands cheese and picks up cheese first. It then tries `Config.BABY_ACTION_ORDER`
-and stops after the first success. Default order is attack then dig. `digDirt` checks forward, left,
-then right and digs at most once if global cheese after paying stays at or above
-`Config.MIN_CHEESE_RESERVE_FOR_DIG` (800). Existing cat-trap placement still runs after that action
-phase, then movement. Placing dirt to block cats remains deferred.
+`Dirt` holds the shared reserve check and `removeDirt` call. Baby rats still use
+`Config.BABY_ACTION_ORDER` (attack then dig) and the three in-cone tiles. Kings spawn first; if
+spawn does not happen they scan build range `r² <= 8` starting at the north spawn-ring tile.
+Both use `Config.MIN_CHEESE_RESERVE_FOR_DIG` (800). Placing dirt to block cats remains deferred.
 
-`BabyRatDirtTest` covers tile order, reserve/raw-cheese payment, action-order, omitted actions, and
-turn-boundary recovery. `BabyRatDirtEngineTest` confirmed a forward dig adds 1 team dirt, spends 5
-cheese with no allied-king upkeep in that fixture, waits one turn for cooldown 25, and used 1,851
-bytecodes on the dig turn. `BabyRatAttackTest` still passes with the default order. Match evidence is
-**not run**.
+`RatKingDirtTest` covers spawn-ring order, reserve/raw-cheese payment, spawn-beats-dig, and
+turn-boundary recovery. King engine tests wall the spawn ring so digging is the action under test.
+Match evidence is **not run**.
 
 ## Baby Rat attacks (implemented 2026-10-18)
 
