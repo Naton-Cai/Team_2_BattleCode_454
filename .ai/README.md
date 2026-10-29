@@ -33,6 +33,7 @@ These are the intended locations. This index does not establish that every docum
 | [API source references](skills/battlecode-2026/references/common/) | Local `battlecode.common` Java sources with API signatures and Javadoc. | Checking API methods, parameters, constants, and documented preconditions. |
 | `.ai/style/java.md` | Agreed Java conventions and examples. | Editing Java. |
 | `.ai/testing.md` | Verified environment, build, test, and match instructions. | Planning or running validation. |
+| `.ai/test-cases.md` | Named feature test cases: class, setup, and expected outcome. | Adding or reviewing tests for a feature. |
 | `.ai/project-state.md` | Confirmed decisions, unfinished work, and unresolved questions. | Resuming work or checking decision status. |
 
 Locate the versioned specification through the Battlecode skill's references. Check that its rules match the engine dependency used by the repository.
@@ -48,6 +49,7 @@ If a guide is missing, follow the missing-context procedure in `AGENTS.md`: insp
 | Feature purpose, scope, design, action ordering, strategy values, acceptance criteria, and planned QA | Current user request and any task documents it references, following `AGENTS.md` §2. |
 | Engine rules and their specification references | Battlecode skill and its supporting references. |
 | Verified commands, prerequisites, and expected outputs | `.ai/testing.md`. |
+| Named feature test cases (setup and expected outcome) | `.ai/test-cases.md`. Older catalogs already in `.ai/project-state.md` stay there until moved. |
 | Observed implementation, approved decision records, and handoff state (not additional requirements) | `.ai/project-state.md`, with a date and ticket/commit reference when available. |
 | Actual behavior and executable checks | Source code and tests. |
 

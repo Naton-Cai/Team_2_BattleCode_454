@@ -45,11 +45,14 @@ Shared checks that every helper must match live in abstract `ratplayer.CommonPat
 `DistBugPath` and `VisibleBfsPath` now implement the bodies behind `Navigation.stepToward`. Follow
 state and BFS buffers stay on `Navigation`. King return uses DistBug
 (`BABY_PATH_TO_KING_STRATEGY`) because the published king is often outside the 90-degree cone.
-Cheese chase uses visible BFS (`BABY_PATH_TO_CHEESE_STRATEGY`) because the pile is already seen
-this turn. DistBug follow/leave and BFS
-tests for tiles the robot can see live on those helper classes. Shared tests for maps where the
-robot has not seen a wall are inherited from `CommonPathingTest`. Match evidence for DistBug and
-visible BFS is **not run**.
+Cheese chase uses greedy (`BABY_PATH_TO_CHEESE_STRATEGY`, changed from visible BFS on 2026-10-20)
+because the cone-edge engine comparison collected the pile in the same 4 turns for about an eighth
+of the bytecodes. Visible BFS remains available. The 11x11 BFS neighbor grid and
+`BabyRatBytecodeEngineTest` are in this change. Named cases for those engine tests are in
+`.ai/test-cases.md`. DistBug follow/leave and BFS tests for tiles the robot can see live on those
+helper classes. Shared tests for maps where the robot has not seen a wall are inherited from
+`CommonPathingTest`. Match evidence for greedy cheese chase, DistBug, and visible BFS beyond the
+bytecode engine tests is **not run**.
 
 DistBug tests for a wall the robot has seen are in `ratplayer.DistBugPathTest`, which also inherits
 the shared `CommonPathingTest` cases:
