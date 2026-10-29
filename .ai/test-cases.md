@@ -30,7 +30,7 @@ Mock comparisons of greedy, DistBug, and visible BFS stepping are in `GreedyPath
 
 ## Baby Rat dirt collection
 
-Task: `.ai/tasks/baby-rat-dirt-collection.md`. Status: **proposed** (2026-10-26). Not implemented.
+Task: `.ai/tasks/baby-rat-dirt-collection.md`. Status: **implemented and run** (2026-10-28).
 
 ### Controller tests
 
@@ -58,4 +58,4 @@ These tests run the real sandboxed bot loop, following `BabyRatBytecodeEngineTes
 | --- | --- | --- |
 | `engineDigIncreasesTeamDirtAndCharges5Cheese` | One dirt tile directly ahead of the rat. Global cheese is above the reserve plus 5. | After one turn, the tile is passable, the team dirt stash is up by 1, and team cheese is down by 5 plus any king upkeep in the fixture. |
 | `engineRespectsCooldownBetweenDigs` | Dirt on the forward tile and on the left tile. | The second dig waits until the action cooldown has dropped below 10. Neither turn logs an exception. |
-| `engineDigTurnBytecodeHeadroom` | Same fixture as the first engine test. | The peak bytecodes on a dig turn leave at least 1,000 under the 17,500 baby rat limit. Record the measured peak. |
+| `engineDigTurnBytecodeHeadroom` | Same fixture as the first engine test. | The peak bytecodes on a dig turn leave at least 1,000 under the 17,500 baby rat limit. Measured: 1,851. |

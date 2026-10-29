@@ -1,13 +1,19 @@
 # Project state
 
-## Baby Rat dirt collection (proposed 2026-10-26)
+## Baby Rat dirt collection (implemented 2026-10-28)
 
-Requirements are in `.ai/tasks/baby-rat-dirt-collection.md`. Planned tests are in
-`.ai/test-cases.md`. Baby rats dig adjacent in-cone dirt into the team stash while global cheese
-stays at or above a dig reserve. The reserve lives in `Config.MIN_CHEESE_RESERVE_FOR_DIG`
-(agreed 2026-10-26; starts at 800). Biting and digging run from a configurable
-`Config.BABY_ACTION_ORDER`. Placing dirt to block cats is deferred. Nothing is implemented or
-tested yet.
+Requirements are in `.ai/tasks/baby-rat-dirt-collection.md`. Named tests are in `.ai/test-cases.md`.
+`BabyRat.run` still hands cheese and picks up cheese first. It then tries `Config.BABY_ACTION_ORDER`
+and stops after the first success. Default order is attack then dig. `digDirt` checks forward, left,
+then right and digs at most once if global cheese after paying stays at or above
+`Config.MIN_CHEESE_RESERVE_FOR_DIG` (800). Existing cat-trap placement still runs after that action
+phase, then movement. Placing dirt to block cats remains deferred.
+
+`BabyRatDirtTest` covers tile order, reserve/raw-cheese payment, action-order, omitted actions, and
+turn-boundary recovery. `BabyRatDirtEngineTest` confirmed a forward dig adds 1 team dirt, spends 5
+cheese with no allied-king upkeep in that fixture, waits one turn for cooldown 25, and used 1,851
+bytecodes on the dig turn. `BabyRatAttackTest` still passes with the default order. Match evidence is
+**not run**.
 
 ## Baby Rat attacks (implemented 2026-10-18)
 

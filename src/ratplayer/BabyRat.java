@@ -2,6 +2,7 @@ package ratplayer;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
+import battlecode.common.GameConstants;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
@@ -41,7 +42,21 @@ public class BabyRat {
       }
     }
     pickUpCheese(rc);
-    attack(rc);
+    Config.BabyAction[] actions = Config.BABY_ACTION_ORDER;
+    for (int i = 0; i < actions.length; i++) {
+      boolean acted = false;
+      switch (actions[i]) {
+        case ATTACK:
+          acted = attack(rc);
+          break;
+        case DIG_DIRT:
+          acted = digDirt(rc);
+          break;
+      }
+      if (acted) {
+        break;
+      }
+    }
     placeCatTrap(rc);
     move(rc);
   }
@@ -100,8 +115,10 @@ public class BabyRat {
 
   /**
    * Bites an adjacent cat, or a rat after cooperation has ended.
+   *
+   * @return true if a bite was issued
    */
-  static void attack(RobotController rc) throws GameActionException {
+  static boolean attack(RobotController rc) throws GameActionException {
     boolean backstabbing = rc.getBackstabbingTeam() != null;
     // a baby rat can attack the 3 tiles in front of it without having to turn so we should check
     // all 3 tiles for valid targets.
@@ -111,9 +128,47 @@ public class BabyRat {
     MapLocation left = center.add(direction.rotateLeft());
     MapLocation right = center.add(direction.rotateRight());
     // check starting from center, then left ,than right for targets.
-    if (tryAttackAt(rc, forward, backstabbing)) return;
-    if (tryAttackAt(rc, left, backstabbing)) return;
-    tryAttackAt(rc, right, backstabbing);
+    if (tryAttackAt(rc, forward, backstabbing)) {
+      return true;
+    }
+    if (tryAttackAt(rc, left, backstabbing)) {
+      return true;
+    }
+    return tryAttackAt(rc, right, backstabbing);
+  }
+
+  /**
+   * Digs the first adjacent in-cone dirt tile that is legal and leaves the dig cheese reserve.
+   *
+   * @return true if a dig was issued
+   */
+  static boolean digDirt(RobotController rc) throws GameActionException {
+    int globalAfterPay =
+        rc.getGlobalCheese() - Math.max(0, GameConstants.DIG_DIRT_CHEESE_COST - rc.getRawCheese());
+    if (globalAfterPay < Config.MIN_CHEESE_RESERVE_FOR_DIG) {
+      return false;
+    }
+    Direction direction = rc.getDirection();
+    MapLocation center = rc.getLocation();
+    MapLocation forward = center.add(direction);
+    MapLocation left = center.add(direction.rotateLeft());
+    MapLocation right = center.add(direction.rotateRight());
+    if (tryRemoveDirt(rc, forward)) {
+      return true;
+    }
+    if (tryRemoveDirt(rc, left)) {
+      return true;
+    }
+    return tryRemoveDirt(rc, right);
+  }
+
+  private static boolean tryRemoveDirt(RobotController rc, MapLocation location)
+      throws GameActionException {
+    if (!rc.canRemoveDirt(location)) {
+      return false;
+    }
+    rc.removeDirt(location);
+    return true;
   }
 
   private static boolean tryAttackAt(RobotController rc, MapLocation location, boolean backstabbing)

@@ -113,6 +113,7 @@ public final class TestRobotController implements RobotController {
   private boolean canPlaceDirt;
   private GameActionException placeDirtFailure;
   private boolean canRemoveDirt;
+  private Set<MapLocation> removeDirtLocations;
   private GameActionException removeDirtFailure;
   private boolean canPlaceRatTrap;
   private GameActionException placeRatTrapFailure;
@@ -489,6 +490,15 @@ public final class TestRobotController implements RobotController {
 
   public void setCanRemoveDirt(boolean canRemoveDirt) {
     this.canRemoveDirt = canRemoveDirt;
+    removeDirtLocations = null;
+  }
+
+  /**
+   * Restricts {@link #canRemoveDirt(MapLocation)} to these tiles. Forward/left/right fallback tests
+   * cannot use a global true, because that would always take the forward tile.
+   */
+  public void setCanRemoveDirtAt(MapLocation... locations) {
+    removeDirtLocations = new HashSet<>(Arrays.asList(locations));
   }
 
   public void setRemoveDirtFailure(GameActionException failure) {
@@ -986,6 +996,9 @@ public final class TestRobotController implements RobotController {
 
   @Override
   public boolean canRemoveDirt(MapLocation loc) {
+    if (removeDirtLocations != null) {
+      return removeDirtLocations.contains(loc);
+    }
     return canRemoveDirt;
   }
 

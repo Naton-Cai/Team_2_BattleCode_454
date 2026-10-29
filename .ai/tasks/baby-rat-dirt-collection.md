@@ -1,6 +1,6 @@
 # Baby Rat Dirt Collection
 
-Status: **proposed** (2026-10-26). Not implemented or verified.
+Status: **implemented** (2026-10-28). Controller and engine tests have been run. Match evidence is **not run**.
 
 These requirements describe what `ratplayer` baby rats do. `examplefuncsplayer` is outside this behavior.
 

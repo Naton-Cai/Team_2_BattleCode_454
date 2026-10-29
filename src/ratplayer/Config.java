@@ -13,6 +13,7 @@ public final class Config {
 
   static final int DEFAULT_MAX_BABY_RATS = 32;
   static final int DEFAULT_MIN_CHEESE_RESERVE = 200;
+  static final int DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG = 800;
 
   public enum PathingStrategy {
     GREEDY,
@@ -24,6 +25,11 @@ public final class Config {
     NEAREST_VISIBLE
   }
 
+  enum BabyAction {
+    ATTACK,
+    DIG_DIRT
+  }
+
   /** Living allied baby rat cap; must be nonnegative and a multiple of four. Zero stops spawning. */
   static int MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
 
@@ -32,6 +38,17 @@ public final class Config {
 
   /** Minimum global cheese left after paying for a spawn, before round-end upkeep. */
   static int MIN_CHEESE_RESERVE = DEFAULT_MIN_CHEESE_RESERVE;
+
+  /**
+   * Lowest global cheese allowed after paying for a dig. Independent of the spawn reserve.
+   */
+  static int MIN_CHEESE_RESERVE_FOR_DIG = DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG;
+
+  /**
+   * Baby-rat actions tried in list order; the first success ends the action phase. An omitted
+   * action does not run.
+   */
+  static BabyAction[] BABY_ACTION_ORDER = defaultBabyActionOrder();
 
   /**
    * How a carrying rat steps toward the published king.
@@ -61,8 +78,14 @@ public final class Config {
     MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
     MAX_CHEESE_MINES = 18;
     MIN_CHEESE_RESERVE = DEFAULT_MIN_CHEESE_RESERVE;
+    MIN_CHEESE_RESERVE_FOR_DIG = DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG;
+    BABY_ACTION_ORDER = defaultBabyActionOrder();
     BABY_PATH_TO_KING_STRATEGY = PathingStrategy.DIST_BUG;
     BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
     BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
+  }
+
+  private static BabyAction[] defaultBabyActionOrder() {
+    return new BabyAction[] {BabyAction.ATTACK, BabyAction.DIG_DIRT};
   }
 }
