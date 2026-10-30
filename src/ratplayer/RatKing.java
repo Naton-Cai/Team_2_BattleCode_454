@@ -6,6 +6,7 @@ import battlecode.common.GameConstants;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.RobotInfo;
 
 public class RatKing {
   // Single-king shared-array protocol; static fields themselves are robot-local.
@@ -24,10 +25,81 @@ public class RatKing {
       System.out.println("Turn " + RobotPlayer.turnCount + ": I am a " + rc.getType().toString());
     }
     identifyCheeseMines(rc);
-    move(rc);
+    boolean fled = respondToCats(rc);
+    if (!fled) {
+      move(rc);
+    }
     pickUpCheese(rc);
-    if (!spawnBabyRat(rc)) {
+    if (!fled && !spawnBabyRat(rc)) {
       Dirt.digAroundKing(rc);
+    }
+  }
+
+  /**
+   * Applies {@link Config#KING_CAT_RESPONSE_STRATEGY}. {@code true} means this method already moved
+   * and the action should not spawn or dig.
+   */
+  static boolean respondToCats(RobotController rc) throws GameActionException {
+    switch (Config.KING_CAT_RESPONSE_STRATEGY) {
+      case BLOCK_AND_FLEE_WHEN_LOW_HEALTH:
+        return blockAndFleeWhenLowHealth(rc);
+      case NONE:
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * At or below {@link Config#KING_CAT_FLEE_HEALTH}, places spawn-ring dirt toward the nearest cat
+   * and steps the other way.
+   *
+   * @return true if this policy handled movement
+   */
+  static boolean blockAndFleeWhenLowHealth(RobotController rc) throws GameActionException {
+    if (rc.getHealth() > Config.KING_CAT_FLEE_HEALTH) {
+      return false;
+    }
+    RobotInfo cat = BabyRat.nearestVisibleCat(rc);
+    if (cat == null) {
+      return false;
+    }
+    if (!locationPublished) {
+      updateLoc(rc);
+    }
+    placeDirtTowardCat(rc, cat.getLocation());
+    fleeFromCat(rc, cat.getLocation());
+    return true;
+  }
+
+  /** Places dirt on the spawn-ring tile toward {@code catLocation}, outside the 3x3 footprint. */
+  static void placeDirtTowardCat(RobotController rc, MapLocation catLocation)
+      throws GameActionException {
+    MapLocation center = rc.getLocation();
+    int stepX = Integer.compare(catLocation.x - center.x, 0);
+    int stepY = Integer.compare(catLocation.y - center.y, 0);
+    if (stepX == 0 && stepY == 0) {
+      return;
+    }
+    MapLocation dirtLocation = new MapLocation(center.x + 2 * stepX, center.y + 2 * stepY);
+    Dirt.tryPlace(rc, dirtLocation);
+  }
+
+  /** One step on the opposite heading from {@code catLocation}, then publish if the king moved. */
+  static void fleeFromCat(RobotController rc, MapLocation catLocation) throws GameActionException {
+    if (!rc.isMovementReady()) {
+      return;
+    }
+    Direction away = rc.getLocation().directionTo(catLocation).opposite();
+    if (away == Direction.CENTER) {
+      return;
+    }
+    if (rc.canMove(away)) {
+      rc.move(away);
+      updateLoc(rc);
+      return;
+    }
+    if (rc.canTurn(away)) {
+      rc.turn(away);
     }
   }
 

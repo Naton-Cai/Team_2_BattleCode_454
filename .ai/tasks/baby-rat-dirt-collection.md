@@ -38,7 +38,7 @@ On each turn, a rat king still identifies mines, moves, and picks up cheese firs
 1. It tries to spawn, as before.
 2. If spawning did not happen, it calls `Dirt.digAroundKing`. Candidates are the 24 tiles with `r² <= 8` from the center, excluding the center itself. Order: the eight spawn-ring tiles clockwise from north (the same tiles spawning checks), then the remaining in-range tiles. `canRemoveDirt` skips walls, the king's own footprint, and tiles out of range.
 
-A king that can spawn still spawns. Dirt is collected when spawn is refused (cap, cheese reserve, blocked tiles, or action not ready).
+A king that can spawn still spawns. Dirt is collected when spawn is refused (cap, cheese reserve, blocked tiles, or action not ready). Spawn and generic digging are skipped when `KING_CAT_RESPONSE_STRATEGY` is `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`, king health is at or below `KING_CAT_FLEE_HEALTH`, and a cat is visible; see `.ai/tasks/rat-king-cat-avoidance.md`.
 
 ## Configs
 
