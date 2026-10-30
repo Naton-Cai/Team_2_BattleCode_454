@@ -85,3 +85,33 @@ These tests are in `ratplayer.RatKingDirtEngineTest`. The king starts at (8,8). 
 | `engineDigIncreasesTeamDirtAndCharges5Cheese` | Dirt at (9,10), 1000 global cheese. | After one turn, the tile is passable, team dirt is up by 1, no baby is spawned, and cheese is down by 5 plus king upkeep (2). |
 | `engineRespectsCooldownBetweenDigs` | Dirt at (9,10) and (10,9). | The second dig waits until action cooldown is below 10. No baby is spawned. |
 | `engineDigTurnBytecodeHeadroom` | Same fixture as the first engine test. | Peak bytecodes on a dig turn leave at least 1,000 under the 20,000 king limit. Measured: 4,320. |
+
+## Baby Rat cat block-and-flee
+
+Status: **implemented and run** (2026-10-30). Engine bytecode evidence is **run**. Match evidence is **not run**.
+
+Requirements are in `.ai/tasks/baby-rat-cat-avoidance.md`. Default `Config.BABY_CAT_RESPONSE_STRATEGY` is `BITE_THEN_BLOCK_AND_FLEE`.
+
+### Controller tests
+
+These tests are in `ratplayer.BabyRatCatAvoidanceTest`. They call `RobotPlayer.playTurn` with a `TestRobotController`. Setup and teardown call `Config.reset()` and clear `BabyRat.attackedThisTurn`. Unless a test says otherwise, the rat is at (5,5) facing north, has 0 raw cheese and 1,000 global cheese, forward and greedy movement are allowed, and cat-trap placement is left refused.
+
+These tests check which calls happen. They do not show what the engine allows.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `distantCatPlacesDirtAndFleesInsteadOfDigging` | Cat at (5,9). `canPlaceDirt` and `canRemoveDirt` both true. | One `placeDirt` at (5,6), no bite, no dig, one `move:SOUTH`. |
+| `adjacentCatBiteSkipsDirtAndKeepsWander` | Cat on the forward tile (5,6), bite legal, same cat also in `senseNearbyRobots`. | One bite, no `placeDirt`, wander `moveForward`, no south flee. |
+| `noCatsStillDigsWhenAllowed` | No nearby robots, forward dig legal. | One `removeDirt`, no `placeDirt`, wander still runs. |
+| `refusedDirtStillFleesAndSkipsDig` | Cat at (5,9), `canPlaceDirt` false, dig would otherwise be legal. | No dirt, no dig, one `move:SOUTH`. |
+| `twoCatsUseNearestForDirtAndFlee` | East cat at (9,5) listed first, closer north cat at (5,8) second. | Dirt at (5,6) and a south step. No west step. |
+| `placeDirtFailureContainedAtTurnBoundary` | Cat at (5,9), `placeDirt` throws on the first turn and is cleared before the second. | First turn returns from `playTurn` with one dirt attempt and no flee. Second turn places dirt once more. |
+| `noneStrategyKeepsDigAndWander` | `BABY_CAT_RESPONSE_STRATEGY = NONE`, cat at (5,9), dig and dirt both legal. | One dig, no dirt, wander forward, no south flee. |
+
+### Engine tests
+
+These tests are in `ratplayer.BabyRatCatAvoidanceEngineTest`. They run the real sandboxed bot loop through `PlayerControlProvider` and read `InternalRobot.getBytecodesUsed()` after each turn. The sandbox loads compiled `Config` values. The fixture is a 20x20 map with a north-facing allied baby at (8,8), a frozen cat whose 2x2 starts at (8,12), and an enemy king at (17,17). `LiveMap` cat waypoints are required for `InternalRobot` construction. The game is put in backstab mode. The baby limit is 17,500; each observed turn must keep 1,000 headroom.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `engineCatBlockTurnBytecodeHeadroom` | Compiled strategy `BITE_THEN_BLOCK_AND_FLEE`. One dirt in the team stash. Cat movement/action/turning held. | After one turn, dirt is on (8,9), the baby is at (8,7), and the turn leaves at least 1,000 under the 17,500 baby-rat limit. Measured: 2,685. |

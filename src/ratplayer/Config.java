@@ -30,6 +30,11 @@ public final class Config {
     DIG_DIRT
   }
 
+  enum CatResponseStrategy {
+    NONE,
+    BITE_THEN_BLOCK_AND_FLEE
+  }
+
   /** Living allied baby rat cap; must be nonnegative and a multiple of four. Zero stops spawning. */
   static int MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
 
@@ -69,6 +74,18 @@ public final class Config {
   static CheeseTargetStrategy BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
 
   /**
+   * Default cat policy: bite an adjacent cat, otherwise block with dirt and walk away.
+   */
+  static final CatResponseStrategy DEFAULT_BABY_CAT_RESPONSE_STRATEGY =
+      CatResponseStrategy.BITE_THEN_BLOCK_AND_FLEE;
+
+  /**
+   * How a baby rat reacts to a visible cat. {@link CatResponseStrategy#NONE} keeps king, cheese, or
+   * wander movement and does not place blocking dirt.
+   */
+  static CatResponseStrategy BABY_CAT_RESPONSE_STRATEGY = DEFAULT_BABY_CAT_RESPONSE_STRATEGY;
+
+  /**
    * Return to the king once raw cheese is above this value. 0 means any cheese. Later this can
    * become a function of stash size or distance to the king.
    */
@@ -86,5 +103,6 @@ public final class Config {
     BABY_PATH_TO_KING_STRATEGY = PathingStrategy.DIST_BUG;
     BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
     BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
+    BABY_CAT_RESPONSE_STRATEGY = DEFAULT_BABY_CAT_RESPONSE_STRATEGY;
   }
 }

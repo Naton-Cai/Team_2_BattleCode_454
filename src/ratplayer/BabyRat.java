@@ -14,6 +14,7 @@ public class BabyRat {
   static MapLocation cheeseTile = null;
   static boolean pickedUpCheese = false;
   static boolean kingChecked = false;
+  static boolean attackedThisTurn = false;
   static int turnsSinceBackstab = 0;
 
   // handles our BabyRat turn logic
@@ -26,6 +27,7 @@ public class BabyRat {
     cheeseTile = null;
     pickedUpCheese = false;
     kingChecked = false;
+    attackedThisTurn = false;
 
     // Keep track of turns while backstabbing is active.
     if (!rc.isCooperation()) {
@@ -42,8 +44,11 @@ public class BabyRat {
     }
     pickUpCheese(rc);
     tryConfiguredActions(rc);
+    boolean fled = respondToCats(rc);
     placeCatTrap(rc);
-    move(rc);
+    if (!fled) {
+      move(rc);
+    }
   }
 
   /** Returns the cats currently visible to this rat. */
@@ -78,6 +83,9 @@ public class BabyRat {
           acted = attack(rc);
           break;
         case DIG_DIRT:
+          if (shouldSkipDigForCatResponse(rc)) {
+            break;
+          }
           acted = digDirt(rc);
           break;
       }
@@ -135,13 +143,91 @@ public class BabyRat {
     MapLocation left = center.add(direction.rotateLeft());
     MapLocation right = center.add(direction.rotateRight());
     // check starting from center, then left ,than right for targets.
-    if (tryAttackAt(rc, forward, backstabbing)) {
+    if (tryAttackAt(rc, forward, backstabbing)
+        || tryAttackAt(rc, left, backstabbing)
+        || tryAttackAt(rc, right, backstabbing)) {
+      attackedThisTurn = true;
       return true;
     }
-    if (tryAttackAt(rc, left, backstabbing)) {
-      return true;
+    return false;
+  }
+
+  /**
+   * Applies {@link Config#BABY_CAT_RESPONSE_STRATEGY}. {@code true} means this method already moved.
+   */
+  static boolean respondToCats(RobotController rc) throws GameActionException {
+    switch (Config.BABY_CAT_RESPONSE_STRATEGY) {
+      case BITE_THEN_BLOCK_AND_FLEE:
+        return biteThenBlockAndFlee(rc);
+      case NONE:
+      default:
+        return false;
     }
-    return tryAttackAt(rc, right, backstabbing);
+  }
+
+  /**
+   * After a miss, places dirt toward the nearest visible cat and steps the other way.
+   *
+   * @return true if movement was handled by fleeing
+   */
+  static boolean biteThenBlockAndFlee(RobotController rc) throws GameActionException {
+    RobotInfo cat = nearestVisibleCat(rc);
+    if (cat == null || attackedThisTurn) {
+      return false;
+    }
+    placeDirtTowardCat(rc, cat.getLocation());
+    fleeFromCat(rc, cat.getLocation());
+    return true;
+  }
+
+  /**
+   * Nearest visible cat by squared distance. Equal distances keep the earlier sense result.
+   */
+  static RobotInfo nearestVisibleCat(RobotController rc) {
+    RobotInfo[] cats = detectCats(rc);
+    MapLocation origin = rc.getLocation();
+    RobotInfo nearest = null;
+    int bestDistance = Integer.MAX_VALUE;
+    for (int i = 0; i < cats.length; i++) {
+      int distance = origin.distanceSquaredTo(cats[i].getLocation());
+      if (nearest == null || distance < bestDistance) {
+        nearest = cats[i];
+        bestDistance = distance;
+      }
+    }
+    return nearest;
+  }
+
+  /** Places at most one dirt tile on the adjacent Chebyshev step toward {@code catLocation}. */
+  static void placeDirtTowardCat(RobotController rc, MapLocation catLocation)
+      throws GameActionException {
+    MapLocation ratLocation = rc.getLocation();
+    int deltaX = catLocation.x - ratLocation.x;
+    int deltaY = catLocation.y - ratLocation.y;
+    int stepX = Integer.compare(deltaX, 0);
+    int stepY = Integer.compare(deltaY, 0);
+    if (stepX == 0 && stepY == 0) {
+      return;
+    }
+    MapLocation dirtLocation = new MapLocation(ratLocation.x + stepX, ratLocation.y + stepY);
+    Dirt.tryPlace(rc, dirtLocation);
+  }
+
+  /** One greedy step on the opposite heading from {@code catLocation}. */
+  static void fleeFromCat(RobotController rc, MapLocation catLocation) throws GameActionException {
+    Direction away = rc.getLocation().directionTo(catLocation).opposite();
+    if (away == Direction.CENTER) {
+      return;
+    }
+    Navigation.stepToward(rc, rc.getLocation().add(away), Config.PathingStrategy.GREEDY);
+  }
+
+  /**
+   * Generic digging yields the action when this strategy wants it for a visible-cat dirt block.
+   */
+  static boolean shouldSkipDigForCatResponse(RobotController rc) {
+    return Config.BABY_CAT_RESPONSE_STRATEGY == Config.CatResponseStrategy.BITE_THEN_BLOCK_AND_FLEE
+        && detectCats(rc).length > 0;
   }
 
   /**
