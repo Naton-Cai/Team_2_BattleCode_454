@@ -25,7 +25,9 @@ On each turn, a baby rat does the following.
 1. It hands cheese to the king and picks up cheese, as described in `.ai/tasks/baby-rat-movement.md`. This part is unchanged.
 2. It tries each action in `Config.BABY_ACTION_ORDER` in list order and stops after the first one that succeeds. An action left out of the list does not run.
    - `ATTACK`: the existing bite of an adjacent cat, or of an enemy rat after a backstab. This part is unchanged.
-   - `DIG_DIRT`: `Dirt.digInVisionCone` — forward, then left, then right.
+   - `DIG_DIRT`: `Dirt.digInVisionCone` — forward, then left, then right. Skipped when
+     `BABY_CAT_RESPONSE_STRATEGY` is `BITE_THEN_BLOCK_AND_FLEE` and a cat is visible; see
+     `.ai/tasks/baby-rat-cat-avoidance.md`.
 3. Existing cat-trap placement still runs after that action phase.
 4. It makes its movement decision. Movement runs after the action, so a tile freed by digging can be stepped into on the same turn.
 
