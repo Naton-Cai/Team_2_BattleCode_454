@@ -25,7 +25,9 @@ On each turn, a baby rat does the following.
 1. It hands cheese to the king and picks up cheese, as described in `.ai/tasks/baby-rat-movement.md`. This part is unchanged.
 2. It tries each action in `Config.BABY_ACTION_ORDER` in list order and stops after the first one that succeeds. An action left out of the list does not run.
    - `ATTACK`: the existing bite of an adjacent cat, or of an enemy rat after a backstab. This part is unchanged.
-   - `DIG_DIRT`: `Dirt.digInVisionCone` — forward, then left, then right.
+   - `DIG_DIRT`: `Dirt.digInVisionCone` — forward, then left, then right. Skipped when the
+     selected `BABY_CAT_RESPONSE_STRATEGY` will want `placeDirt` this turn; see
+     `.ai/tasks/baby-rat-cat-avoidance.md`.
 3. Existing cat-trap placement still runs after that action phase.
 4. It makes its movement decision. Movement runs after the action, so a tile freed by digging can be stepped into on the same turn.
 
@@ -36,7 +38,7 @@ On each turn, a rat king still identifies mines, moves, and picks up cheese firs
 1. It tries to spawn, as before.
 2. If spawning did not happen, it calls `Dirt.digAroundKing`. Candidates are the 24 tiles with `r² <= 8` from the center, excluding the center itself. Order: the eight spawn-ring tiles clockwise from north (the same tiles spawning checks), then the remaining in-range tiles. `canRemoveDirt` skips walls, the king's own footprint, and tiles out of range.
 
-A king that can spawn still spawns. Dirt is collected when spawn is refused (cap, cheese reserve, blocked tiles, or action not ready).
+A king that can spawn still spawns. Dirt is collected when spawn is refused (cap, cheese reserve, blocked tiles, or action not ready). Spawn and generic digging are skipped when the selected `KING_CAT_RESPONSE_STRATEGY` handles the turn (dirt-and-flee); see `.ai/tasks/rat-king-cat-avoidance.md`.
 
 ## Configs
 

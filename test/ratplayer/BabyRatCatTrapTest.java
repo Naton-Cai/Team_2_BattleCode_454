@@ -25,7 +25,7 @@ public class BabyRatCatTrapTest {
   public void noCatsProducesNoTrap() throws Exception {
     TestRobotController controller = readyController();
 
-    assertEquals(0, BabyRat.detectCats(controller).length);
+    assertEquals(0, Cats.detectCats(controller).length);
     BabyRat.placeCatTrap(controller);
 
     assertEquals(0, controller.calls().size());

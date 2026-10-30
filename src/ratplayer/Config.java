@@ -14,6 +14,8 @@ public final class Config {
   static final int DEFAULT_MAX_BABY_RATS = 32;
   static final int DEFAULT_MIN_CHEESE_RESERVE = 200;
   static final int DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG = 800;
+  static final int DEFAULT_BABY_CAT_FLEE_HEALTH = 20;
+  static final int DEFAULT_KING_CAT_FLEE_HEALTH = 600;
 
   public enum PathingStrategy {
     GREEDY,
@@ -28,6 +30,12 @@ public final class Config {
   enum BabyAction {
     ATTACK,
     DIG_DIRT
+  }
+
+  enum CatResponseStrategy {
+    NONE,
+    BITE_THEN_BLOCK_AND_FLEE,
+    BLOCK_AND_FLEE_WHEN_LOW_HEALTH
   }
 
   /** Living allied baby rat cap; must be nonnegative and a multiple of four. Zero stops spawning. */
@@ -69,6 +77,44 @@ public final class Config {
   static CheeseTargetStrategy BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
 
   /**
+   * Default cat policy: bite an adjacent cat, otherwise block with dirt and walk away.
+   */
+  static final CatResponseStrategy DEFAULT_BABY_CAT_RESPONSE_STRATEGY =
+      CatResponseStrategy.BITE_THEN_BLOCK_AND_FLEE;
+
+  /**
+   * How a baby rat reacts to a visible cat. {@link CatResponseStrategy#NONE} keeps king, cheese, or
+   * wander movement and does not place blocking dirt. The king field uses the same enum so either
+   * unit can select any policy.
+   */
+  static CatResponseStrategy BABY_CAT_RESPONSE_STRATEGY = DEFAULT_BABY_CAT_RESPONSE_STRATEGY;
+
+  /**
+   * Default king cat policy: place blocking dirt and walk away only at low health.
+   */
+  static final CatResponseStrategy DEFAULT_KING_CAT_RESPONSE_STRATEGY =
+      CatResponseStrategy.BLOCK_AND_FLEE_WHEN_LOW_HEALTH;
+
+  /**
+   * How a king reacts to a visible cat. {@link CatResponseStrategy#NONE} keeps spawn, dig, and
+   * normal movement.
+   */
+  static CatResponseStrategy KING_CAT_RESPONSE_STRATEGY = DEFAULT_KING_CAT_RESPONSE_STRATEGY;
+
+  /**
+   * A baby using {@link CatResponseStrategy#BLOCK_AND_FLEE_WHEN_LOW_HEALTH} with health at or below
+   * this value, and a visible cat, blocks and flees. Starting value is one cat scratch.
+   */
+  static int BABY_CAT_FLEE_HEALTH = DEFAULT_BABY_CAT_FLEE_HEALTH;
+
+  /**
+   * A king using {@link CatResponseStrategy#BLOCK_AND_FLEE_WHEN_LOW_HEALTH} with health at or below
+   * this value, and a visible cat, blocks and flees. Starting value is full king HP because kings
+   * do not attack.
+   */
+  static int KING_CAT_FLEE_HEALTH = DEFAULT_KING_CAT_FLEE_HEALTH;
+
+  /**
    * Return to the king once raw cheese is above this value. 0 means any cheese. Later this can
    * become a function of stash size or distance to the king.
    */
@@ -86,5 +132,9 @@ public final class Config {
     BABY_PATH_TO_KING_STRATEGY = PathingStrategy.DIST_BUG;
     BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
     BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
+    BABY_CAT_RESPONSE_STRATEGY = DEFAULT_BABY_CAT_RESPONSE_STRATEGY;
+    KING_CAT_RESPONSE_STRATEGY = DEFAULT_KING_CAT_RESPONSE_STRATEGY;
+    BABY_CAT_FLEE_HEALTH = DEFAULT_BABY_CAT_FLEE_HEALTH;
+    KING_CAT_FLEE_HEALTH = DEFAULT_KING_CAT_FLEE_HEALTH;
   }
 }

@@ -7,8 +7,9 @@ import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 
 /**
- * Shared dirt digging. {@code canRemoveDirt} encodes unit range, vision, occupancy, and cooldown.
- * Baby rats still pick the three in-cone tiles; kings scan build range {@code r² <= 8} from center.
+ * Shared dirt digging and placement. {@code canRemoveDirt} and {@code canPlaceDirt} encode unit
+ * range, vision, occupancy, and cooldown. Baby rats still pick the three in-cone tiles to dig;
+ * kings scan build range {@code r² <= 8} from center.
  */
 final class Dirt {
   private Dirt() {}
@@ -36,6 +37,14 @@ final class Dirt {
       return false;
     }
     rc.removeDirt(location);
+    return true;
+  }
+
+  static boolean tryPlace(RobotController rc, MapLocation location) throws GameActionException {
+    if (!rc.canPlaceDirt(location)) {
+      return false;
+    }
+    rc.placeDirt(location);
     return true;
   }
 
