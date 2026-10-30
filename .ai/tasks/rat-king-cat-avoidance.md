@@ -17,9 +17,10 @@ Rules come from the supplied `specs.md`, with amendments through engine v1.2.6. 
 On each turn, a rat king does the following.
 
 1. It identifies cheese mines, as before.
-2. It applies `Config.KING_CAT_RESPONSE_STRATEGY`:
+2. It applies `Config.KING_CAT_RESPONSE_STRATEGY` from the shared `CatResponseStrategy` enum:
    - `NONE`: no dirt block and no flee. The rest of the turn is unchanged.
    - `BLOCK_AND_FLEE_WHEN_LOW_HEALTH` (default): if `rc.getHealth() <= Config.KING_CAT_FLEE_HEALTH` and a cat is visible, place dirt on the spawn-ring tile toward the nearest cat (`center + 2 * sign(delta)`), then take one step the opposite way if movement is ready. A successful move republishes the king center. Spawn and generic digging do not run on that turn.
+   - `BITE_THEN_BLOCK_AND_FLEE`: same dirt-and-flee path when a cat is visible, with no HP gate. Kings do not bite, so this never waits on a missed attack.
 3. If that policy did not handle the turn, existing movement runs.
 4. Cheese pickup still runs after movement.
 5. If the cat policy did not fire, spawn still beats dig as in `.ai/tasks/baby-rat-dirt-collection.md`.
@@ -32,9 +33,9 @@ Nearest cat is by squared distance. Equal distances keep the earlier `senseNearb
 
 | Config | Starting value | Role |
 | --- | --- | --- |
-| `Config.KING_CAT_RESPONSE_STRATEGY` | `BLOCK_AND_FLEE_WHEN_LOW_HEALTH` | Which visible-cat policy a king uses. |
+| `Config.KING_CAT_RESPONSE_STRATEGY` | `BLOCK_AND_FLEE_WHEN_LOW_HEALTH` | Which `CatResponseStrategy` a king uses. |
 | `Config.DEFAULT_KING_CAT_RESPONSE_STRATEGY` | `BLOCK_AND_FLEE_WHEN_LOW_HEALTH` | Default `reset()` assigns. |
-| `Config.KING_CAT_FLEE_HEALTH` | `600` | Highest HP that still triggers block-and-flee. Full king HP because kings do not attack. |
+| `Config.KING_CAT_FLEE_HEALTH` | `600` | HP gate for `BLOCK_AND_FLEE_WHEN_LOW_HEALTH` on a king. Full king HP because kings do not attack. |
 
 `Config.reset()` restores these values.
 

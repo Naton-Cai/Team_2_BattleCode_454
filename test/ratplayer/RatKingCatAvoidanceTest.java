@@ -110,14 +110,41 @@ public class RatKingCatAvoidanceTest {
   }
 
   /**
-   * {@link Config.KingCatResponseStrategy#NONE} restores the pre-feature policy.
+   * The shared bite-then-block policy does not wait on {@link Config#KING_CAT_FLEE_HEALTH}. Kings
+   * do not bite, so a visible cat still spends the action on dirt and a reverse step.
+   *
+   * <p>Arrange: {@code BITE_THEN_BLOCK_AND_FLEE}, health {@link Config#KING_CAT_FLEE_HEALTH} + 1,
+   * cat at (10,16), spawn and dig would otherwise be legal. Act: one {@code playTurn}. Assert: one
+   * dirt at (10,12), no spawn, no dig, one south step.
+   */
+  @Test
+  public void biteThenBlockAndFleeIgnoresHealthThreshold() {
+    Config.KING_CAT_RESPONSE_STRATEGY = Config.CatResponseStrategy.BITE_THEN_BLOCK_AND_FLEE;
+    TestRobotController controller = avoidanceController();
+    controller.setHealth(Config.KING_CAT_FLEE_HEALTH + 1);
+    controller.setNearbyRobots(new RobotInfo[] {catAt(DISTANT_NORTH)});
+    controller.setCanPlaceDirt(true);
+    controller.setCanBuildRat(true);
+    controller.setCanRemoveDirt(true);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(1, countCalls(controller, "placeDirt:"));
+    assertEquals("placeDirt:" + NORTH_RING, firstCall(controller, "placeDirt:"));
+    assertEquals(0, countCalls(controller, "buildRat:"));
+    assertEquals(0, countCalls(controller, "removeDirt:"));
+    assertEquals(1, countCalls(controller, "move:" + Direction.SOUTH));
+  }
+
+  /**
+   * {@link Config.CatResponseStrategy#NONE} restores the pre-feature policy.
    *
    * <p>Arrange: strategy {@code NONE}, health at {@link Config#KING_CAT_FLEE_HEALTH}, visible cat,
    * dig and dirt both legal. Act: one {@code playTurn}. Assert: one dig, no dirt, wander forward.
    */
   @Test
   public void noneStrategyKeepsDigAndWander() {
-    Config.KING_CAT_RESPONSE_STRATEGY = Config.KingCatResponseStrategy.NONE;
+    Config.KING_CAT_RESPONSE_STRATEGY = Config.CatResponseStrategy.NONE;
     TestRobotController controller = avoidanceController();
     controller.setHealth(Config.KING_CAT_FLEE_HEALTH);
     controller.setNearbyRobots(new RobotInfo[] {catAt(DISTANT_NORTH)});

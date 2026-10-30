@@ -68,7 +68,7 @@ public class RatKingCatAvoidanceEngineTest {
   public void engineLowHealthCatBlockBytecodeHeadroom() {
     assertEquals(
         "This test measures the compiled default king cat policy",
-        Config.KingCatResponseStrategy.BLOCK_AND_FLEE_WHEN_LOW_HEALTH,
+        Config.CatResponseStrategy.BLOCK_AND_FLEE_WHEN_LOW_HEALTH,
         Config.KING_CAT_RESPONSE_STRATEGY);
     assertEquals(Config.DEFAULT_KING_CAT_FLEE_HEALTH, Config.KING_CAT_FLEE_HEALTH);
     start();

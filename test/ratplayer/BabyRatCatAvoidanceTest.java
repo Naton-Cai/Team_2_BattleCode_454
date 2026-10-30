@@ -187,6 +187,56 @@ public class BabyRatCatAvoidanceTest {
   }
 
   /**
+   * The shared low-health policy uses {@link Config#BABY_CAT_FLEE_HEALTH} on a baby rat. At the
+   * threshold a distant cat still reserves the action for dirt and replaces wander.
+   *
+   * <p>Arrange: {@code BLOCK_AND_FLEE_WHEN_LOW_HEALTH}, health at the flee threshold, distant north
+   * cat, dig and dirt both legal. Act: one {@code playTurn}. Assert: one dirt at (5,6), no dig, one
+   * south step.
+   */
+  @Test
+  public void lowHealthStrategyPlacesDirtAndFlees() {
+    Config.BABY_CAT_RESPONSE_STRATEGY = Config.CatResponseStrategy.BLOCK_AND_FLEE_WHEN_LOW_HEALTH;
+    TestRobotController controller = avoidanceController();
+    controller.setHealth(Config.BABY_CAT_FLEE_HEALTH);
+    controller.setNearbyRobots(new RobotInfo[] {catAt(DISTANT_NORTH)});
+    controller.setCanPlaceDirt(true);
+    controller.setCanRemoveDirt(true);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(1, countCalls(controller, "placeDirt:"));
+    assertEquals("placeDirt:" + FORWARD, controller.calls().get(0));
+    assertEquals(0, countCalls(controller, "removeDirt:"));
+    assertEquals(1, countCalls(controller, "move:" + Direction.SOUTH));
+    assertEquals(0, controller.moveCount());
+  }
+
+  /**
+   * Health one above {@link Config#BABY_CAT_FLEE_HEALTH} keeps today's dig and wander even with a
+   * visible cat when the baby is on the low-health policy.
+   *
+   * <p>Arrange: {@code BLOCK_AND_FLEE_WHEN_LOW_HEALTH}, health threshold + 1, distant north cat,
+   * dig legal. Act: one {@code playTurn}. Assert: one dig, no dirt, wander forward.
+   */
+  @Test
+  public void lowHealthStrategyAboveThresholdKeepsDigAndWander() {
+    Config.BABY_CAT_RESPONSE_STRATEGY = Config.CatResponseStrategy.BLOCK_AND_FLEE_WHEN_LOW_HEALTH;
+    TestRobotController controller = avoidanceController();
+    controller.setHealth(Config.BABY_CAT_FLEE_HEALTH + 1);
+    controller.setNearbyRobots(new RobotInfo[] {catAt(DISTANT_NORTH)});
+    controller.setCanPlaceDirt(true);
+    controller.setCanRemoveDirt(true);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(1, countCalls(controller, "removeDirt:"));
+    assertEquals(0, countCalls(controller, "placeDirt:"));
+    assertEquals(1, controller.moveCount());
+    assertEquals(0, countCalls(controller, "move:" + Direction.SOUTH));
+  }
+
+  /**
    * {@link Config.CatResponseStrategy#NONE} restores the pre-feature policy: a visible cat does not
    * skip digging, place dirt, or replace wander.
    *
