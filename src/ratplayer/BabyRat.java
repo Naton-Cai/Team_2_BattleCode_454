@@ -14,7 +14,6 @@ public class BabyRat {
   static MapLocation cheeseTile = null;
   static boolean pickedUpCheese = false;
   static boolean kingChecked = false;
-  static int turnsSinceBackstab = 0;
 
   // handles our BabyRat turn logic
   static void run(RobotController rc) throws GameActionException {
@@ -27,10 +26,6 @@ public class BabyRat {
     pickedUpCheese = false;
     kingChecked = false;
 
-    if (!rc.isCooperation()) {
-      turnsSinceBackstab++;
-    }
-
     int rawCheese = rc.getRawCheese();
     if (rawCheese > Config.RAW_CHEESE_MINIMUM) {
       updateRatKingLoc(rc);
@@ -39,6 +34,7 @@ public class BabyRat {
         rc.transferCheese(kingLoc, rawCheese);
       }
     }
+    Trap.updateBackstabCounter(rc);
     pickUpCheese(rc);
     tryConfiguredActions(rc);
     move(rc);
@@ -57,7 +53,7 @@ public class BabyRat {
           acted = attack(rc);
           break;
         case TRAP:
-          acted = Trap.placeTrap(rc, turnsSinceBackstab);
+          acted = Trap.placeTrap(rc, Trap.backstabCounter);
           break;
         case DIG_DIRT:
           acted = digDirt(rc);

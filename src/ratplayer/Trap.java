@@ -8,6 +8,8 @@ import battlecode.common.UnitType;
 
 /** Cat detection and placement logic used by baby rats. */
 final class Trap {
+  static final int BACKSTABSLOT = 45;
+  public static int backstabCounter = 0;
 
   /**
    * Returns the cats currently visible to this rat.
@@ -97,5 +99,32 @@ final class Trap {
       }
     }
     return false;
+  }
+
+  static void writeBackstabCounter(RobotController rc) throws GameActionException {
+    // we want an internal count of the backstab turn when dealing with multiple rat kings
+    // attempting to write to the same index
+    if (!rc.isCooperation() && backstabCounter <= 100) {
+      int globalBackstab = rc.readSharedArray(BACKSTABSLOT);
+      backstabCounter += 1;
+      if (globalBackstab >= backstabCounter) {
+        backstabCounter = globalBackstab;
+      } else {
+
+        rc.writeSharedArray(BACKSTABSLOT, backstabCounter);
+      }
+    }
+  }
+
+  // we only want to reference the global array the first time, then keep an internal counter to
+  // minimize bytecode
+  static void updateBackstabCounter(RobotController rc) throws GameActionException {
+    if (backstabCounter == 0) {
+      if (!rc.isCooperation()) {
+        backstabCounter = rc.readSharedArray(BACKSTABSLOT);
+      }
+    } else if (backstabCounter <= 100) {
+      backstabCounter += 1;
+    }
   }
 }

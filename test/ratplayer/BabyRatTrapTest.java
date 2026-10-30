@@ -17,7 +17,7 @@ public class BabyRatTrapTest {
 
   @After
   public void resetBackstabbingState() {
-    BabyRat.turnsSinceBackstab = 0;
+    Trap.backstabCounter = 0;
     Config.reset();
   }
 
@@ -74,13 +74,14 @@ public class BabyRatTrapTest {
   @Test
   public void countsTurnsWhileBackstabbingIsActive() throws Exception {
     TestRobotController controller = readyController();
+    controller.setSharedArrayValue(Trap.BACKSTABSLOT, 1);
     BabyRat.run(controller);
-    assertEquals(0, BabyRat.turnsSinceBackstab);
+    assertEquals(0, Trap.backstabCounter);
 
     controller.setCooperation(false);
     controller.setBackstabbingTeam(Team.B);
     BabyRat.run(controller);
-    assertEquals(1, BabyRat.turnsSinceBackstab);
+    assertEquals(1, Trap.backstabCounter);
   }
 
   /** Baby Rat skips the configured trap action before its 100-turn gate. */
@@ -88,12 +89,13 @@ public class BabyRatTrapTest {
   public void doesNotTryTrapBeforeOneHundredBackstabbingTurns() throws Exception {
     TestRobotController controller = readyController();
     Config.BABY_ACTION_ORDER = new Config.BabyAction[] {Config.BabyAction.TRAP};
+    controller.setSharedArrayValue(Trap.BACKSTABSLOT, 1);
     controller.setNearbyRobotsOnTeam(new RobotInfo[] {ratAt(new MapLocation(10, 14))});
     controller.setCanPlaceRatTrap(true);
     advanceTurns(controller, 49);
     BabyRat.run(controller);
 
-    assertEquals(50, BabyRat.turnsSinceBackstab);
+    assertEquals(50, Trap.backstabCounter);
     assertEquals(0, trapPlacementCount(controller));
   }
 
@@ -102,19 +104,20 @@ public class BabyRatTrapTest {
   public void placesRatTrapAtTwoHundredBackstabbingTurns() throws Exception {
     TestRobotController controller = readyController();
     Config.BABY_ACTION_ORDER = new Config.BabyAction[] {Config.BabyAction.TRAP};
+    controller.setSharedArrayValue(Trap.BACKSTABSLOT, 1);
     controller.setCanPlaceRatTrap(true);
     advanceTurns(controller, 199);
     controller.setNearbyRobotsOnTeam(new RobotInfo[] {ratAt(new MapLocation(10, 12))});
 
     BabyRat.run(controller);
 
-    assertEquals(200, BabyRat.turnsSinceBackstab);
+    assertEquals(200, Trap.backstabCounter);
     assertEquals(1, trapPlacementCount(controller));
     assertEquals(true, controller.calls().contains("placeRatTrap:[10, 11]"));
   }
 
   private static TestRobotController readyController() {
-    BabyRat.turnsSinceBackstab = 0;
+    Trap.backstabCounter = 0;
     TestRobotController controller = new TestRobotController();
     controller.setLocation(ORIGIN);
     controller.setCooperation(true);

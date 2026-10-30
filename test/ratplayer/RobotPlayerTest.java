@@ -28,6 +28,7 @@ public class RobotPlayerTest {
   public void resetRobotLocalState() {
     RobotPlayer.turnCount = 0;
     RatKing.locationPublished = false;
+    Trap.backstabCounter = 0;
     RobotPlayer.rng.setSeed(6147);
     BabyRat.kingLoc = null;
     BabyRat.cheeseTile = null;
@@ -205,6 +206,7 @@ public class RobotPlayerTest {
     // Arrange: a king at (4, 7) that is allowed to move forward and cannot spawn.
     TestRobotController controller = new TestRobotController();
     controller.setUnitType(UnitType.RAT_KING);
+    controller.setCooperation(true);
     controller.setLocation(new MapLocation(4, 7));
     controller.setMovementReady(true);
     controller.setForwardAllowed(true);
@@ -253,7 +255,7 @@ public class RobotPlayerTest {
 
     // Assert.
     assertEquals(Arrays.asList("moveForward"), controller.calls());
-    assertEquals(0, controller.sharedArrayReadCount());
+    assertEquals(1, controller.sharedArrayReadCount());
     assertEquals(0, controller.turnCount());
   }
 
@@ -261,8 +263,8 @@ public class RobotPlayerTest {
    * Pickup chooses the closest visible pile, not the first sense result and not a nearer empty
    * tile.
    *
-   * <p>The rat starts empty-handed, so the king-return threshold is not crossed and the shared
-   * array is not read. Wander is refused so the recorded action is only the pickup.
+   * <p>The rat starts empty-handed, so the king-return threshold is not crossed. Only the shared
+   * backstab counter slot is read. Wander is refused so the recorded action is only the pickup.
    */
   @Test
   public void picksUpCloserVisibleCheese() {
@@ -280,14 +282,14 @@ public class RobotPlayerTest {
     // Act.
     RobotPlayer.playTurn(controller);
 
-    // Assert: the closer pile is the only action, and the array was not read.
+    // Assert: the closer pile is the only action; only the backstab counter slot is read.
     assertEquals(Arrays.asList("pickUpCheese:[1, 0]"), controller.calls());
-    assertEquals(0, controller.sharedArrayReadCount());
+    assertEquals(1, controller.sharedArrayReadCount());
   }
 
   /**
    * Visible cheese that cannot be picked up is a movement goal. King lookup stays off because the
-   * rat is still empty-handed.
+   * rat is still empty-handed; the backstab counter slot is read.
    *
    * <p>{@code canMove} true accepts the first probe, which is {@code directionTo} the pile. The
    * direct step uses {@code move}, so {@code moveCount} stays 0; that counter tracks
@@ -307,7 +309,7 @@ public class RobotPlayerTest {
 
     // Assert: one east step and no turn.
     assertEquals(Arrays.asList("move:EAST"), controller.calls());
-    assertEquals(0, controller.sharedArrayReadCount());
+    assertEquals(1, controller.sharedArrayReadCount());
     assertEquals(0, controller.turnCount());
     assertEquals(0, controller.moveCount());
   }
@@ -337,7 +339,7 @@ public class RobotPlayerTest {
         Arrays.asList("transferCheese:[10, 4]:" + carryingCheese, "moveForward"),
         controller.calls());
     assertEquals(0, controller.getRawCheese());
-    assertEquals(3, controller.sharedArrayReadCount());
+    assertEquals(4, controller.sharedArrayReadCount());
     assertFalse(controller.calls().toString().contains("pickUpCheese"));
   }
 
@@ -392,7 +394,7 @@ public class RobotPlayerTest {
 
     // Assert: pickup, then a north step. The array is read only after the stash is filled.
     assertEquals(Arrays.asList("pickUpCheese:[1, 0]", "move:NORTH"), controller.calls());
-    assertEquals(3, controller.sharedArrayReadCount());
+    assertEquals(4, controller.sharedArrayReadCount());
     assertEquals(carryingCheese, controller.getRawCheese());
     assertEquals(0, controller.turnCount());
   }
@@ -416,9 +418,9 @@ public class RobotPlayerTest {
     // Act.
     RobotPlayer.playTurn(controller);
 
-    // Assert: the three reads happened, then wander, with the stash unchanged.
+    // Assert: three king-location reads and one backstab-counter read precede wander.
     assertEquals(Arrays.asList("moveForward"), controller.calls());
-    assertEquals(3, controller.sharedArrayReadCount());
+    assertEquals(4, controller.sharedArrayReadCount());
     assertEquals(carryingCheese, controller.getRawCheese());
     assertEquals(0, controller.turnCount());
   }
