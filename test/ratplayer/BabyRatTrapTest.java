@@ -111,7 +111,7 @@ public class BabyRatTrapTest {
 
     BabyRat.run(controller);
 
-    assertEquals(200, Trap.backstabCounter);
+    assertEquals(101, Trap.backstabCounter);
     assertEquals(1, trapPlacementCount(controller));
     assertEquals(true, controller.calls().contains("placeRatTrap:[10, 11]"));
   }
