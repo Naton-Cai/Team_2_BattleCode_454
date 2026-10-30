@@ -1,5 +1,17 @@
 # Project state
 
+## Dirt collection (baby rats 2026-10-28, kings 2026-10-29)
+
+Requirements are in `.ai/tasks/baby-rat-dirt-collection.md`. Named tests are in `.ai/test-cases.md`.
+`Dirt` holds the shared reserve check and `removeDirt` call. Baby rats still use
+`Config.BABY_ACTION_ORDER` (attack then dig) and the three in-cone tiles. Kings spawn first; if
+spawn does not happen they scan build range `r² <= 8` starting at the north spawn-ring tile.
+Both use `Config.MIN_CHEESE_RESERVE_FOR_DIG` (800). Placing dirt to block cats remains deferred.
+
+`RatKingDirtTest` covers spawn-ring order, reserve/raw-cheese payment, spawn-beats-dig, and
+turn-boundary recovery. King engine tests wall the spawn ring so digging is the action under test.
+Match evidence is **not run**.
+
 ## Baby Rat attacks (implemented 2026-10-18)
 
 `BabyRat.run` picks up cheese, checks sensed nearby robots for a legal bite, then moves. It always

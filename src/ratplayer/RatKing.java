@@ -26,7 +26,9 @@ public class RatKing {
     identifyCheeseMines(rc);
     move(rc);
     pickUpCheese(rc);
-    spawnBabyRat(rc);
+    if (!spawnBabyRat(rc)) {
+      Dirt.digAroundKing(rc);
+    }
   }
 
   // Pre-move sensing also runs while movement is cooling down.
@@ -113,7 +115,7 @@ public class RatKing {
   }
 
   // Spawns a baby rat within the configured population and reserve limits.
-  static void spawnBabyRat(RobotController rc) throws GameActionException {
+  static boolean spawnBabyRat(RobotController rc) throws GameActionException {
     if (Config.MAX_BABY_RATS < 0
         || Config.MAX_BABY_RATS % GameConstants.NUM_ROBOTS_FOR_COST_INCREASE != 0
         || Config.MIN_CHEESE_RESERVE < 0) {
@@ -121,7 +123,7 @@ public class RatKing {
           "Baby cap must be a nonnegative multiple of the cost step; reserve must be nonnegative");
     }
     if (!rc.isActionReady()) {
-      return;
+      return false;
     }
     // v1.2.6, spec p.14: price tracks living allied babies, including unseen losses.
     // shortcut: exact caps require multiples of four; arbitrary caps need population tracking.
@@ -131,7 +133,7 @@ public class RatKing {
                 * (Config.MAX_BABY_RATS / GameConstants.NUM_ROBOTS_FOR_COST_INCREASE);
     int cost = rc.getCurrentRatCost();
     if (cost >= stopPrice || (long) rc.getGlobalCheese() - cost < Config.MIN_CHEESE_RESERVE) {
-      return;
+      return false;
     }
     // Check all eight directions clockwise from north; the engine validates each candidate.
     MapLocation center = rc.getLocation();
@@ -139,9 +141,10 @@ public class RatKing {
       MapLocation ratSpawnLocation = center.translate(2 * direction.dx, 2 * direction.dy);
       if (rc.canBuildRat(ratSpawnLocation)) {
         rc.buildRat(ratSpawnLocation);
-        return;
+        return true;
       }
     }
+    return false;
   }
 
   // update our RatKing Location to the global array
