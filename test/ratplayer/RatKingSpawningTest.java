@@ -16,6 +16,7 @@ import battlecode.common.GameConstants;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.RobotInfo;
 import battlecode.common.TrapType;
 import battlecode.common.UnitType;
 import org.junit.After;
@@ -37,6 +38,8 @@ public class RatKingSpawningTest {
     when(rc.getCurrentRatCost()).thenReturn(40);
     when(rc.getLocation()).thenReturn(new MapLocation(10, 10));
     when(rc.canBuildRat(candidate)).thenReturn(true);
+    // playTurn runs cat sensing before spawn; Mockito's default nearby-robot array is null.
+    when(rc.senseNearbyRobots()).thenReturn(new RobotInfo[0]);
     RatKing.locationPublished = false;
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
@@ -190,7 +193,9 @@ public class RatKingSpawningTest {
 
   @Test
   public void pickupFundsSpawnDespiteMovementCooldownThroughCurrentTypeDispatch() throws Exception {
-    // The complete king decision picks up first; its new global balance funds the spawn.
+    // Arrange: king dispatch, movement cooling down, pickup raises global cheese to the spawn
+    // reserve. No visible cats, so the cat policy does not consume the action. Act: one
+    // playTurn. Assert: pickup, then spawn, and no forward step.
     when(rc.getType()).thenReturn(UnitType.RAT_KING);
     when(rc.getLocation()).thenReturn(new MapLocation(10, 10));
     when(rc.isMovementReady()).thenReturn(false);
@@ -217,7 +222,8 @@ public class RatKingSpawningTest {
 
   @Test
   public void buildFailureRecoversOnNextTurnWithoutDisablingSpawns() throws Exception {
-    // A failed engine action reaches the existing turn boundary; a later turn can retry.
+    // Arrange: playTurn dispatch with no cats, first buildRat throws, second succeeds. Act: two
+    // turns. Assert: both turns attempt the same spawn tile.
     when(rc.getType()).thenReturn(UnitType.RAT_KING);
     when(rc.getLocation()).thenReturn(new MapLocation(10, 10));
     when(rc.senseNearbyMapInfos()).thenReturn(new MapInfo[0]);
