@@ -33,9 +33,10 @@ nearest-cat choice, `NONE` opt-out, and turn-boundary recovery.
 
 Requirements are in `.ai/tasks/rat-king-cat-avoidance.md`. Named tests are in `.ai/test-cases.md`.
 Default `Config.KING_CAT_RESPONSE_STRATEGY` is `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`.
-`Config.KING_CAT_FLEE_HEALTH` starts at 20 (one scratch). A low-HP king with a visible cat places
-dirt on the spawn-ring tile toward that cat and steps the other way, skipping spawn and generic
-dig. Healthy kings, and low-HP kings with no cat, keep today's turn. Kings are not pounce-killed.
+`Config.KING_CAT_FLEE_HEALTH` starts at 600 (full king HP; kings do not attack). A king at or
+below that HP with a visible cat places dirt on the spawn-ring tile toward that cat and steps the
+other way, skipping spawn and generic dig. Kings above the threshold, and kings with no cat, keep
+today's turn. Kings are not pounce-killed.
 
 `RatKingCatAvoidanceTest` covers the health boundary, missing-cat control, `NONE` opt-out, and
 turn-boundary recovery. `engineLowHealthCatBlockBytecodeHeadroom` ran in engine 1.2.6: dirt on

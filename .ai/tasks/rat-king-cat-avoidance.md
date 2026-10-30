@@ -34,7 +34,7 @@ Nearest cat is by squared distance. Equal distances keep the earlier `senseNearb
 | --- | --- | --- |
 | `Config.KING_CAT_RESPONSE_STRATEGY` | `BLOCK_AND_FLEE_WHEN_LOW_HEALTH` | Which visible-cat policy a king uses. |
 | `Config.DEFAULT_KING_CAT_RESPONSE_STRATEGY` | `BLOCK_AND_FLEE_WHEN_LOW_HEALTH` | Default `reset()` assigns. |
-| `Config.KING_CAT_FLEE_HEALTH` | `20` | Highest HP that still triggers block-and-flee. One cat scratch. |
+| `Config.KING_CAT_FLEE_HEALTH` | `600` | Highest HP that still triggers block-and-flee. Full king HP because kings do not attack. |
 
 `Config.reset()` restores these values.
 

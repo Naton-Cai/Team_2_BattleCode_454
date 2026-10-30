@@ -120,7 +120,7 @@ These tests are in `ratplayer.BabyRatCatAvoidanceEngineTest`. They run the real 
 
 Status: **implemented and run** (2026-10-30). Engine bytecode evidence is **run**. Match evidence is **not run**.
 
-Requirements are in `.ai/tasks/rat-king-cat-avoidance.md`. Default `Config.KING_CAT_RESPONSE_STRATEGY` is `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. `Config.KING_CAT_FLEE_HEALTH` starts at 20.
+Requirements are in `.ai/tasks/rat-king-cat-avoidance.md`. Default `Config.KING_CAT_RESPONSE_STRATEGY` is `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. `Config.KING_CAT_FLEE_HEALTH` starts at 600 (full king HP; kings do not attack).
 
 ### Controller tests
 
@@ -130,16 +130,16 @@ These tests check which calls happen. They do not show what the engine allows.
 
 | Test | Setup | Expected outcome |
 | --- | --- | --- |
-| `lowHealthVisibleCatPlacesDirtAndFlees` | Health 20, cat at (10,16), spawn and dig would be legal. | One `placeDirt` at (10,12), no spawn, no dig, one `move:SOUTH`. |
-| `healthAboveThresholdKeepsDigAndWander` | Health 21, same cat, dig legal. | No dirt, one dig, wander forward. |
-| `lowHealthWithoutCatStillDigs` | Health 20, no nearby robots, dig legal. | One dig, no `placeDirt`. |
-| `noneStrategyKeepsDigAndWander` | `KING_CAT_RESPONSE_STRATEGY = NONE`, health 20, cat visible, dig legal. | One dig, no dirt, wander forward. |
-| `placeDirtFailureContainedAtTurnBoundary` | Health 20, cat visible, `placeDirt` throws on the first turn and is cleared before the second. | First turn returns from `playTurn` with one dirt attempt and no flee. Second turn places dirt once more. |
+| `lowHealthVisibleCatPlacesDirtAndFlees` | Health at `KING_CAT_FLEE_HEALTH` (600), cat at (10,16), spawn and dig would be legal. | One `placeDirt` at (10,12), no spawn, no dig, one `move:SOUTH`. |
+| `healthAboveThresholdKeepsDigAndWander` | Health `KING_CAT_FLEE_HEALTH + 1`, same cat, dig legal. | No dirt, one dig, wander forward. |
+| `lowHealthWithoutCatStillDigs` | Health at `KING_CAT_FLEE_HEALTH`, no nearby robots, dig legal. | One dig, no `placeDirt`. |
+| `noneStrategyKeepsDigAndWander` | `KING_CAT_RESPONSE_STRATEGY = NONE`, health at `KING_CAT_FLEE_HEALTH`, cat visible, dig legal. | One dig, no dirt, wander forward. |
+| `placeDirtFailureContainedAtTurnBoundary` | Health at `KING_CAT_FLEE_HEALTH`, cat visible, `placeDirt` throws on the first turn and is cleared before the second. | First turn returns from `playTurn` with one dirt attempt and no flee. Second turn places dirt once more. |
 
 ### Engine tests
 
-These tests are in `ratplayer.RatKingCatAvoidanceEngineTest`. They run the real sandboxed bot loop. The fixture is a 20x20 map with a north-facing allied king at (8,8), a frozen cat whose 2x2 starts at (8,12), and an enemy king at (17,17). King health is set to 20 with `InternalRobot.addHealth` because LiveMap bodies do not apply `RobotInfo` health. The king limit is 20,000; each observed turn must keep 1,000 headroom.
+These tests are in `ratplayer.RatKingCatAvoidanceEngineTest`. They run the real sandboxed bot loop. The fixture is a 20x20 map with a north-facing allied king at (8,8), a frozen cat whose 2x2 starts at (8,12), and an enemy king at (17,17). King health is set to `KING_CAT_FLEE_HEALTH` (600) with `InternalRobot.addHealth` because LiveMap bodies do not apply `RobotInfo` health. The king limit is 20,000; each observed turn must keep 1,000 headroom.
 
 | Test | Setup | Expected outcome |
 | --- | --- | --- |
-| `engineLowHealthCatBlockBytecodeHeadroom` | Compiled strategy `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. Health 20. One dirt in the team stash. Cat movement/action/turning held. | After one turn, dirt is on (8,10), the king is at (8,7), and the turn leaves at least 1,000 under the 20,000 king limit. Measured: 4,290. |
+| `engineLowHealthCatBlockBytecodeHeadroom` | Compiled strategy `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. Health at `KING_CAT_FLEE_HEALTH` (600). One dirt in the team stash. Cat movement/action/turning held. | After one turn, dirt is on (8,10), the king is at (8,7), and the turn leaves at least 1,000 under the 20,000 king limit. Measured: 4,290. |
