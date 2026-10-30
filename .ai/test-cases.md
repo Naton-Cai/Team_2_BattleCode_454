@@ -115,3 +115,31 @@ These tests are in `ratplayer.BabyRatCatAvoidanceEngineTest`. They run the real 
 | Test | Setup | Expected outcome |
 | --- | --- | --- |
 | `engineCatBlockTurnBytecodeHeadroom` | Compiled strategy `BITE_THEN_BLOCK_AND_FLEE`. One dirt in the team stash. Cat movement/action/turning held. | After one turn, dirt is on (8,9), the baby is at (8,7), and the turn leaves at least 1,000 under the 17,500 baby-rat limit. Measured: 2,685. |
+
+## Rat King low-health cat block-and-flee
+
+Status: **implemented and run** (2026-10-30). Engine bytecode evidence is **run**. Match evidence is **not run**.
+
+Requirements are in `.ai/tasks/rat-king-cat-avoidance.md`. Default `Config.KING_CAT_RESPONSE_STRATEGY` is `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. `Config.KING_CAT_FLEE_HEALTH` starts at 20.
+
+### Controller tests
+
+These tests are in `ratplayer.RatKingCatAvoidanceTest`. They call `RobotPlayer.playTurn` with a `TestRobotController` set to `UnitType.RAT_KING`. Setup and teardown call `Config.reset()` and clear `RatKing.locationPublished`. Unless a test says otherwise, the king is at (10,10) facing north, spawn is refused, and forward and directional movement are allowed.
+
+These tests check which calls happen. They do not show what the engine allows.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `lowHealthVisibleCatPlacesDirtAndFlees` | Health 20, cat at (10,16), spawn and dig would be legal. | One `placeDirt` at (10,12), no spawn, no dig, one `move:SOUTH`. |
+| `healthAboveThresholdKeepsDigAndWander` | Health 21, same cat, dig legal. | No dirt, one dig, wander forward. |
+| `lowHealthWithoutCatStillDigs` | Health 20, no nearby robots, dig legal. | One dig, no `placeDirt`. |
+| `noneStrategyKeepsDigAndWander` | `KING_CAT_RESPONSE_STRATEGY = NONE`, health 20, cat visible, dig legal. | One dig, no dirt, wander forward. |
+| `placeDirtFailureContainedAtTurnBoundary` | Health 20, cat visible, `placeDirt` throws on the first turn and is cleared before the second. | First turn returns from `playTurn` with one dirt attempt and no flee. Second turn places dirt once more. |
+
+### Engine tests
+
+These tests are in `ratplayer.RatKingCatAvoidanceEngineTest`. They run the real sandboxed bot loop. The fixture is a 20x20 map with a north-facing allied king at (8,8), a frozen cat whose 2x2 starts at (8,12), and an enemy king at (17,17). King health is set to 20 with `InternalRobot.addHealth` because LiveMap bodies do not apply `RobotInfo` health. The king limit is 20,000; each observed turn must keep 1,000 headroom.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `engineLowHealthCatBlockBytecodeHeadroom` | Compiled strategy `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. Health 20. One dirt in the team stash. Cat movement/action/turning held. | After one turn, dirt is on (8,10), the king is at (8,7), and the turn leaves at least 1,000 under the 20,000 king limit. Measured: 4,290. |
