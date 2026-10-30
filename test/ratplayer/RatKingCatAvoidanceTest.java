@@ -44,8 +44,9 @@ public class RatKingCatAvoidanceTest {
    * A king at the flee threshold with a visible cat spends the action on a spawn-ring dirt block,
    * not spawn or dig, and steps away from the cat.
    *
-   * <p>Arrange: health 20, cat at (10,16), spawn and dig would otherwise be legal. Act: one {@code
-   * playTurn}. Assert: one dirt at (10,12), no spawn, no dig, one south step.
+   * <p>Arrange: health at {@link Config#KING_CAT_FLEE_HEALTH}, cat at (10,16), spawn and dig would
+   * otherwise be legal. Act: one {@code playTurn}. Assert: one dirt at (10,12), no spawn, no dig,
+   * one south step.
    */
   @Test
   public void lowHealthVisibleCatPlacesDirtAndFlees() {
@@ -69,8 +70,8 @@ public class RatKingCatAvoidanceTest {
   /**
    * Health one above the threshold keeps today's spawn/dig/move path even when a cat is visible.
    *
-   * <p>Arrange: health 21, same cat, dig legal, spawn refused. Act: one {@code playTurn}. Assert:
-   * no dirt, one dig, wander forward.
+   * <p>Arrange: health {@link Config#KING_CAT_FLEE_HEALTH} + 1, same cat, dig legal, spawn refused.
+   * Act: one {@code playTurn}. Assert: no dirt, one dig, wander forward.
    */
   @Test
   public void healthAboveThresholdKeepsDigAndWander() {
@@ -91,8 +92,8 @@ public class RatKingCatAvoidanceTest {
   /**
    * Low health without a cat is not this policy. Generic digging still runs.
    *
-   * <p>Arrange: health 20, no nearby robots, dig legal. Act: one {@code playTurn}. Assert: one dig,
-   * no {@code placeDirt}.
+   * <p>Arrange: health at {@link Config#KING_CAT_FLEE_HEALTH}, no nearby robots, dig legal. Act:
+   * one {@code playTurn}. Assert: one dig, no {@code placeDirt}.
    */
   @Test
   public void lowHealthWithoutCatStillDigs() {
@@ -111,8 +112,8 @@ public class RatKingCatAvoidanceTest {
   /**
    * {@link Config.KingCatResponseStrategy#NONE} restores the pre-feature policy.
    *
-   * <p>Arrange: strategy {@code NONE}, health 20, visible cat, dig and dirt both legal. Act: one
-   * {@code playTurn}. Assert: one dig, no dirt, wander forward.
+   * <p>Arrange: strategy {@code NONE}, health at {@link Config#KING_CAT_FLEE_HEALTH}, visible cat,
+   * dig and dirt both legal. Act: one {@code playTurn}. Assert: one dig, no dirt, wander forward.
    */
   @Test
   public void noneStrategyKeepsDigAndWander() {
@@ -135,8 +136,9 @@ public class RatKingCatAvoidanceTest {
    * A {@code GameActionException} from {@code placeDirt} reaches {@link RobotPlayer#playTurn} and
    * is not retried that turn. Clearing the failure lets the next turn place once.
    *
-   * <p>Arrange: health 20, visible cat, first turn throws. Act: two {@code playTurn}s, with the
-   * failure cleared between them. Assert: one dirt attempt per turn and a normal return.
+   * <p>Arrange: health at {@link Config#KING_CAT_FLEE_HEALTH}, visible cat, first turn throws. Act:
+   * two {@code playTurn}s, with the failure cleared between them. Assert: one dirt attempt per
+   * turn and a normal return.
    */
   @Test
   public void placeDirtFailureContainedAtTurnBoundary() {

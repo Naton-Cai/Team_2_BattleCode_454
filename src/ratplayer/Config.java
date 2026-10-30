@@ -14,7 +14,7 @@ public final class Config {
   static final int DEFAULT_MAX_BABY_RATS = 32;
   static final int DEFAULT_MIN_CHEESE_RESERVE = 200;
   static final int DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG = 800;
-  static final int DEFAULT_KING_CAT_FLEE_HEALTH = 20;
+  static final int DEFAULT_KING_CAT_FLEE_HEALTH = 600;
 
   public enum PathingStrategy {
     GREEDY,
@@ -105,7 +105,7 @@ public final class Config {
 
   /**
    * A king with health at or below this value, and a visible cat, blocks and flees. Starting value
-   * is one cat scratch.
+   * is full king HP because kings do not attack.
    */
   static int KING_CAT_FLEE_HEALTH = DEFAULT_KING_CAT_FLEE_HEALTH;
 

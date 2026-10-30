@@ -56,13 +56,13 @@ public class RatKingCatAvoidanceEngineTest {
   }
 
   /**
-   * A low-health king with a visible cat should take the dirt-and-flee path, which is the extra
-   * sensing and {@code placeDirt} work this feature adds on top of a normal king turn.
+   * A king at the flee threshold with a visible cat should take the dirt-and-flee path, which is
+   * the extra sensing and {@code placeDirt} work this feature adds on top of a normal king turn.
    *
    * <p>Arrange: compiled strategy {@code BLOCK_AND_FLEE_WHEN_LOW_HEALTH}, north-facing king at
-   * (8,8) with 20 HP, one dirt in the team stash, a frozen cat at (8,12). Act: one instrumented
-   * turn. Assert: dirt is on the north spawn-ring tile, the king stepped south, and the full turn
-   * stays under 19,000.
+   * (8,8) at {@link Config#KING_CAT_FLEE_HEALTH}, one dirt in the team stash, a frozen cat at
+   * (8,12). Act: one instrumented turn. Assert: dirt is on the north spawn-ring tile, the king
+   * stepped south, and the full turn stays under 19,000.
    */
   @Test
   public void engineLowHealthCatBlockBytecodeHeadroom() {
@@ -70,7 +70,7 @@ public class RatKingCatAvoidanceEngineTest {
         "This test measures the compiled default king cat policy",
         Config.KingCatResponseStrategy.BLOCK_AND_FLEE_WHEN_LOW_HEALTH,
         Config.KING_CAT_RESPONSE_STRATEGY);
-    assertEquals(20, Config.KING_CAT_FLEE_HEALTH);
+    assertEquals(Config.DEFAULT_KING_CAT_FLEE_HEALTH, Config.KING_CAT_FLEE_HEALTH);
     start();
     freezeCat();
     world.getTeamInfo().updateDirt(Team.A, false);
