@@ -20,13 +20,15 @@ Requirements are in `.ai/tasks/baby-rat-cat-avoidance.md`. Named tests are in `.
 Default `Config.BABY_CAT_RESPONSE_STRATEGY` is `BITE_THEN_BLOCK_AND_FLEE`. Adjacent in-cone cats
 are still bitten; a visible cat with no bite this turn places dirt on the first Chebyshev step
 toward the nearest cat and takes one greedy step the other way. Generic digging is skipped while
-that strategy sees a cat so the action stays free for `placeDirt`. Kings use a separate
-low-health policy in `.ai/tasks/rat-king-cat-avoidance.md`.
+that strategy sees a cat so the action stays free for `placeDirt`. `CatResponseStrategy` is shared
+with kings; each unit has its own field. `Cats` holds shared detect/nearest-cat, footprint dirt,
+and away heading; bite vs HP gates still run in each unit's `respondToCats`.
+`BABY_CAT_FLEE_HEALTH` starts at 20 (one scratch); `KING_CAT_FLEE_HEALTH` starts at 600.
 
 `BabyRatCatAvoidanceTest` covers distant-cat dirt and flee, bite-suppresses-flee, skip-dig,
-nearest-cat choice, `NONE` opt-out, and turn-boundary recovery.
+nearest-cat choice, the shared low-health policy, `NONE` opt-out, and turn-boundary recovery.
 `BabyRatCatAvoidanceEngineTest.engineCatBlockTurnBytecodeHeadroom` ran in engine 1.2.6: dirt on
-(8,9), flee to (8,7), measured 2,685 bytecodes (1,000 headroom under 17,500). Match evidence is
+(8,9), flee to (8,7), measured 2,734 bytecodes (1,000 headroom under 17,500). Match evidence is
 **not run**.
 
 ## Rat King low-health cat block-and-flee (implemented 2026-10-30)
@@ -36,11 +38,12 @@ Default `Config.KING_CAT_RESPONSE_STRATEGY` is `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`.
 `Config.KING_CAT_FLEE_HEALTH` starts at 600 (full king HP; kings do not attack). A king at or
 below that HP with a visible cat places dirt on the spawn-ring tile toward that cat and steps the
 other way, skipping spawn and generic dig. Kings above the threshold, and kings with no cat, keep
-today's turn. Kings are not pounce-killed.
+today's turn unless `KING_CAT_RESPONSE_STRATEGY` is `BITE_THEN_BLOCK_AND_FLEE`. Kings are not
+pounce-killed. `KING_CAT_RESPONSE_STRATEGY` uses the same `CatResponseStrategy` enum as babies.
 
-`RatKingCatAvoidanceTest` covers the health boundary, missing-cat control, `NONE` opt-out, and
-turn-boundary recovery. `engineLowHealthCatBlockBytecodeHeadroom` ran in engine 1.2.6: dirt on
-(8,10), flee to (8,7), measured 4,290 bytecodes (1,000 headroom under 20,000). Match evidence is
+`RatKingCatAvoidanceTest` covers the health boundary, missing-cat control, the shared
+bite-then-block policy, `NONE` opt-out, and turn-boundary recovery. `engineLowHealthCatBlockBytecodeHeadroom` ran in engine 1.2.6: dirt on
+(8,10), flee to (8,7), measured 4,288 bytecodes (1,000 headroom under 20,000). Match evidence is
 **not run**.
 
 ## Baby Rat attacks (implemented 2026-10-18)

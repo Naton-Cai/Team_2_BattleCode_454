@@ -43,12 +43,33 @@ public class RatKing {
    */
   static boolean respondToCats(RobotController rc) throws GameActionException {
     switch (Config.KING_CAT_RESPONSE_STRATEGY) {
+      case BITE_THEN_BLOCK_AND_FLEE:
+        return biteThenBlockAndFlee(rc);
       case BLOCK_AND_FLEE_WHEN_LOW_HEALTH:
         return blockAndFleeWhenLowHealth(rc);
       case NONE:
       default:
         return false;
     }
+  }
+
+  /**
+   * Places dirt toward the nearest visible cat and steps the other way. Kings do not bite, so this
+   * policy never waits on {@code attackedThisTurn}.
+   *
+   * @return true if this policy handled movement
+   */
+  static boolean biteThenBlockAndFlee(RobotController rc) throws GameActionException {
+    RobotInfo cat = Cats.nearestVisibleCat(rc);
+    if (cat == null) {
+      return false;
+    }
+    if (!locationPublished) {
+      updateLoc(rc);
+    }
+    Cats.placeDirtTowardCat(rc, cat.getLocation());
+    fleeFromCat(rc, cat.getLocation());
+    return true;
   }
 
   /**
@@ -61,29 +82,16 @@ public class RatKing {
     if (rc.getHealth() > Config.KING_CAT_FLEE_HEALTH) {
       return false;
     }
-    RobotInfo cat = BabyRat.nearestVisibleCat(rc);
+    RobotInfo cat = Cats.nearestVisibleCat(rc);
     if (cat == null) {
       return false;
     }
     if (!locationPublished) {
       updateLoc(rc);
     }
-    placeDirtTowardCat(rc, cat.getLocation());
+    Cats.placeDirtTowardCat(rc, cat.getLocation());
     fleeFromCat(rc, cat.getLocation());
     return true;
-  }
-
-  /** Places dirt on the spawn-ring tile toward {@code catLocation}, outside the 3x3 footprint. */
-  static void placeDirtTowardCat(RobotController rc, MapLocation catLocation)
-      throws GameActionException {
-    MapLocation center = rc.getLocation();
-    int stepX = Integer.compare(catLocation.x - center.x, 0);
-    int stepY = Integer.compare(catLocation.y - center.y, 0);
-    if (stepX == 0 && stepY == 0) {
-      return;
-    }
-    MapLocation dirtLocation = new MapLocation(center.x + 2 * stepX, center.y + 2 * stepY);
-    Dirt.tryPlace(rc, dirtLocation);
   }
 
   /** One step on the opposite heading from {@code catLocation}, then publish if the king moved. */
@@ -91,7 +99,7 @@ public class RatKing {
     if (!rc.isMovementReady()) {
       return;
     }
-    Direction away = rc.getLocation().directionTo(catLocation).opposite();
+    Direction away = Cats.awayFrom(rc, catLocation);
     if (away == Direction.CENTER) {
       return;
     }

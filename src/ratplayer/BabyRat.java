@@ -74,25 +74,6 @@ public class BabyRat {
     }
   }
 
-  /** Returns the cats currently visible to this rat. */
-  static RobotInfo[] detectCats(RobotController rc) {
-    RobotInfo[] visibleRobots = rc.senseNearbyRobots();
-    int catCount = 0;
-    for (int i = 0; i < visibleRobots.length; i++) {
-      if (visibleRobots[i].getType() == UnitType.CAT) {
-        catCount++;
-      }
-    }
-    RobotInfo[] cats = new RobotInfo[catCount];
-    int nextCat = 0;
-    for (int i = 0; i < visibleRobots.length; i++) {
-      if (visibleRobots[i].getType() == UnitType.CAT) {
-        cats[nextCat++] = visibleRobots[i];
-      }
-    }
-    return cats;
-  }
-
   /**
    * Bites an adjacent cat, or a rat after cooperation has ended.
    *
@@ -124,6 +105,8 @@ public class BabyRat {
     switch (Config.BABY_CAT_RESPONSE_STRATEGY) {
       case BITE_THEN_BLOCK_AND_FLEE:
         return biteThenBlockAndFlee(rc);
+      case BLOCK_AND_FLEE_WHEN_LOW_HEALTH:
+        return blockAndFleeWhenLowHealth(rc);
       case NONE:
       default:
         return false;
@@ -136,51 +119,37 @@ public class BabyRat {
    * @return true if movement was handled by fleeing
    */
   static boolean biteThenBlockAndFlee(RobotController rc) throws GameActionException {
-    RobotInfo cat = nearestVisibleCat(rc);
+    RobotInfo cat = Cats.nearestVisibleCat(rc);
     if (cat == null || attackedThisTurn) {
       return false;
     }
-    placeDirtTowardCat(rc, cat.getLocation());
+    Cats.placeDirtTowardCat(rc, cat.getLocation());
     fleeFromCat(rc, cat.getLocation());
     return true;
   }
 
   /**
-   * Nearest visible cat by squared distance. Equal distances keep the earlier sense result.
+   * At or below {@link Config#BABY_CAT_FLEE_HEALTH}, places dirt toward the nearest cat and steps
+   * the other way. A bite this turn does not suppress this policy.
+   *
+   * @return true if movement was handled by fleeing
    */
-  static RobotInfo nearestVisibleCat(RobotController rc) {
-    RobotInfo[] cats = detectCats(rc);
-    MapLocation origin = rc.getLocation();
-    RobotInfo nearest = null;
-    int bestDistance = Integer.MAX_VALUE;
-    for (int i = 0; i < cats.length; i++) {
-      int distance = origin.distanceSquaredTo(cats[i].getLocation());
-      if (nearest == null || distance < bestDistance) {
-        nearest = cats[i];
-        bestDistance = distance;
-      }
+  static boolean blockAndFleeWhenLowHealth(RobotController rc) throws GameActionException {
+    if (rc.getHealth() > Config.BABY_CAT_FLEE_HEALTH) {
+      return false;
     }
-    return nearest;
-  }
-
-  /** Places at most one dirt tile on the adjacent Chebyshev step toward {@code catLocation}. */
-  static void placeDirtTowardCat(RobotController rc, MapLocation catLocation)
-      throws GameActionException {
-    MapLocation ratLocation = rc.getLocation();
-    int deltaX = catLocation.x - ratLocation.x;
-    int deltaY = catLocation.y - ratLocation.y;
-    int stepX = Integer.compare(deltaX, 0);
-    int stepY = Integer.compare(deltaY, 0);
-    if (stepX == 0 && stepY == 0) {
-      return;
+    RobotInfo cat = Cats.nearestVisibleCat(rc);
+    if (cat == null) {
+      return false;
     }
-    MapLocation dirtLocation = new MapLocation(ratLocation.x + stepX, ratLocation.y + stepY);
-    Dirt.tryPlace(rc, dirtLocation);
+    Cats.placeDirtTowardCat(rc, cat.getLocation());
+    fleeFromCat(rc, cat.getLocation());
+    return true;
   }
 
   /** One greedy step on the opposite heading from {@code catLocation}. */
   static void fleeFromCat(RobotController rc, MapLocation catLocation) throws GameActionException {
-    Direction away = rc.getLocation().directionTo(catLocation).opposite();
+    Direction away = Cats.awayFrom(rc, catLocation);
     if (away == Direction.CENTER) {
       return;
     }
@@ -191,8 +160,18 @@ public class BabyRat {
    * Generic digging yields the action when this strategy wants it for a visible-cat dirt block.
    */
   static boolean shouldSkipDigForCatResponse(RobotController rc) {
-    return Config.BABY_CAT_RESPONSE_STRATEGY == Config.CatResponseStrategy.BITE_THEN_BLOCK_AND_FLEE
-        && detectCats(rc).length > 0;
+    if (Cats.detectCats(rc).length == 0) {
+      return false;
+    }
+    switch (Config.BABY_CAT_RESPONSE_STRATEGY) {
+      case BITE_THEN_BLOCK_AND_FLEE:
+        return true;
+      case BLOCK_AND_FLEE_WHEN_LOW_HEALTH:
+        return rc.getHealth() <= Config.BABY_CAT_FLEE_HEALTH;
+      case NONE:
+      default:
+        return false;
+    }
   }
 
   /**

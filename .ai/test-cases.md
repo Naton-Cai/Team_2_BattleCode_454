@@ -90,7 +90,7 @@ These tests are in `ratplayer.RatKingDirtEngineTest`. The king starts at (8,8). 
 
 Status: **implemented and run** (2026-10-30). Engine bytecode evidence is **run**. Match evidence is **not run**.
 
-Requirements are in `.ai/tasks/baby-rat-cat-avoidance.md`. Default `Config.BABY_CAT_RESPONSE_STRATEGY` is `BITE_THEN_BLOCK_AND_FLEE`.
+Requirements are in `.ai/tasks/baby-rat-cat-avoidance.md`. Default `Config.BABY_CAT_RESPONSE_STRATEGY` is `BITE_THEN_BLOCK_AND_FLEE`. `Config.BABY_CAT_FLEE_HEALTH` starts at 20. Baby and king both use `Config.CatResponseStrategy`.
 
 ### Controller tests
 
@@ -106,6 +106,8 @@ These tests check which calls happen. They do not show what the engine allows.
 | `refusedDirtStillFleesAndSkipsDig` | Cat at (5,9), `canPlaceDirt` false, dig would otherwise be legal. | No dirt, no dig, one `move:SOUTH`. |
 | `twoCatsUseNearestForDirtAndFlee` | East cat at (9,5) listed first, closer north cat at (5,8) second. | Dirt at (5,6) and a south step. No west step. |
 | `placeDirtFailureContainedAtTurnBoundary` | Cat at (5,9), `placeDirt` throws on the first turn and is cleared before the second. | First turn returns from `playTurn` with one dirt attempt and no flee. Second turn places dirt once more. |
+| `lowHealthStrategyPlacesDirtAndFlees` | `BABY_CAT_RESPONSE_STRATEGY = BLOCK_AND_FLEE_WHEN_LOW_HEALTH`, health at `BABY_CAT_FLEE_HEALTH` (20), cat at (5,9), dig legal. | One `placeDirt` at (5,6), no dig, one `move:SOUTH`. |
+| `lowHealthStrategyAboveThresholdKeepsDigAndWander` | Same strategy, health `BABY_CAT_FLEE_HEALTH + 1`, cat at (5,9), dig legal. | One dig, no dirt, wander forward. |
 | `noneStrategyKeepsDigAndWander` | `BABY_CAT_RESPONSE_STRATEGY = NONE`, cat at (5,9), dig and dirt both legal. | One dig, no dirt, wander forward, no south flee. |
 
 ### Engine tests
@@ -114,13 +116,13 @@ These tests are in `ratplayer.BabyRatCatAvoidanceEngineTest`. They run the real 
 
 | Test | Setup | Expected outcome |
 | --- | --- | --- |
-| `engineCatBlockTurnBytecodeHeadroom` | Compiled strategy `BITE_THEN_BLOCK_AND_FLEE`. One dirt in the team stash. Cat movement/action/turning held. | After one turn, dirt is on (8,9), the baby is at (8,7), and the turn leaves at least 1,000 under the 17,500 baby-rat limit. Measured: 2,685. |
+| `engineCatBlockTurnBytecodeHeadroom` | Compiled strategy `BITE_THEN_BLOCK_AND_FLEE`. One dirt in the team stash. Cat movement/action/turning held. | After one turn, dirt is on (8,9), the baby is at (8,7), and the turn leaves at least 1,000 under the 17,500 baby-rat limit. Measured: 2,734. |
 
 ## Rat King low-health cat block-and-flee
 
 Status: **implemented and run** (2026-10-30). Engine bytecode evidence is **run**. Match evidence is **not run**.
 
-Requirements are in `.ai/tasks/rat-king-cat-avoidance.md`. Default `Config.KING_CAT_RESPONSE_STRATEGY` is `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. `Config.KING_CAT_FLEE_HEALTH` starts at 600 (full king HP; kings do not attack).
+Requirements are in `.ai/tasks/rat-king-cat-avoidance.md`. Default `Config.KING_CAT_RESPONSE_STRATEGY` is `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. `Config.KING_CAT_FLEE_HEALTH` starts at 600. King and baby both use `Config.CatResponseStrategy`.
 
 ### Controller tests
 
@@ -133,6 +135,7 @@ These tests check which calls happen. They do not show what the engine allows.
 | `lowHealthVisibleCatPlacesDirtAndFlees` | Health at `KING_CAT_FLEE_HEALTH` (600), cat at (10,16), spawn and dig would be legal. | One `placeDirt` at (10,12), no spawn, no dig, one `move:SOUTH`. |
 | `healthAboveThresholdKeepsDigAndWander` | Health `KING_CAT_FLEE_HEALTH + 1`, same cat, dig legal. | No dirt, one dig, wander forward. |
 | `lowHealthWithoutCatStillDigs` | Health at `KING_CAT_FLEE_HEALTH`, no nearby robots, dig legal. | One dig, no `placeDirt`. |
+| `biteThenBlockAndFleeIgnoresHealthThreshold` | `KING_CAT_RESPONSE_STRATEGY = BITE_THEN_BLOCK_AND_FLEE`, health `KING_CAT_FLEE_HEALTH + 1`, cat at (10,16), spawn and dig would be legal. | One `placeDirt` at (10,12), no spawn, no dig, one `move:SOUTH`. |
 | `noneStrategyKeepsDigAndWander` | `KING_CAT_RESPONSE_STRATEGY = NONE`, health at `KING_CAT_FLEE_HEALTH`, cat visible, dig legal. | One dig, no dirt, wander forward. |
 | `placeDirtFailureContainedAtTurnBoundary` | Health at `KING_CAT_FLEE_HEALTH`, cat visible, `placeDirt` throws on the first turn and is cleared before the second. | First turn returns from `playTurn` with one dirt attempt and no flee. Second turn places dirt once more. |
 
@@ -142,4 +145,4 @@ These tests are in `ratplayer.RatKingCatAvoidanceEngineTest`. They run the real 
 
 | Test | Setup | Expected outcome |
 | --- | --- | --- |
-| `engineLowHealthCatBlockBytecodeHeadroom` | Compiled strategy `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. Health at `KING_CAT_FLEE_HEALTH` (600). One dirt in the team stash. Cat movement/action/turning held. | After one turn, dirt is on (8,10), the king is at (8,7), and the turn leaves at least 1,000 under the 20,000 king limit. Measured: 4,290. |
+| `engineLowHealthCatBlockBytecodeHeadroom` | Compiled strategy `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. Health at `KING_CAT_FLEE_HEALTH` (600). One dirt in the team stash. Cat movement/action/turning held. | After one turn, dirt is on (8,10), the king is at (8,7), and the turn leaves at least 1,000 under the 20,000 king limit. Measured: 4,288. |
