@@ -140,7 +140,6 @@ public class BabyRat {
     }
   }
 
-  // PLACEHOLDER CODE
   // Try to move forward one step.
   static void wander(RobotController rc) throws GameActionException {
     Navigation.resetFollow();

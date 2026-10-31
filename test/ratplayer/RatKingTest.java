@@ -27,10 +27,12 @@ public class RatKingTest {
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
     RatKing.locationPublished = false;
+    Trap.startofBackStabbing = 0;
     rc = new TestRobotController();
     rc.setUnitType(UnitType.RAT_KING);
     rc.setLocation(new MapLocation(10, 10));
     rc.setMovementReady(true);
+    rc.setCooperation(true);
     rc.setSimulateMovement(true);
   }
 
