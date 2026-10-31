@@ -27,7 +27,8 @@ public final class Config {
 
   enum BabyAction {
     ATTACK,
-    DIG_DIRT
+    DIG_DIRT,
+    TRAP
   }
 
   /** Living allied baby rat cap; must be nonnegative and a multiple of four. Zero stops spawning. */
@@ -45,7 +46,9 @@ public final class Config {
   static int MIN_CHEESE_RESERVE_FOR_DIG = DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG;
 
   /** Default baby-rat action order: attack, then dig. */
-  static final BabyAction[] DEFAULT_BABY_ACTION_ORDER = {BabyAction.ATTACK, BabyAction.DIG_DIRT};
+  static final BabyAction[] DEFAULT_BABY_ACTION_ORDER = {
+    BabyAction.ATTACK, BabyAction.TRAP, BabyAction.DIG_DIRT
+  };
 
   /**
    * Baby-rat actions tried in list order; the first success ends the action phase. An omitted

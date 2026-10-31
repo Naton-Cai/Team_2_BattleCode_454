@@ -23,6 +23,8 @@ public class RatKing {
     if (RobotPlayer.turnCount % 100 == 0) {
       System.out.println("Turn " + RobotPlayer.turnCount + ": I am a " + rc.getType().toString());
     }
+
+    Trap.writeStartofBackStabbing(rc);
     identifyCheeseMines(rc);
     move(rc);
     pickUpCheese(rc);

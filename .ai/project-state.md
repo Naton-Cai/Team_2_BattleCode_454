@@ -173,7 +173,8 @@ The following added tests are in `ratplayer.RatKingEngineTest`. They run the act
 | 3–5 | 3 | Reserved for a second king location | Reserved; not implemented |
 | 6–8 | 3 | Reserved for a third king location | Reserved; not implemented |
 | 9–44 | 36 | Mines 1–18: two entries each, x then y+1 | Allocated |
-| 45–63 | 19 | Available for future uses or increased mine capacity | Free |
+| 45 | 1 | Tracks Start of backstabbing round to track how long after the first backstab can we still place cattraps | Allocated |
+| 46–63 | 19 | Available for future uses or increased mine capacity | Free |
 
 **Budget: 3 active king entries + 6 reserved king entries + 36 mine entries + 19 free = 64.**
 A mine's second entry is zero until committed; y+1 commits its exact coordinate.
