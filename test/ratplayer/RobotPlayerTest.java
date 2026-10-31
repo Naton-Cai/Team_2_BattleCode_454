@@ -28,7 +28,7 @@ public class RobotPlayerTest {
   public void resetRobotLocalState() {
     RobotPlayer.turnCount = 0;
     RatKing.locationPublished = false;
-    Trap.backstabCounter = 0;
+    Trap.startofBackStabbing = 0;
     RobotPlayer.rng.setSeed(6147);
     BabyRat.kingLoc = null;
     BabyRat.cheeseTile = null;
@@ -264,7 +264,8 @@ public class RobotPlayerTest {
    * tile.
    *
    * <p>The rat starts empty-handed, so the king-return threshold is not crossed. Only the shared
-   * backstab counter slot is read. Wander is refused so the recorded action is only the pickup.
+   * backstabbing start-round slot is checked. Wander is refused so the recorded action is only the
+   * pickup.
    */
   @Test
   public void picksUpCloserVisibleCheese() {
@@ -282,14 +283,14 @@ public class RobotPlayerTest {
     // Act.
     RobotPlayer.playTurn(controller);
 
-    // Assert: the closer pile is the only action; only the backstab counter slot is read.
+    // Assert: the closer pile is the only action; only the backstabbing start-round slot is read.
     assertEquals(Arrays.asList("pickUpCheese:[1, 0]"), controller.calls());
     assertEquals(1, controller.sharedArrayReadCount());
   }
 
   /**
    * Visible cheese that cannot be picked up is a movement goal. King lookup stays off because the
-   * rat is still empty-handed; the backstab counter slot is read.
+   * rat is still empty-handed; the backstabbing start-round slot is checked.
    *
    * <p>{@code canMove} true accepts the first probe, which is {@code directionTo} the pile. The
    * direct step uses {@code move}, so {@code moveCount} stays 0; that counter tracks
@@ -418,7 +419,7 @@ public class RobotPlayerTest {
     // Act.
     RobotPlayer.playTurn(controller);
 
-    // Assert: three king-location reads and one backstab-counter read precede wander.
+    // Assert: three king-location reads and one start-round slot read precede wander.
     assertEquals(Arrays.asList("moveForward"), controller.calls());
     assertEquals(4, controller.sharedArrayReadCount());
     assertEquals(carryingCheese, controller.getRawCheese());

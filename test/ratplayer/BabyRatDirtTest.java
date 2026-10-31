@@ -33,7 +33,7 @@ public class BabyRatDirtTest {
     Config.reset();
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
-    Trap.backstabCounter = 0;
+    Trap.startofBackStabbing = 0;
     Navigation.resetFollow();
   }
 

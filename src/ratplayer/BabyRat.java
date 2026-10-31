@@ -21,6 +21,7 @@ public class BabyRat {
     if (RobotPlayer.turnCount % 100 == 0) {
       System.out.println("Turn " + RobotPlayer.turnCount + ": I am a " + rc.getType().toString());
     }
+
     kingLoc = null;
     cheeseTile = null;
     pickedUpCheese = false;
@@ -34,7 +35,7 @@ public class BabyRat {
         rc.transferCheese(kingLoc, rawCheese);
       }
     }
-    Trap.updateBackstabCounter(rc);
+    Trap.updateStartofBackStabbing(rc);
     pickUpCheese(rc);
     tryConfiguredActions(rc);
     move(rc);
@@ -53,7 +54,7 @@ public class BabyRat {
           acted = attack(rc);
           break;
         case TRAP:
-          acted = Trap.placeTrap(rc, Trap.backstabCounter);
+          acted = Trap.placeTrap(rc);
           break;
         case DIG_DIRT:
           acted = digDirt(rc);

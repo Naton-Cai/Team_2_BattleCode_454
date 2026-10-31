@@ -9,7 +9,7 @@ import battlecode.common.UnitType;
 /** Cat detection and placement logic used by baby rats. */
 final class Trap {
   static final int BACKSTABSLOT = 45;
-  public static int backstabCounter = 0;
+  public static int startofBackStabbing = 0;
 
   /**
    * Returns the cats currently visible to this rat.
@@ -59,14 +59,16 @@ final class Trap {
   /**
    * Places at most one trap on the adjacent tile toward either a rat or cat.
    */
-  static boolean placeTrap(RobotController rc, int turnsSinceBackstab) throws GameActionException {
+  static boolean placeTrap(RobotController rc) throws GameActionException {
+
     if (!rc.isActionReady() || (long) rc.getGlobalCheese() - 10 < Config.MIN_CHEESE_RESERVE) {
       return false;
     }
     MapLocation ratLocation = rc.getLocation();
+    int turnsSinceBackstab = rc.getRoundNum();
     RobotInfo[] units;
 
-    if (turnsSinceBackstab >= 100) {
+    if (turnsSinceBackstab - startofBackStabbing >= 100 && startofBackStabbing != 0) {
       units = detectRats(rc);
     } else {
       units = detectCats(rc);
@@ -86,7 +88,7 @@ final class Trap {
       // Only the first tile toward the cat is eligible because traps must be adjacent to the rat.
       MapLocation trapLocation = new MapLocation(ratLocation.x + stepX, ratLocation.y + stepY);
 
-      if (turnsSinceBackstab >= 100) {
+      if (turnsSinceBackstab - startofBackStabbing >= 100 && startofBackStabbing != 0) {
         if (rc.canPlaceRatTrap(trapLocation)) {
           rc.placeRatTrap(trapLocation);
           return true;
@@ -101,30 +103,26 @@ final class Trap {
     return false;
   }
 
-  static void writeBackstabCounter(RobotController rc) throws GameActionException {
-    // we want an internal count of the backstab turn when dealing with multiple rat kings
-    // attempting to write to the same index
-    if (!rc.isCooperation() && backstabCounter <= 100) {
-      int globalBackstab = rc.readSharedArray(BACKSTABSLOT);
-      backstabCounter += 1;
-      if (globalBackstab >= backstabCounter) {
-        backstabCounter = globalBackstab;
-      } else {
+  // if our internal startofBackStabbing isn't updated and backstabbing is happening
+  static void writeStartofBackStabbing(RobotController rc) throws GameActionException {
+    if (startofBackStabbing == 0 && !rc.isCooperation()) {
+      int readRoundValue = rc.readSharedArray(45);
 
-        rc.writeSharedArray(BACKSTABSLOT, backstabCounter);
+      // array hasn't been writen to so update it with the new value
+      if (readRoundValue == 0) {
+        int round = rc.getRoundNum();
+        rc.writeSharedArray(BACKSTABSLOT, round);
+        startofBackStabbing = round;
+      } else {
+        startofBackStabbing = readRoundValue;
       }
     }
   }
 
-  // we only want to reference the global array the first time, then keep an internal counter to
-  // minimize bytecode
-  static void updateBackstabCounter(RobotController rc) throws GameActionException {
-    if (backstabCounter == 0) {
-      if (!rc.isCooperation()) {
-        backstabCounter = rc.readSharedArray(BACKSTABSLOT);
-      }
-    } else if (backstabCounter <= 100) {
-      backstabCounter += 1;
+  // update the internal startofBackStabbing round from the array if it hasn't before
+  static void updateStartofBackStabbing(RobotController rc) throws GameActionException {
+    if (startofBackStabbing == 0 && !rc.isCooperation()) {
+      startofBackStabbing = rc.readSharedArray(BACKSTABSLOT);
     }
   }
 }

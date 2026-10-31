@@ -27,7 +27,7 @@ public class RatKingTest {
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
     RatKing.locationPublished = false;
-    Trap.backstabCounter = 0;
+    Trap.startofBackStabbing = 0;
     rc = new TestRobotController();
     rc.setUnitType(UnitType.RAT_KING);
     rc.setLocation(new MapLocation(10, 10));

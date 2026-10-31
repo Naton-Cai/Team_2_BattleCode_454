@@ -24,7 +24,7 @@ public class RatKing {
       System.out.println("Turn " + RobotPlayer.turnCount + ": I am a " + rc.getType().toString());
     }
 
-    Trap.writeBackstabCounter(rc);
+    Trap.writeStartofBackStabbing(rc);
     identifyCheeseMines(rc);
     move(rc);
     pickUpCheese(rc);
