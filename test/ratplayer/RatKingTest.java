@@ -2,19 +2,30 @@ package ratplayer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameActionExceptionType;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
+import battlecode.common.RobotInfo;
+import battlecode.common.Team;
 import battlecode.common.TrapType;
 import battlecode.common.UnitType;
 import java.util.List;
 import java.util.Random;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.MockedStatic;
 import support.TestRobotController;
 
 /** Decision and publication tests. Canned legality answers do not establish engine geometry. */
@@ -24,13 +35,17 @@ public class RatKingTest {
   @Before
   public void setUp() {
     // Each scenario starts with a fresh robot, including its publication flag and RNG.
+    Config.reset();
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
     RatKing.locationPublished = false;
+    RatKing.resetHome();
     Trap.startofBackStabbing = 0;
     rc = new TestRobotController();
     rc.setUnitType(UnitType.RAT_KING);
     rc.setLocation(new MapLocation(10, 10));
+    rc.setMapWidth(60);
+    rc.setMapHeight(60);
     rc.setMovementReady(true);
     rc.setCooperation(true);
     rc.setSimulateMovement(true);
@@ -132,17 +147,24 @@ public class RatKingTest {
   }
 
   @Test
-  public void mapsSeededChoiceOntoOnlyLegalAlternativesInCompassOrder() throws Exception {
-    // Repeat with several seeds: expected choices index the explicit N-clockwise candidate order.
+  public void mapsSeededChoiceOntoInwardWeightedAlternativesInCompassOrder() throws Exception {
+    // At (10,10) on 60x60, NE gets closer to center; S and NW do not.
+    // Explicit slots verify the 3:1 weights and compass order without mirroring the algorithm.
     for (int seed = 0; seed < 20; seed++) {
       setUp();
       RobotPlayer.rng.setSeed(seed);
       rc.setDirectionAllowed(Direction.NORTHEAST, true);
       rc.setDirectionAllowed(Direction.SOUTH, true);
       rc.setDirectionAllowed(Direction.NORTHWEST, true);
-      Direction[] expected = {Direction.NORTHEAST, Direction.SOUTH, Direction.NORTHWEST};
+      Direction[] expected = {
+        Direction.NORTHEAST,
+        Direction.NORTHEAST,
+        Direction.NORTHEAST,
+        Direction.SOUTH,
+        Direction.NORTHWEST
+      };
       RatKing.move(rc);
-      assertEquals(expected[new Random(seed).nextInt(3)], rc.getDirection());
+      assertEquals(expected[new Random(seed).nextInt(5)], rc.getDirection());
       assertEquals(0, rc.moveCount());
     }
   }
@@ -173,97 +195,365 @@ public class RatKingTest {
     assertPosition(10, 10);
   }
 
+  @After
+  public void restoreConfig() {
+    Config.reset();
+    RatKing.resetHome();
+  }
+
   @Test
-  public void cheeseOverridesOpenForwardThenMovesAndForgetsVanishedTarget() throws Exception {
+  public void looseCheeseNeverRedirectsExplorationOrHomeHolding() throws Exception {
+    // Arrange an eastern pile but open northward exploration; repeat to reproduce fixation.
     rc.setForwardAllowed(true);
     rc.setDirectionAllowed(Direction.EAST, true);
     rc.setNearbyMapInfos(new MapInfo[] {cheese(14, 10, 20)});
-    RatKing.move(rc);
+    for (int turn = 0; turn < 3; turn++) {
+      RobotPlayer.playTurn(rc);
+    }
+    assertEquals(new MapLocation(10, 13), rc.getLocation());
+    assertEquals(0, rc.turnCount());
+    assertNull(RatKing.home);
+    // Once a nearby empty mine becomes home, even legally reachable distant cheese cannot lure it.
+    rc.setNearbyMapInfos(new MapInfo[] {mine(10, 14), cheese(14, 13, 50)});
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(10, 14), RatKing.home);
+    assertEquals(new MapLocation(10, 13), rc.getLocation());
+    assertNextRandomUnchanged();
+  }
+
+  @Test
+  public void simultaneousFirstMinesUseDistanceThenCoordinatesAndHomePersists() throws Exception {
+    // Reverse sense order and vary both tie coordinates; an empty home stays home.
+    for (MapInfo[] mines :
+        List.of(
+            new MapInfo[] {mine(10, 12), mine(8, 10), mine(15, 10)},
+            new MapInfo[] {mine(15, 10), mine(8, 10), mine(10, 12)})) {
+      setUp();
+      rc.setNearbyMapInfos(mines);
+      RobotPlayer.playTurn(rc);
+      assertEquals(new MapLocation(8, 10), RatKing.home);
+      rc.setNearbyMapInfos(new MapInfo[] {mine(10, 10)});
+      RobotPlayer.playTurn(rc);
+      assertEquals(new MapLocation(8, 10), RatKing.home);
+    }
+    setUp();
+    rc.setNearbyMapInfos(new MapInfo[] {mine(10, 12), mine(10, 8)});
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(10, 8), RatKing.home);
+  }
+
+  @Test
+  public void earlierSharedRecordBeatsCloserMineDiscoveredThisTurn() throws Exception {
+    // A new king adopts an existing committed mine before publishing its own discovery.
+    CheeseMines.publish(rc, new MapLocation(40, 40));
+    CheeseMines.publish(rc, new MapLocation(11, 10));
+    rc.setNearbyMapInfos(new MapInfo[] {mine(10, 10)});
+    rc.setMovementReady(false);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(40, 40), RatKing.home);
+  }
+
+  @Test
+  public void radiusBoundaryHoldsAt16AndTravelsAt17WithDelayedTurn() throws Exception {
+    rc.setNearbyMapInfos(new MapInfo[] {mine(14, 10)});
+    rc.setCanMove(true);
+    rc.setForwardAllowed(true);
+    RobotPlayer.playTurn(rc);
+    assertEquals(0, rc.moveCount());
+    assertEquals(0, rc.turnCount());
+    // Move the fixture one tile south: squared distance is now 17, just outside radius four.
+    rc.setLocation(new MapLocation(10, 9));
+    RobotPlayer.playTurn(rc);
     assertEquals(Direction.EAST, rc.getDirection());
     assertEquals(0, rc.moveCount());
-    RatKing.move(rc);
-    assertPosition(11, 10);
-    // A newly sensed target wins; the previous east target is no longer remembered.
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(11, 14, 1)});
-    rc.setDirectionAllowed(Direction.NORTH, true);
-    RatKing.move(rc);
-    assertEquals(Direction.NORTH, rc.getDirection());
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(11, 9), rc.getLocation());
+    RobotPlayer.playTurn(rc);
+    assertEquals(1, rc.moveCount());
+  }
+
+  @Test
+  public void stallsOnTenthReadyTurnThenRetriesAfterTenExplorationTurns() throws Exception {
+    // A distant committed mine with no legal steps must not hold the king forever.
+    CheeseMines.publish(rc, new MapLocation(40, 40));
+    for (int turn = 1; turn <= 9; turn++) {
+      RobotPlayer.playTurn(rc);
+      assertEquals(turn, RatKing.stalledTurns);
+      assertEquals(new MapLocation(40, 40), RatKing.home);
+    }
+    rc.setMovementReady(false);
+    RobotPlayer.playTurn(rc);
+    assertEquals(9, RatKing.stalledTurns);
+    rc.setMovementReady(true);
+    RobotPlayer.playTurn(rc);
+    assertNull(RatKing.home);
+    assertEquals(10, RatKing.retryTurnsLeft);
+    for (int turn = 0; turn < 9; turn++) {
+      RobotPlayer.playTurn(rc);
+      assertNull(RatKing.home);
+    }
+    rc.setMovementReady(false);
+    RobotPlayer.playTurn(rc);
+    assertEquals(1, RatKing.retryTurnsLeft);
+    rc.setMovementReady(true);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(40, 40), RatKing.home);
+    assertNull(RatKing.deferredHome);
+    assertEquals(0, RatKing.stalledTurns);
+  }
+
+  @Test
+  public void stalledHomeChoosesNearestAlternativeWithCoordinateTies() throws Exception {
+    CheeseMines.publish(rc, new MapLocation(40, 40));
+    CheeseMines.publish(rc, new MapLocation(10, 20));
+    CheeseMines.publish(rc, new MapLocation(0, 10));
+    for (int turn = 0; turn < 10; turn++) {
+      RobotPlayer.playTurn(rc);
+    }
+    assertEquals(new MapLocation(0, 10), RatKing.home);
+    assertEquals(0, RatKing.stalledTurns);
+  }
+
+  @Test
+  public void turnOnlyDecisionsCountAsStallsAndSuccessfulProgressResetsThem() throws Exception {
+    CheeseMines.publish(rc, new MapLocation(30, 10));
+    rc.setDirectionAllowed(Direction.EAST, true);
+    RobotPlayer.playTurn(rc);
+    assertEquals(1, RatKing.stalledTurns);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(11, 10), rc.getLocation());
+    assertEquals(0, RatKing.stalledTurns);
+    assertEquals(361, RatKing.bestHomeDistance);
+  }
+
+  @Test
+  public void occupancyWaitsAndFreshLegalityAllowsProgressWithoutChangingHome() throws Exception {
+    CheeseMines.publish(rc, new MapLocation(30, 10));
+    rc.setCanSenseLocation(true);
+    rc.setPassable(true);
+    RobotPlayer.playTurn(rc);
+    assertEquals(1, RatKing.stalledTurns);
+    assertEquals(0, rc.turnCount());
+    rc.setDirectionAllowed(Direction.EAST, true);
+    RobotPlayer.playTurn(rc);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(11, 10), rc.getLocation());
+    assertEquals(new MapLocation(30, 10), RatKing.home);
+  }
+
+  @Test
+  public void escapePausesStallAndRetryAndDoesNotForceNormalMovement() throws Exception {
+    CheeseMines.publish(rc, new MapLocation(40, 40));
+    for (int turn = 0; turn < 9; turn++) {
+      RobotPlayer.playTurn(rc);
+    }
+    rc.setNearbyRobots(new RobotInfo[] {cat(10, 15)});
+    for (int turn = 0; turn < 3; turn++) {
+      RobotPlayer.playTurn(rc);
+      assertEquals(9, RatKing.stalledTurns);
+    }
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RobotPlayer.playTurn(rc);
+    assertEquals(10, RatKing.retryTurnsLeft);
+    rc.setNearbyRobots(new RobotInfo[] {cat(10, 15)});
+    RobotPlayer.playTurn(rc);
+    assertEquals(10, RatKing.retryTurnsLeft);
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RobotPlayer.playTurn(rc);
+    assertEquals(9, RatKing.retryTurnsLeft);
+  }
+
+  @Test
+  public void escapeDiscoveriesAreComparedFromFinalPositionAndOldOnesAreExcluded()
+      throws Exception {
+    // Establish an old home and a second previously seen mine; neither is a new escape discovery.
+    rc.setNearbyMapInfos(new MapInfo[] {mine(14, 10), mine(10, 14)});
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(10, 14), RatKing.home);
+    rc.setNearbyRobots(new RobotInfo[] {cat(10, 16)});
+    rc.setNearbyMapInfos(new MapInfo[] {mine(5, 10), mine(15, 10)});
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(10, 14), RatKing.home);
+    // Simulate displacement during a prolonged escape. The best candidate changes with position.
+    rc.setLocation(new MapLocation(16, 10));
+    rc.setMovementReady(false);
+    rc.setNearbyRobots(new RobotInfo[0]);
     rc.setNearbyMapInfos(new MapInfo[0]);
-    RatKing.move(rc);
-    assertPosition(11, 11);
-    assertNextRandomUnchanged();
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(15, 10), RatKing.home);
+    assertEquals(0, RatKing.stalledTurns);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(15, 10), RatKing.home);
   }
 
   @Test
-  public void nearestCheeseAndCoordinateTiesIgnoreSensingOrder() throws Exception {
-    MapInfo[] targets = {
-      cheese(15, 10, 100), cheese(10, 12, 1), cheese(8, 10, 1), cheese(10, 8, 1)
-    };
-    rc.setCanMove(true);
-    rc.setNearbyMapInfos(targets);
-    RatKing.move(rc);
-    assertEquals(Direction.WEST, rc.getDirection());
+  public void equalOrFartherEscapeMineRetainsHomeAndCandidateTiesUseCoordinates() throws Exception {
+    for (int newX : new int[] {6, 5}) {
+      setUp();
+      rc.setNearbyMapInfos(new MapInfo[] {mine(14, 10)});
+      RobotPlayer.playTurn(rc);
+      rc.setNearbyRobots(new RobotInfo[] {cat(10, 16)});
+      rc.setNearbyMapInfos(new MapInfo[] {mine(newX, 10)});
+      RobotPlayer.playTurn(rc);
+      rc.setNearbyRobots(new RobotInfo[0]);
+      rc.setNearbyMapInfos(new MapInfo[0]);
+      RobotPlayer.playTurn(rc);
+      assertEquals(new MapLocation(14, 10), RatKing.home);
+    }
     setUp();
-    rc.setCanMove(true);
-    rc.setNearbyMapInfos(new MapInfo[] {targets[3], targets[2], targets[1], targets[0]});
-    RatKing.move(rc);
-    assertEquals(Direction.WEST, rc.getDirection());
-    // Same x: the lower y is selected, so SOUTH beats NORTH.
-    setUp();
-    rc.setCanMove(true);
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(10, 12, 1), cheese(10, 8, 1)});
-    RatKing.move(rc);
-    assertEquals(Direction.SOUTH, rc.getDirection());
+    CheeseMines.publish(rc, new MapLocation(40, 40));
+    rc.setNearbyRobots(new RobotInfo[] {cat(10, 16)});
+    rc.setNearbyMapInfos(new MapInfo[] {mine(12, 10), mine(8, 10), mine(10, 8)});
+    RobotPlayer.playTurn(rc);
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(8, 10), RatKing.home);
   }
 
   @Test
-  public void ignoresEmptyMineAndCenterTargetUsesNormalMovement() throws Exception {
+  public void postMoveEscapeDiscoveryRehomesAndBabyReadsActualPublishedCenter() throws Exception {
+    // A spy supplies different pre/post-move visibility and makes the fake's direct move displace.
+    rc = spy(rc);
+    when(rc.senseNearbyMapInfos()).thenReturn(new MapInfo[] {mine(14, 10)});
+    RobotPlayer.playTurn(rc);
+    rc.setCanMove(true);
+    rc.setNearbyRobots(new RobotInfo[] {cat(10, 16)});
+    doAnswer(
+            invocation -> {
+              rc.setLocation(rc.getLocation().add(invocation.getArgument(0)));
+              return null;
+            })
+        .when(rc)
+        .move(Direction.SOUTH);
+    when(rc.senseNearbyMapInfos()).thenReturn(new MapInfo[0], new MapInfo[] {mine(10, 5)});
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(10, 9), rc.getLocation());
+    assertPosition(10, 9);
+    assertEquals(new MapLocation(14, 10), RatKing.home);
+    rc.setMovementReady(false);
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(10, 5), RatKing.home);
+    assertPosition(10, 9);
+    // The reader shares team memory, but its goal is the actual center, not either mine.
+    rc.setUnitType(UnitType.BABY_RAT);
+    rc.setLocation(new MapLocation(10, 2));
+    rc.setRawCheese(Config.RAW_CHEESE_MINIMUM + 1);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(10, 9), BabyRat.kingLoc);
+  }
+
+  @Test
+  public void previouslyPublishedButLocallyNewMineCanReplaceHomeDuringEscape() throws Exception {
+    CheeseMines.publish(rc, new MapLocation(40, 40));
+    CheeseMines.publish(rc, new MapLocation(10, 12));
+    RobotPlayer.playTurn(rc);
+    rc.setNearbyRobots(new RobotInfo[] {cat(10, 16)});
+    rc.setNearbyMapInfos(new MapInfo[] {mine(10, 12)});
+    RobotPlayer.playTurn(rc);
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(10, 12), RatKing.home);
+  }
+
+  @Test
+  public void lowNavigationBudgetPreservesPublicationPickupAndSpawning() throws Exception {
+    // Optional navigation must give its budget to the rest of the complete king turn.
+    CheeseMines.publish(rc, new MapLocation(40, 40));
     rc.setForwardAllowed(true);
-    rc.setCanMove(true);
-    rc.setNearbyMapInfos(
-        new MapInfo[] {
-          new MapInfo(new MapLocation(11, 10), true, null, false, false, 0, TrapType.NONE, true),
-          cheese(10, 10, 1)
-        });
-    RatKing.move(rc);
-    assertEquals(0, rc.turnCount());
-    assertPosition(10, 11);
-    assertNextRandomUnchanged();
-  }
-
-  @Test
-  public void blockedCheeseFallsBackToForwardRatherThanSecondTarget() throws Exception {
-    rc.setForwardAllowed(true);
-    rc.setDirectionAllowed(Direction.EAST, false);
-    rc.setDirectionAllowed(Direction.WEST, true);
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(12, 10, 1), cheese(6, 10, 1)});
-    RatKing.move(rc);
-    assertEquals(Direction.NORTH, rc.getDirection());
-    assertPosition(10, 11);
-    assertNextRandomUnchanged();
-  }
-
-  @Test
-  public void blockedCheeseAndForwardUseOpenAlternative() throws Exception {
-    rc.setDirectionAllowed(Direction.SOUTH, true);
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(12, 10, 1)});
-    RatKing.move(rc);
-    assertEquals(Direction.SOUTH, rc.getDirection());
+    rc.setNearbyMapInfos(new MapInfo[] {cheese(10, 10, 5)});
+    rc.setCanPickUpCheese(true);
+    rc.setGlobalCheese(1000);
+    rc.setActionReady(true);
+    rc.setCanBuildRat(true);
+    try (MockedStatic<Clock> clock = mockStatic(Clock.class)) {
+      clock.when(Clock::getBytecodeNum).thenReturn(10000);
+      RobotPlayer.playTurn(rc);
+    }
     assertPosition(10, 10);
     assertEquals(0, rc.moveCount());
+    assertEquals(0, RatKing.stalledTurns);
+    assertTrue(rc.calls().contains("pickUpCheese:[10, 10]"));
+    assertTrue(rc.calls().stream().anyMatch(call -> call.startsWith("buildRat:")));
   }
 
   @Test
-  public void unavailableCheeseTurnWaitsEvenWithOpenForward() throws Exception {
-    rc.setCanMove(true);
-    rc.setForwardAllowed(true);
-    rc.setTurnAllowed(false);
-    rc.setNearbyMapInfos(new MapInfo[] {cheese(12, 10, 1)});
-    RatKing.move(rc);
-    assertEquals(0, rc.moveCount());
-    assertEquals(0, rc.turnCount());
-    assertPosition(10, 10);
-    assertNextRandomUnchanged();
+  public void localMinesRemainUsableWhenSharedRegistryHasNoCapacity() throws Exception {
+    // Discovery tracking must not depend on a successful append to the team's finite registry.
+    Config.MAX_CHEESE_MINES = 0;
+    rc.setNearbyMapInfos(new MapInfo[] {mine(14, 10)});
+    RobotPlayer.playTurn(rc);
+    rc.setNearbyRobots(new RobotInfo[] {cat(10, 16)});
+    rc.setNearbyMapInfos(new MapInfo[] {mine(10, 8)});
+    RobotPlayer.playTurn(rc);
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(10, 8), RatKing.home);
+  }
+
+  @Test
+  public void escapeMovementImprovementResetsStallBeforeNormalNavigation() throws Exception {
+    CheeseMines.publish(rc, new MapLocation(40, 10));
+    for (int turn = 0; turn < 9; turn++) {
+      RobotPlayer.playTurn(rc);
+    }
+    rc.setNearbyRobots(new RobotInfo[] {cat(5, 10)});
+    RobotPlayer.playTurn(rc);
+    // Displacement models a successful flee step while the fake's direct move is otherwise canned.
+    rc.setLocation(new MapLocation(11, 10));
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(40, 10), RatKing.home);
+    assertEquals(1, RatKing.stalledTurns);
+    assertEquals(841, RatKing.bestHomeDistance);
+  }
+
+  @Test
+  public void deferredHomeWaitsUntilEscapeEndsBeforeAdoptingDiscovery() throws Exception {
+    CheeseMines.publish(rc, new MapLocation(40, 40));
+    for (int turn = 0; turn < 10; turn++) {
+      RobotPlayer.playTurn(rc);
+    }
+    assertNull(RatKing.home);
+    rc.setNearbyRobots(new RobotInfo[] {cat(10, 16)});
+    rc.setNearbyMapInfos(new MapInfo[] {mine(10, 12)});
+    RobotPlayer.playTurn(rc);
+    assertNull(RatKing.home);
+    assertEquals(10, RatKing.retryTurnsLeft);
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(10, 12), RatKing.home);
+    assertNull(RatKing.deferredHome);
+  }
+
+  @Test
+  public void stalledHomeCanUseLocallyKnownAlternateOutsideFullRegistry() throws Exception {
+    Config.MAX_CHEESE_MINES = 0;
+    rc.setNearbyMapInfos(new MapInfo[] {mine(14, 10), mine(10, 30)});
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(14, 10), RatKing.home);
+    rc.setLocation(new MapLocation(10, 0));
+    rc.setNearbyMapInfos(new MapInfo[0]);
+    for (int turn = 0; turn < 10; turn++) {
+      RobotPlayer.playTurn(rc);
+    }
+    assertEquals(new MapLocation(10, 30), RatKing.home);
+  }
+
+  @Test
+  public void invalidSettingsAreRejectedAndResetRestoresAgreedValues() throws Exception {
+    Config.KING_HOME_RADIUS = -1;
+    assertThrows(IllegalArgumentException.class, () -> RatKing.move(rc));
+    Config.reset();
+    Config.KING_STALL_TURNS = 0;
+    assertThrows(IllegalArgumentException.class, () -> RatKing.move(rc));
+    Config.reset();
+    Config.KING_RETRY_TURNS = -1;
+    assertThrows(IllegalArgumentException.class, () -> RatKing.move(rc));
+    Config.reset();
+    assertEquals(4, Config.KING_HOME_RADIUS);
+    assertEquals(10, Config.KING_STALL_TURNS);
+    assertEquals(10, Config.KING_RETRY_TURNS);
   }
 
   @Test
@@ -389,6 +679,15 @@ public class RatKingTest {
 
   private static GameActionException failure() {
     return new GameActionException(GameActionExceptionType.CANT_DO_THAT, "test failure");
+  }
+
+  private static MapInfo mine(int x, int y) {
+    return new MapInfo(new MapLocation(x, y), true, null, false, false, 0, TrapType.NONE, true);
+  }
+
+  private static RobotInfo cat(int x, int y) {
+    return new RobotInfo(
+        3, Team.NEUTRAL, UnitType.CAT, 4000, new MapLocation(x, y), Direction.SOUTH, 0, 0, null);
   }
 
   private static MapInfo cheese(int x, int y, int amount) {
