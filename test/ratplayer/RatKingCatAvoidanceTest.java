@@ -32,12 +32,14 @@ public class RatKingCatAvoidanceTest {
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
     RatKing.locationPublished = false;
+    RatKing.resetHome();
   }
 
   @After
   public void tearDown() {
     Config.reset();
     RatKing.locationPublished = false;
+    RatKing.resetHome();
   }
 
   /**
@@ -221,6 +223,9 @@ public class RatKingCatAvoidanceTest {
     TestRobotController controller = new TestRobotController();
     controller.setUnitType(UnitType.RAT_KING);
     controller.setLocation(ORIGIN);
+    // This fixture is in the interior, so normal cat-policy controls keep forward momentum.
+    controller.setMapWidth(60);
+    controller.setMapHeight(60);
     controller.setDirection(Direction.NORTH);
     controller.setRawCheese(0);
     controller.setGlobalCheese(1000);

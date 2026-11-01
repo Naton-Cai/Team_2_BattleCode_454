@@ -93,6 +93,37 @@ public class RatKingCatAvoidanceEngineTest {
         peakBytecodes > 0 && peakBytecodes < KING_BYTECODE_LIMIT - BYTECODE_HEADROOM);
   }
 
+  @Test
+  public void escapeDiscoversCloserMineAndBabyTracksRelocatedKing() throws Exception {
+    // Arrange two mines five tiles apart from the initial center in opposite directions.
+    // Only the old north mine is initially visible; a south escape reveals the second mine.
+    start(new MapLocation(8, 13), new MapLocation(8, 2));
+    freezeCat();
+    observeRound();
+    assertEquals(new MapLocation(8, 7), king.getLocation());
+    assertEquals(new MapLocation(8, 13), CheeseMines.read(king.getController(), 0));
+    assertEquals(new MapLocation(8, 2), CheeseMines.read(king.getController(), 1));
+    // End the threat. The next normal decision adopts the closer southern mine during cooldown.
+    world.destroyRobot(3);
+    for (int turn = 0; turn < 4; turn++) {
+      observeRound();
+    }
+    assertEquals(Direction.SOUTH, king.getDirection());
+    world.spawnRobot(200, UnitType.BABY_RAT, new MapLocation(2, 6), Direction.EAST, 41, Team.A);
+    observeRound();
+    assertEquals(new MapLocation(8, 6), king.getLocation());
+    InternalRobot baby = world.getObjectInfo().getRobotByID(200);
+    assertNotNull(baby);
+    // Actual center is east, old home northeast, new home southeast. East proves center tracking.
+    assertEquals(new MapLocation(3, 6), baby.getLocation());
+    assertEquals(8, baby.getController().readSharedArray(RatKing.LOCATION_X_SLOT));
+    assertEquals(6, baby.getController().readSharedArray(RatKing.LOCATION_Y_SLOT));
+    for (int turn = 0; turn < 4; turn++) {
+      observeRound();
+      assertEquals(new MapLocation(8, 6), king.getLocation());
+    }
+  }
+
   private void freezeCat() {
     InternalRobot cat = world.getObjectInfo().getRobotByID(3);
     assertNotNull("Fixture must spawn a living cat", cat);
@@ -101,7 +132,7 @@ public class RatKingCatAvoidanceEngineTest {
     cat.setTurningCooldownTurns(1000);
   }
 
-  private void start() {
+  private void start(MapLocation... mines) {
     String classes =
         RobotPlayer.class.getProtectionDomain().getCodeSource().getLocation().getPath();
     output = new ByteArrayOutputStream();
@@ -157,6 +188,9 @@ public class RatKingCatAvoidanceEngineTest {
             catIds,
             catWaypoints,
             bodies);
+    for (MapLocation mine : mines) {
+      map.getCheeseMineArray()[mine.x + mine.y * 20] = true;
+    }
     GameInfo game =
         new GameInfo(
             "ratplayer",

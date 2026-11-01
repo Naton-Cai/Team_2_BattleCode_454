@@ -41,6 +41,7 @@ public class RatKingSpawningTest {
     // playTurn runs cat sensing before spawn; Mockito's default nearby-robot array is null.
     when(rc.senseNearbyRobots()).thenReturn(new RobotInfo[0]);
     RatKing.locationPublished = false;
+    RatKing.resetHome();
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
   }

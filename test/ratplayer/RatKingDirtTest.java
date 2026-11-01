@@ -31,6 +31,7 @@ public class RatKingDirtTest {
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
     RatKing.locationPublished = false;
+    RatKing.resetHome();
   }
 
   @After
@@ -102,6 +103,7 @@ public class RatKingDirtTest {
 
     RobotPlayer.turnCount = 0;
     RatKing.locationPublished = false;
+    RatKing.resetHome();
     TestRobotController belowReserve = dirtController();
     belowReserve.setRawCheese(0);
     belowReserve.setGlobalCheese(reserve + cost - 1);
