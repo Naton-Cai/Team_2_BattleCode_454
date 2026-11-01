@@ -7,6 +7,7 @@ import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import ratplayer.navigation.Navigation;
 
 public class RatKing {
   // Single-king shared-array protocol; static fields themselves are robot-local.
@@ -94,22 +95,16 @@ public class RatKing {
     return true;
   }
 
-  /** One step on the opposite heading from {@code catLocation}, then publish if the king moved. */
+  /** One greedy step on the opposite heading from {@code catLocation}, then publish if moved. */
   static void fleeFromCat(RobotController rc, MapLocation catLocation) throws GameActionException {
-    if (!rc.isMovementReady()) {
-      return;
-    }
     Direction away = Cats.awayFrom(rc, catLocation);
     if (away == Direction.CENTER) {
       return;
     }
-    if (rc.canMove(away)) {
-      rc.move(away);
+    MapLocation origin = rc.getLocation();
+    Navigation.stepToward(rc, origin.add(away), Config.PathingStrategy.GREEDY);
+    if (!rc.getLocation().equals(origin)) {
       updateLoc(rc);
-      return;
-    }
-    if (rc.canTurn(away)) {
-      rc.turn(away);
     }
   }
 

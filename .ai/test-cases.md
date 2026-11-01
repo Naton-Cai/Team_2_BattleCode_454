@@ -138,6 +138,7 @@ These tests check which calls happen. They do not show what the engine allows.
 | `lowHealthWithoutCatStillDigs` | Health at `KING_CAT_FLEE_HEALTH`, no nearby robots, dig legal. | One dig, no `placeDirt`. |
 | `biteThenBlockAndFleeIgnoresHealthThreshold` | `KING_CAT_RESPONSE_STRATEGY = BITE_THEN_BLOCK_AND_FLEE`, health `KING_CAT_FLEE_HEALTH + 1`, cat at (10,16), spawn and dig would be legal. | One `placeDirt` at (10,12), no spawn, no dig, one `move:SOUTH`. |
 | `noneStrategyKeepsDigAndWander` | `KING_CAT_RESPONSE_STRATEGY = NONE`, health at `KING_CAT_FLEE_HEALTH`, cat visible, dig legal. | One dig, no dirt, wander forward. |
+| `blockedOppositeHeadingSidestepsAndStillPlacesDirt` | Health at `KING_CAT_FLEE_HEALTH` (600), cat at (10,16), south refused, other directions open, spawn and dig would be legal. | One `placeDirt` at (10,12), no spawn, no dig, one `move:SOUTHEAST`, no `move:SOUTH`. |
 | `placeDirtFailureContainedAtTurnBoundary` | Health at `KING_CAT_FLEE_HEALTH`, cat visible, `placeDirt` throws on the first turn and is cleared before the second. | First turn returns from `playTurn` with one dirt attempt and no flee. Second turn places dirt once more. |
 
 ### Engine tests

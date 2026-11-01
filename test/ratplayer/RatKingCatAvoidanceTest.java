@@ -160,6 +160,34 @@ public class RatKingCatAvoidanceTest {
   }
 
   /**
+   * A blocked opposite heading still spends the action on the spawn-ring dirt block and takes the
+   * first greedy sidestep. Spawn and dig stay skipped.
+   *
+   * <p>Arrange: health at {@link Config#KING_CAT_FLEE_HEALTH}, cat at (10,16), south refused, other
+   * directions open, spawn and dig would otherwise be legal. Act: one {@code playTurn}. Assert: one
+   * dirt at (10,12), no spawn, no dig, one southeast step, no south step.
+   */
+  @Test
+  public void blockedOppositeHeadingSidestepsAndStillPlacesDirt() {
+    TestRobotController controller = avoidanceController();
+    controller.setHealth(Config.KING_CAT_FLEE_HEALTH);
+    controller.setNearbyRobots(new RobotInfo[] {catAt(DISTANT_NORTH)});
+    controller.setCanPlaceDirt(true);
+    controller.setCanBuildRat(true);
+    controller.setCanRemoveDirt(true);
+    controller.setDirectionAllowed(Direction.SOUTH, false);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(1, countCalls(controller, "placeDirt:"));
+    assertEquals("placeDirt:" + NORTH_RING, firstCall(controller, "placeDirt:"));
+    assertEquals(0, countCalls(controller, "buildRat:"));
+    assertEquals(0, countCalls(controller, "removeDirt:"));
+    assertEquals("move:" + Direction.SOUTHEAST, firstCall(controller, "move:"));
+    assertEquals(1, countCalls(controller, "move:"));
+  }
+
+  /**
    * A {@code GameActionException} from {@code placeDirt} reaches {@link RobotPlayer#playTurn} and
    * is not retried that turn. Clearing the failure lets the next turn place once.
    *
