@@ -23,10 +23,12 @@ toward the nearest cat and takes one greedy step the other way. Generic digging 
 that strategy sees a cat so the action stays free for `placeDirt`. `CatResponseStrategy` is shared
 with kings; each unit has its own field. `Cats` holds shared detect/nearest-cat, footprint dirt,
 and away heading; bite vs HP gates still run in each unit's `respondToCats`.
+`Dirt.tryPlace` skips tiles whose sensed trap is not `NONE` so allied traps are not buried.
 `BABY_CAT_FLEE_HEALTH` starts at 20 (one scratch); `KING_CAT_FLEE_HEALTH` starts at 600.
 
 `BabyRatCatAvoidanceTest` covers distant-cat dirt and flee, bite-suppresses-flee, skip-dig,
-nearest-cat choice, the shared low-health policy, `NONE` opt-out, and turn-boundary recovery.
+allied-trap skip, nearest-cat choice, the shared low-health policy, `NONE` opt-out, and
+turn-boundary recovery.
 `BabyRatCatAvoidanceEngineTest.engineCatBlockTurnBytecodeHeadroom` ran in engine 1.2.6: dirt on
 (8,9), flee to (8,7), measured 2,734 bytecodes (1,000 headroom under 17,500). Match evidence is
 **not run**.

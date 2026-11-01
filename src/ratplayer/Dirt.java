@@ -3,8 +3,10 @@ package ratplayer;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
+import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.TrapType;
 
 /**
  * Shared dirt digging and placement. {@code canRemoveDirt} and {@code canPlaceDirt} encode unit
@@ -41,6 +43,13 @@ final class Dirt {
   }
 
   static boolean tryPlace(RobotController rc, MapLocation location) throws GameActionException {
+    // Visible traps are allied; enemy traps are hidden as TrapType.NONE (spec p. 199).
+    if (rc.canSenseLocation(location)) {
+      MapInfo info = rc.senseMapInfo(location);
+      if (info != null && info.getTrap() != TrapType.NONE) {
+        return false;
+      }
+    }
     if (!rc.canPlaceDirt(location)) {
       return false;
     }

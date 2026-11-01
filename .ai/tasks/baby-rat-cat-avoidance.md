@@ -29,7 +29,7 @@ On each turn, a baby rat does the following.
 
 Nearest cat is by squared distance. Equal distances keep the earlier `senseNearbyRobots` result, the same tie rule as cheese.
 
-`Dirt.tryPlace` is the shared `canPlaceDirt` / `placeDirt` pair. A `GameActionException` from `placeDirt` reaches the existing `RobotPlayer.playTurn` boundary. The unit does not retry on that turn, and the next turn runs normally.
+`Dirt.tryPlace` is the shared `canPlaceDirt` / `placeDirt` pair. It refuses a tile whose sensed `getTrap()` is not `NONE` (visible traps are allied; spec p. 199). A `GameActionException` from `placeDirt` reaches the existing `RobotPlayer.playTurn` boundary. The unit does not retry on that turn, and the next turn runs normally.
 
 ## Configs
 

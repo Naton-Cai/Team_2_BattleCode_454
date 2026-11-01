@@ -5,9 +5,11 @@ import static org.junit.Assert.assertEquals;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameActionExceptionType;
+import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotInfo;
 import battlecode.common.Team;
+import battlecode.common.TrapType;
 import battlecode.common.UnitType;
 import org.junit.After;
 import org.junit.Before;
@@ -113,6 +115,28 @@ public class BabyRatCatAvoidanceTest {
     assertEquals(1, countCalls(controller, "removeDirt:"));
     assertEquals(0, countCalls(controller, "placeDirt:"));
     assertEquals(1, controller.moveCount());
+  }
+
+  /**
+   * Allied traps are visible as {@link TrapType#CAT_TRAP} or {@link TrapType#RAT_TRAP}. Dirt must
+   * not cover that tile; flee still runs.
+   *
+   * <p>Arrange: distant north cat, dirt legal, sensed tile is an allied cat trap. Act: one {@code
+   * playTurn}. Assert: no {@code placeDirt}, one south step.
+   */
+  @Test
+  public void alliedTrapOnBlockTileSkipsDirtAndStillFlees() {
+    TestRobotController controller = avoidanceController();
+    controller.setNearbyRobots(new RobotInfo[] {catAt(DISTANT_NORTH)});
+    controller.setCanPlaceDirt(true);
+    controller.setCanSenseLocation(true);
+    controller.setMapInfo(
+        new MapInfo(FORWARD, true, null, false, false, 0, TrapType.CAT_TRAP, false));
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(0, countCalls(controller, "placeDirt:"));
+    assertEquals(1, countCalls(controller, "move:" + Direction.SOUTH));
   }
 
   /**

@@ -104,6 +104,7 @@ These tests check which calls happen. They do not show what the engine allows.
 | `adjacentCatBiteSkipsDirtAndKeepsWander` | Cat on the forward tile (5,6), bite legal, same cat also in `senseNearbyRobots`. | One bite, no `placeDirt`, wander `moveForward`, no south flee. |
 | `noCatsStillDigsWhenAllowed` | No nearby robots, forward dig legal. | One `removeDirt`, no `placeDirt`, wander still runs. |
 | `refusedDirtStillFleesAndSkipsDig` | Cat at (5,9), `canPlaceDirt` false, dig would otherwise be legal. | No dirt, no dig, one `move:SOUTH`. |
+| `alliedTrapOnBlockTileSkipsDirtAndStillFlees` | Cat at (5,9), dirt legal, sensed tile is an allied `CAT_TRAP`. | No `placeDirt`, one `move:SOUTH`. |
 | `twoCatsUseNearestForDirtAndFlee` | East cat at (9,5) listed first, closer north cat at (5,8) second. | Dirt at (5,6) and a south step. No west step. |
 | `placeDirtFailureContainedAtTurnBoundary` | Cat at (5,9), `placeDirt` throws on the first turn and is cleared before the second. | First turn returns from `playTurn` with one dirt attempt and no flee. Second turn places dirt once more. |
 | `lowHealthStrategyPlacesDirtAndFlees` | `BABY_CAT_RESPONSE_STRATEGY = BLOCK_AND_FLEE_WHEN_LOW_HEALTH`, health at `BABY_CAT_FLEE_HEALTH` (20), cat at (5,9), dig legal. | One `placeDirt` at (5,6), no dig, one `move:SOUTH`. |

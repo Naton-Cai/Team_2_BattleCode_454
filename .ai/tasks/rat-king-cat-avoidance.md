@@ -27,7 +27,7 @@ On each turn, a rat king does the following.
 
 Nearest cat is by squared distance. Equal distances keep the earlier `senseNearbyRobots` result.
 
-`Dirt.tryPlace` is the shared `canPlaceDirt` / `placeDirt` pair. A `GameActionException` from `placeDirt` reaches the existing `RobotPlayer.playTurn` boundary.
+`Dirt.tryPlace` is the shared `canPlaceDirt` / `placeDirt` pair. It refuses a tile whose sensed `getTrap()` is not `NONE` (visible traps are allied; spec p. 199). A `GameActionException` from `placeDirt` reaches the existing `RobotPlayer.playTurn` boundary.
 
 ## Configs
 
