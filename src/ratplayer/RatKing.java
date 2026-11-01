@@ -6,6 +6,8 @@ import battlecode.common.GameConstants;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.RobotInfo;
+import ratplayer.navigation.Navigation;
 
 public class RatKing {
   // Single-king shared-array protocol; static fields themselves are robot-local.
@@ -26,10 +28,83 @@ public class RatKing {
 
     Trap.writeStartofBackStabbing(rc);
     identifyCheeseMines(rc);
-    move(rc);
+    boolean fled = respondToCats(rc);
+    if (!fled) {
+      move(rc);
+    }
     pickUpCheese(rc);
-    if (!spawnBabyRat(rc)) {
+    if (!fled && !spawnBabyRat(rc)) {
       Dirt.digAroundKing(rc);
+    }
+  }
+
+  /**
+   * Applies {@link Config#KING_CAT_RESPONSE_STRATEGY}. {@code true} means this method already moved
+   * and the action should not spawn or dig.
+   */
+  static boolean respondToCats(RobotController rc) throws GameActionException {
+    switch (Config.KING_CAT_RESPONSE_STRATEGY) {
+      case BITE_THEN_BLOCK_AND_FLEE:
+        return biteThenBlockAndFlee(rc);
+      case BLOCK_AND_FLEE_WHEN_LOW_HEALTH:
+        return blockAndFleeWhenLowHealth(rc);
+      case NONE:
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Places dirt toward the nearest visible cat and steps the other way. Kings do not bite, so this
+   * policy never waits on {@code attackedThisTurn}.
+   *
+   * @return true if this policy handled movement
+   */
+  static boolean biteThenBlockAndFlee(RobotController rc) throws GameActionException {
+    RobotInfo cat = Cats.nearestVisibleCat(rc);
+    if (cat == null) {
+      return false;
+    }
+    if (!locationPublished) {
+      updateLoc(rc);
+    }
+    Cats.placeDirtTowardCat(rc, cat.getLocation());
+    fleeFromCat(rc, cat.getLocation());
+    return true;
+  }
+
+  /**
+   * At or below {@link Config#KING_CAT_FLEE_HEALTH}, places spawn-ring dirt toward the nearest cat
+   * and steps the other way.
+   *
+   * @return true if this policy handled movement
+   */
+  static boolean blockAndFleeWhenLowHealth(RobotController rc) throws GameActionException {
+    if (rc.getHealth() > Config.KING_CAT_FLEE_HEALTH) {
+      return false;
+    }
+    RobotInfo cat = Cats.nearestVisibleCat(rc);
+    if (cat == null) {
+      return false;
+    }
+    if (!locationPublished) {
+      updateLoc(rc);
+    }
+    Cats.placeDirtTowardCat(rc, cat.getLocation());
+    fleeFromCat(rc, cat.getLocation());
+    return true;
+  }
+
+  /** One greedy step on the opposite heading from {@code catLocation}, then publish if moved. */
+  static void fleeFromCat(RobotController rc, MapLocation catLocation) throws GameActionException {
+    Direction away = Cats.awayFrom(rc, catLocation);
+    if (away == Direction.CENTER) {
+      return;
+    }
+    MapLocation origin = rc.getLocation();
+    Navigation.stepToward(rc, origin.add(away), Config.PathingStrategy.GREEDY);
+    if (!rc.getLocation().equals(origin)) {
+      updateLoc(rc);
     }
   }
 

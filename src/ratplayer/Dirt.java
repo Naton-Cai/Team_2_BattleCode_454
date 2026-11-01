@@ -3,12 +3,15 @@ package ratplayer;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
+import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.TrapType;
 
 /**
- * Shared dirt digging. {@code canRemoveDirt} encodes unit range, vision, occupancy, and cooldown.
- * Baby rats still pick the three in-cone tiles; kings scan build range {@code r² <= 8} from center.
+ * Shared dirt digging and placement. {@code canRemoveDirt} and {@code canPlaceDirt} encode unit
+ * range, vision, occupancy, and cooldown. Baby rats still pick the three in-cone tiles to dig;
+ * kings scan build range {@code r² <= 8} from center.
  */
 final class Dirt {
   private Dirt() {}
@@ -36,6 +39,21 @@ final class Dirt {
       return false;
     }
     rc.removeDirt(location);
+    return true;
+  }
+
+  static boolean tryPlace(RobotController rc, MapLocation location) throws GameActionException {
+    // Visible traps are allied; enemy traps are hidden as TrapType.NONE (spec p. 199).
+    if (rc.canSenseLocation(location)) {
+      MapInfo info = rc.senseMapInfo(location);
+      if (info != null && info.getTrap() != TrapType.NONE) {
+        return false;
+      }
+    }
+    if (!rc.canPlaceDirt(location)) {
+      return false;
+    }
+    rc.placeDirt(location);
     return true;
   }
 
