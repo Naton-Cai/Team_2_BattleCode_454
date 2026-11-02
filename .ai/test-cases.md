@@ -148,3 +148,96 @@ These tests are in `ratplayer.RatKingCatAvoidanceEngineTest`. They run the real 
 | Test | Setup | Expected outcome |
 | --- | --- | --- |
 | `engineLowHealthCatBlockBytecodeHeadroom` | Compiled strategy `BLOCK_AND_FLEE_WHEN_LOW_HEALTH`. Health at `KING_CAT_FLEE_HEALTH` (600). One dirt in the team stash. Cat movement/action/turning held. | After one turn, dirt is on (8,10), the king is at (8,7), and the turn leaves at least 1,000 under the 20,000 king limit. Measured: 4,288. |
+
+## Rat King mine home and bounded navigation
+
+Status: **implemented and run** (2026-11-01). Radius 4, stall threshold 10,
+exploration retry interval 10. Engine 1.2.6. Evidence: `matches/king-home-20261101/`
+(local ignored artifacts); implementation summary in `.ai/project-state.md`.
+
+### Controller tests (`ratplayer.RatKingTest`)
+
+The controller cases reset home/discovery state, configuration, and RNG between robots.
+Canned legality answers establish decisions, not actual collision geometry.
+
+| Test | Setup and expected outcome |
+| --- | --- |
+| `looseCheeseNeverRedirectsExplorationOrHomeHolding` | Repeated eastern cheese cannot redirect northward exploration or lure the king away from an empty home mine. |
+| `simultaneousFirstMinesUseDistanceThenCoordinatesAndHomePersists` | Reverse sensing order and exercise x/y ties; first home remains despite later discoveries. |
+| `earlierSharedRecordBeatsCloserMineDiscoveredThisTurn` | A pre-existing committed record initializes home before the king publishes this turn's local discoveries. |
+| `radiusBoundaryHoldsAt16AndTravelsAt17WithDelayedTurn` | Hold at squared distance 16; turn at 17 and move on a later turn; then hold inside the area. |
+| `stallsOnTenthReadyTurnThenRetriesAfterTenExplorationTurns` | Block all steps; nine failed navigation turns retain home, tenth defers it, tenth exploration turn restores it. Cooldown turns pause both counts. |
+| `stalledHomeChoosesNearestAlternativeWithCoordinateTies` | Tenth failed turn selects the nearest other shared mine with x/y tie breaking. |
+| `turnOnlyDecisionsCountAsStallsAndSuccessfulProgressResetsThem` | Required turning increments the counter; a closer successful move resets it. |
+| `occupancyWaitsAndFreshLegalityAllowsProgressWithoutChangingHome` | Passable but occupied terrain causes a bounded wait; after clearance, fresh checks permit progress. |
+| `escapePausesStallAndRetryAndDoesNotForceNormalMovement` | Active cat handling pauses both counters even when no escape is possible. |
+| `escapeDiscoveriesAreComparedFromFinalPositionAndOldOnesAreExcluded` | Choose new escape discoveries by final position, retaining home during escape and adopting on the first unhandled cooldown turn. |
+| `equalOrFartherEscapeMineRetainsHomeAndCandidateTiesUseCoordinates` | Strict improvement is required over old home; equal new-candidate distances use x/y ordering. |
+| `postMoveEscapeDiscoveryRehomesAndBabyReadsActualPublishedCenter` | Post-move sensing reveals a mine; after adoption a loaded baby reads the relocated center rather than either mine. |
+| `previouslyPublishedButLocallyNewMineCanReplaceHomeDuringEscape` | Another king's record does not exclude a mine newly encountered locally during escape. |
+| `lowNavigationBudgetPreservesPublicationPickupAndSpawning` | Mock the optional-navigation cutoff; essential publication, pickup, and spawning continue without adding a stall. |
+| `localMinesRemainUsableWhenSharedRegistryHasNoCapacity` | A zero-capacity shared registry does not prevent local initial home selection or escape replacement. |
+| `escapeMovementImprovementResetsStallBeforeNormalNavigation` | A flee displacement improving home distance resets the old nine-turn stall before normal navigation resumes. |
+| `deferredHomeWaitsUntilEscapeEndsBeforeAdoptingDiscovery` | A paused retry retains its ten turns during escape; the closer discovery replaces home only afterward. |
+| `stalledHomeCanUseLocallyKnownAlternateOutsideFullRegistry` | A locally seen alternate remains usable for stall replacement even with no shared capacity. |
+| `invalidSettingsAreRejectedAndResetRestoresAgreedValues` | Reject negative radius and nonpositive delays; reset restores 4/10/10. |
+
+Existing publication-failure recovery, current-type dispatch, pickup, spawning, dirt,
+and cat-response checks still run. Their setups now reset king home state.
+
+### Instrumented engine tests
+
+Each fixture observes the real robot loop after yield, checks actual center publication,
+rejects exception logs, and requires full-turn use below 19,000 of 20,000 bytecodes.
+
+| Class / test | Setup and expected outcome |
+| --- | --- |
+| `RatKingEngineTest.visibleCheeseDoesNotRedirectExploration` | Visible eastern cheese leaves northward exploration unchanged. |
+| `RatKingEngineTest.mineHomeHoldsAtRadiusAndStillPicksUpCheese` | Empty mine at distance four anchors the king while footprint cheese is picked up and distant cheese remains. |
+| `RatKingEngineTest.fullFootprintDetourInitiallyMovesAwayThenReachesHomeArea` | A three-tile wall forces a farther first step; bounded wall following reaches the home radius and holds. |
+| `RatKingEngineTest.homeTravelWaitsForOffCenterRobotThenUsesFreshLegality` | A baby blocks the destination footprint corner; the king waits, then progresses when it is removed. |
+| `RatKingEngineTest.distantHomeMakesProgressWithoutAssumingUnseenTerrainClear` | A shared mine beyond vision directs legal local progress with delayed turning. |
+| `RatKingCatAvoidanceEngineTest.escapeDiscoversCloserMineAndBabyTracksRelocatedKing` | North cat forces southward escape, revealing a southern mine; after threat removal the king adopts that area and a loaded baby steps toward its actual updated center. Peak: 11,229 bytecodes. |
+
+The existing mine-publication fixture now places the initial mine in the direction of
+home travel, so its move still reveals the second mine without relying on wandering
+away from home. Existing edge, diagonal, dirt, trapped, cooldown, dense sensing,
+spawning, and cat tests retain their engine checks.
+
+
+## Rat King inward-biased initial fallback
+
+Status: **implemented and run** (2026-11-01). User-approved edge margin 3, per-heading
+inward weight 3, and preserved open inward momentum. Bias is initial-search-only;
+deferred-home retry retains its uniform fallback. Evidence and matched six-game
+comparison: `matches/king-center-bias-20261101/README.md` (local ignored artifacts).
+
+### Controller tests (`ratplayer.RatKingCenterBiasTest`)
+
+| Test | Setup and expected outcome |
+| --- | --- |
+| `openInteriorForwardKeepsMomentumEvenWhenHeadingAwayFromCenter` | Interior forward stays unchanged and consumes no random draw. |
+| `edgeBoundaryAtThreeBiasesButFourKeepsForward` | At center x=4 continue forward; at x=3 apply weighted selection and turn before moving. |
+| `weightedSlotsKeepThreeToOneOddsAndPermitOutwardMoves` | Forty varied reproducible seeds map to explicit E,E,E,W slots; both inward and outward outcomes occur, and the next open inward step makes no extra draw. |
+| `biasAppliesAtAllFourEdges` | Each edge gives the inward alternative its configured weight. |
+| `blockedInwardStepsStillAllowAnOutwardEscape` | With no inward legal step, turn and move outward rather than freezing. |
+| `evenSizedMapUsesTrueCenterAndTreatsEqualDistanceAsNeutral` | On 20x20, S from (1,10) is neutral relative to (9.5,9.5); only E receives the bonus. |
+| `retryIntervalKeepsUniformFallbackDespiteBeingNearEdge` | A deferred home disables the initial-search bias; seed 0 selects uniform W instead of weighted E. |
+| `cooldownAtEdgeDoesNotTurnMoveOrConsumeRandomness` | Movement cooldown skips exploration even when legal alternatives are canned true. |
+| `homeHoldingAtEdgeTakesPriorityOverInwardExploration` | A nearby mine becomes home and holds without a bias draw. |
+| `activeFleeAtEdgeDoesNotRunOrConsumeRandomnessForNormalExploration` | Existing cat response handles the turn; no normal move, turn, or random draw occurs. |
+| `unavailableTurnAndChangedLegalityNeverForceAForwardMove` | Refused turning waits; after turning, a newly blocked heading is rechecked before moving. |
+
+`RatKingTest.mapsSeededChoiceOntoInwardWeightedAlternativesInCompassOrder` replaces
+the old uniform initial-selection expectation with explicit NE,NE,NE,S,NW slots.
+Cat-response controls declare map dimensions so their origin is a real interior.
+
+### Engine tests (`ratplayer.RatKingEngineTest`)
+
+| Test | Setup and expected outcome |
+| --- | --- |
+| `edgeSearchTurnsInwardThenMovesWithoutRerolling` | A 3-tile-high E/W corridor leaves outward forward legal; seed 6147 selects E, turns, then advances inward with proper cooldown and publication. |
+| `denseEdgeSelectionAndOtherKingWorkLeaveBytecodeHeadroom` | Edge exploration plus dense loose cheese, pickup, publication and spawning complete below 19,000. |
+
+Existing edge/full-footprint, mine-home, post-flee home replacement, recovery, pickup,
+and lifecycle checks still run. Full suite: 321 passed, 0 failed, 2 existing skips.

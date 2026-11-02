@@ -17,6 +17,23 @@ public final class Config {
   static final int DEFAULT_BABY_CAT_FLEE_HEALTH = 20;
   static final int DEFAULT_KING_CAT_FLEE_HEALTH = 600;
 
+  // Initial-search choices, not engine rules. Home travel and fleeing use their own policies.
+  static final int KING_SEARCH_EDGE_MARGIN = 3;
+  static final int KING_SEARCH_INWARD_WEIGHT = 3;
+
+  static final int DEFAULT_KING_HOME_RADIUS = 4;
+  static final int DEFAULT_KING_STALL_TURNS = 10;
+  static final int DEFAULT_KING_RETRY_TURNS = 10;
+
+  /** Center-to-mine radius at which normal king movement holds position. */
+  static int KING_HOME_RADIUS = DEFAULT_KING_HOME_RADIUS;
+
+  /** Movement-ready navigation turns without progress before deferring a home. */
+  static int KING_STALL_TURNS = DEFAULT_KING_STALL_TURNS;
+
+  /** Movement-ready exploration turns before retrying a deferred home. */
+  static int KING_RETRY_TURNS = DEFAULT_KING_RETRY_TURNS;
+
   public enum PathingStrategy {
     GREEDY,
     DIST_BUG,
@@ -127,6 +144,9 @@ public final class Config {
    * Restore live configs to their starting values.
    */
   static void reset() {
+    KING_HOME_RADIUS = DEFAULT_KING_HOME_RADIUS;
+    KING_STALL_TURNS = DEFAULT_KING_STALL_TURNS;
+    KING_RETRY_TURNS = DEFAULT_KING_RETRY_TURNS;
     MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
     MAX_CHEESE_MINES = 18;
     MIN_CHEESE_RESERVE = DEFAULT_MIN_CHEESE_RESERVE;

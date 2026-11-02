@@ -42,17 +42,10 @@ public class RatKingEngineTest {
 
   @Test
   public void emptyMinesBeforeAndAfterMovementPersistForBabyReaders() throws Exception {
-    // South is visible only before moving north; north becomes visible only after that move.
-    MapLocation south = new MapLocation(8, 3);
-    MapLocation north = new MapLocation(8, 14);
-    start(
-        new MapLocation(8, 8),
-        Direction.NORTH,
-        null,
-        south,
-        north,
-        new MapLocation(11, 16),
-        new MapLocation(11, 5));
+    // Home north is five tiles away. Moving toward it reveals a different mine to the east.
+    MapLocation south = new MapLocation(8, 13);
+    MapLocation north = new MapLocation(13, 9);
+    start(new MapLocation(8, 8), Direction.NORTH, null, south, north);
     round();
     java.util.List<MapLocation> records = new java.util.ArrayList<>();
     for (int i = 0; i < Config.MAX_CHEESE_MINES; i++) {
@@ -114,6 +107,42 @@ public class RatKingEngineTest {
   }
 
   @Test
+  public void edgeSearchTurnsInwardThenMovesWithoutRerolling() {
+    // A three-tile-high corridor permits only E/W. West is open but approaches the edge.
+    start(new MapLocation(3, 10), Direction.WEST, null);
+    boolean[] walls = world.getGameMap().getWallArray();
+    for (int x = 0; x <= 7; x++) {
+      walls[x + 8 * 20] = true;
+      walls[x + 12 * 20] = true;
+    }
+    // Seed 6147 selects the second slot in [E,E,E,W], so turn east first.
+    round();
+    assertEquals(new MapLocation(3, 10), king.getLocation());
+    assertEquals(Direction.EAST, king.getDirection());
+    round();
+    assertEquals(new MapLocation(4, 10), king.getLocation());
+    for (int turn = 0; turn < 4; turn++) {
+      round();
+    }
+    assertEquals(new MapLocation(5, 10), king.getLocation());
+  }
+
+  @Test
+  public void denseEdgeSelectionAndOtherKingWorkLeaveBytecodeHeadroom() {
+    start(new MapLocation(3, 10), Direction.WEST, null);
+    for (int x = 0; x < 20; x++) {
+      for (int y = 0; y < 20; y++) {
+        world.addCheese(new MapLocation(x, y), 1);
+      }
+    }
+    setTeamCheese(1000); // Include pickup, publication and existing spawn work in the measurement.
+    for (int turn = 0; turn < 8; turn++) {
+      round();
+    }
+    assertTrue(world.getTeamInfo().getNumBabyRats(Team.A) > 0);
+  }
+
+  @Test
   public void occupiedFootprintTileAndTurningCooldownPreventIllegalActions() {
     start(new MapLocation(8, 8), Direction.NORTH, null);
     // Another robot blocks the far corner of the new footprint, not its center.
@@ -156,14 +185,86 @@ public class RatKingEngineTest {
   }
 
   @Test
-  public void sensedCheeseSteersThenMovesWithImmediatePublication() {
+  public void visibleCheeseDoesNotRedirectExploration() {
     start(new MapLocation(8, 8), Direction.NORTH, null);
     world.addCheese(new MapLocation(11, 8), 10);
     round();
-    assertEquals(Direction.EAST, king.getDirection());
+    assertEquals(Direction.NORTH, king.getDirection());
+    assertEquals(new MapLocation(8, 9), king.getLocation());
+    for (int turn = 0; turn < 4; turn++) {
+      round();
+    }
+    assertEquals(new MapLocation(8, 10), king.getLocation());
+    assertEquals(10, world.getCheeseAmount(new MapLocation(11, 8)));
+  }
+
+  @Test
+  public void mineHomeHoldsAtRadiusAndStillPicksUpCheese() {
+    // A legal footprint at exactly radius four needs no patrol or trip to a loose pile.
+    start(new MapLocation(8, 8), Direction.NORTH, null, new MapLocation(12, 8));
+    world.addCheese(new MapLocation(9, 8), 7);
+    world.addCheese(new MapLocation(8, 12), 20);
+    round();
+    assertEquals(0, world.getCheeseAmount(new MapLocation(9, 8)));
+    for (int turn = 0; turn < 7; turn++) {
+      round();
+      assertEquals(new MapLocation(8, 8), king.getLocation());
+    }
+    assertEquals(20, world.getCheeseAmount(new MapLocation(8, 12)));
+  }
+
+  @Test
+  public void fullFootprintDetourInitiallyMovesAwayThenReachesHomeArea() throws Exception {
+    start(new MapLocation(8, 8), Direction.NORTH, null);
+    MapLocation home = new MapLocation(8, 15);
+    CheeseMines.publish(king.getController(), home);
+    // A short wall blocks north and both forward diagonals. West is a necessary farther step.
+    boolean[] walls = world.getGameMap().getWallArray();
+    for (int x = 7; x <= 9; x++) {
+      walls[x + 10 * 20] = true;
+    }
+    setTeamCheese(150); // Funds upkeep without spawning or generic digging changing the route.
+    round();
+    assertEquals(Direction.WEST, king.getDirection());
     assertEquals(new MapLocation(8, 8), king.getLocation());
     round();
-    assertEquals(new MapLocation(9, 8), king.getLocation());
+    assertEquals(new MapLocation(7, 8), king.getLocation());
+    assertTrue(king.getLocation().distanceSquaredTo(home) > 49);
+    int turns = 2;
+    while (king.getLocation().distanceSquaredTo(home) > 16 && turns++ < 50) {
+      round();
+    }
+    assertTrue(
+        "Bounded wall following must reach this short detour's home area",
+        king.getLocation().distanceSquaredTo(home) <= 16);
+    MapLocation settled = king.getLocation();
+    for (int turn = 0; turn < 5; turn++) {
+      round();
+      assertEquals(settled, king.getLocation());
+    }
+  }
+
+  @Test
+  public void homeTravelWaitsForOffCenterRobotThenUsesFreshLegality() throws Exception {
+    start(new MapLocation(8, 8), Direction.NORTH, null);
+    CheeseMines.publish(king.getController(), new MapLocation(8, 15));
+    world.spawnRobot(200, UnitType.BABY_RAT, new MapLocation(9, 10), Direction.SOUTH, 0, Team.B);
+    round();
+    assertEquals(new MapLocation(8, 8), king.getLocation());
+    assertEquals(Direction.NORTH, king.getDirection());
+    world.destroyRobot(200);
+    round();
+    assertEquals(new MapLocation(8, 9), king.getLocation());
+  }
+
+  @Test
+  public void distantHomeMakesProgressWithoutAssumingUnseenTerrainClear() throws Exception {
+    start(new MapLocation(3, 3), Direction.NORTH, null);
+    CheeseMines.publish(king.getController(), new MapLocation(14, 14));
+    round();
+    assertEquals(Direction.NORTHEAST, king.getDirection());
+    round();
+    assertEquals(new MapLocation(4, 4), king.getLocation());
   }
 
   @Test

@@ -28,6 +28,7 @@ public class RobotPlayerTest {
   public void resetRobotLocalState() {
     RobotPlayer.turnCount = 0;
     RatKing.locationPublished = false;
+    RatKing.resetHome();
     Trap.startofBackStabbing = 0;
     RobotPlayer.rng.setSeed(6147);
     BabyRat.kingLoc = null;
