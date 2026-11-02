@@ -241,3 +241,40 @@ Cat-response controls declare map dimensions so their origin is a real interior.
 
 Existing edge/full-footprint, mine-home, post-flee home replacement, recovery, pickup,
 and lifecycle checks still run. Full suite: 321 passed, 0 failed, 2 existing skips.
+
+## Rat King backstab attack when unable to flee
+
+Status: **implemented and run** (2026-11-02). Engine bytecode evidence is **run**. Match evidence
+is **not run**.
+
+A king bites an opposing baby rat or rat king on the 16-tile attack ring (`r² <= 8`) only while
+`getBackstabbingTeam()` is set and the king cannot step this turn (movement not ready, or every
+heading illegal). Cat flee still wins when a step is legal. Rat bites spend no cheese.
+
+### Controller tests (`ratplayer.RatKingAttackTest`)
+
+These tests call `RobotPlayer.playTurn` with a `TestRobotController` set to `UnitType.RAT_KING`.
+Setup and teardown call `Config.reset()` and clear `RatKing.locationPublished`. Unless a test says
+otherwise, the king is at (10,10) facing north, movement is not ready, spawn is refused, and
+backstabbing has already started.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `attacksEnemyBabyWhenUnableToFleeDuringBackstabbing` | Enemy baby at (10,12), spawn otherwise legal. | One `attack:(10,12):0`, no spawn. |
+| `attacksEnemyBabyOnKnightRingTile` | Enemy baby at (11,12). | One bite at (11,12). |
+| `attacksEnemyKingWhenUnableToFlee` | Enemy king at (10,12). | One zero-cheese bite. |
+| `doesNotAttackEnemyRatDuringCooperation` | Cooperation, enemy baby on the ring. | No attack. |
+| `doesNotAttackWhenKingCanFlee` | Movement ready, headings legal, enemy on the ring. | No attack; wander `moveForward`. |
+| `successfulCatFleeSkipsAttack` | Health 600, cat at (10,16), movement legal, enemy on the ring. | Dirt and south flee; no attack. |
+| `blockedCatFleeAttacksEnemyRat` | Health 600, visible cat, movement not ready, dirt refused, enemy on the ring. | One bite; no flee step. |
+| `doesNotAttackAlliedRat` | Allied baby on the ring. | No attack. |
+| `doesNotAttackEnemyOutsideAttackRing` | Enemy baby at (10,13). | No attack. |
+| `spawnStillRunsWhenUnableToFleeWithoutEnemy` | No nearby robot, spawn legal. | One `buildRat`, no attack. |
+| `attackFailureContainedAtTurnBoundary` | First `attack` throws; failure cleared before the second turn. | One attempt per turn; second turn bites. |
+| `attacksWhenEveryHeadingIsBlocked` | Movement ready, every `canMove` false, enemy on the ring. | One bite; no move. |
+
+### Engine tests (`ratplayer.RatKingAttackEngineTest`)
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `engineBlockedKingBitesEnemyBabyAndLeavesBytecodeHeadroom` | King at (8,8) with movement/turning held, Team B baby at (9,10), spawn ring walled, backstab on. | Baby loses 10 HP, king stays put, no allied spawn, at least 1,000 headroom under 20,000. Measured: 6,631. |

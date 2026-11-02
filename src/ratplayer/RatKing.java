@@ -8,6 +8,8 @@ import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import battlecode.common.Team;
+import battlecode.common.UnitType;
 import ratplayer.navigation.Navigation;
 
 public class RatKing {
@@ -38,6 +40,14 @@ public class RatKing {
   private static boolean escaping;
   private static boolean handledCatsThisTurn;
 
+  /**
+   * The 16 tiles around a 3x3 king, clockwise from north. Each has Chebyshev distance 2 from the
+   * center, which is {@link GameConstants#RAT_KING_ATTACK_DISTANCE_SQUARED} (spec v1.2.6 pp.24-25).
+   */
+  private static final int[] ATTACK_DX = {0, 1, 2, 2, 2, 2, 2, 1, 0, -1, -2, -2, -2, -2, -2, -1};
+
+  private static final int[] ATTACK_DY = {2, 2, 2, 1, 0, -1, -2, -2, -2, -2, -2, -1, 0, 1, 2, 2};
+
   // handles our Rat King turn logic
   static void run(RobotController rc) throws GameActionException {
     // Every 100 turns, print out what type of robot we are.
@@ -49,6 +59,8 @@ public class RatKing {
     java.util.Arrays.fill(turnMines, 0);
     Trap.writeStartofBackStabbing(rc);
     identifyCheeseMines(rc);
+    // Snapshot before cat flee or home travel changes readiness; a successful step is preferred.
+    boolean cannotFlee = cannotFlee(rc);
     boolean fled = respondToCats(rc);
     handledCatsThisTurn = fled;
     if (fled) {
@@ -68,7 +80,11 @@ public class RatKing {
       }
     }
     pickUpCheese(rc);
-    if (!fled && !spawnBabyRat(rc)) {
+    boolean attacked = false;
+    if (cannotFlee && rc.getBackstabbingTeam() != null) {
+      attacked = attackEnemyRat(rc);
+    }
+    if (!fled && !attacked && !spawnBabyRat(rc)) {
       Dirt.digAroundKing(rc);
     }
   }
@@ -90,8 +106,8 @@ public class RatKing {
   }
 
   /**
-   * Places dirt toward the nearest visible cat and steps the other way. Kings do not bite, so this
-   * policy never waits on {@code attackedThisTurn}.
+   * Places dirt toward the nearest visible cat and steps the other way. Kings do not bite cats, so
+   * this policy never waits on a missed attack.
    *
    * @return true if this policy handled movement
    */
@@ -128,6 +144,55 @@ public class RatKing {
     Cats.placeDirtTowardCat(rc, cat.getLocation());
     fleeFromCat(rc, cat.getLocation());
     return true;
+  }
+
+  /**
+   * True when this king cannot take a step: movement is cooling down or every heading is illegal.
+   */
+  static boolean cannotFlee(RobotController rc) {
+    if (!rc.isMovementReady()) {
+      return true;
+    }
+    for (int i = 0; i < RobotPlayer.directions.length; i++) {
+      if (rc.canMove(RobotPlayer.directions[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Zero-cheese bite of the first clockwise enemy baby or king on the attack ring. Cats and allies
+   * are ignored. Rechecks {@code canAttack} immediately before the bite.
+   *
+   * @return true if a bite was issued
+   */
+  static boolean attackEnemyRat(RobotController rc) throws GameActionException {
+    MapLocation center = rc.getLocation();
+    Team us = rc.getTeam();
+    for (int i = 0; i < ATTACK_DX.length; i++) {
+      MapLocation location = center.translate(ATTACK_DX[i], ATTACK_DY[i]);
+      if (!rc.canSenseRobotAtLocation(location)) {
+        continue;
+      }
+      RobotInfo target = rc.senseRobotAtLocation(location);
+      if (target == null) {
+        continue;
+      }
+      UnitType type = target.getType();
+      if (type != UnitType.BABY_RAT && type != UnitType.RAT_KING) {
+        continue;
+      }
+      if (target.getTeam() == us) {
+        continue;
+      }
+      if (!rc.canAttack(location, 0)) {
+        continue;
+      }
+      rc.attack(location, 0);
+      return true;
+    }
+    return false;
   }
 
   /** One greedy step on the opposite heading from {@code catLocation}, then publish if moved. */
