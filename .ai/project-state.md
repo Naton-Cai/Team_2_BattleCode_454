@@ -48,6 +48,21 @@ bite-then-block policy, `NONE` opt-out, and turn-boundary recovery. `engineLowHe
 (8,10), flee to (8,7), measured 4,288 bytecodes (1,000 headroom under 20,000). Match evidence is
 **not run**.
 
+## Rat King backstab attack when unable to flee (implemented 2026-11-02)
+
+A king bites an opposing baby rat or rat king on the 16-tile Chebyshev-2 ring only while
+`getBackstabbingTeam()` is non-null and `cannotFlee` is true at the start of the turn (movement
+not ready, or every heading illegal). Cats and allies are ignored. Rat bites spend no cheese.
+`canAttack(loc, 0)` runs immediately before `attack(loc, 0)`. A successful cat flee or any legal
+step skips the bite. An issued bite skips spawn and generic dig. Cooperation never bites enemy
+rats, so this path cannot start a backstab.
+
+`RatKingAttackTest` covers blocked-move bites, knight-ring geometry, enemy kings, cooperation,
+legal-step skip, cat-flee skip, blocked-cat bite, allies, out-of-range, spawn-without-enemy,
+turn-boundary recovery, and all-headings-blocked. `RatKingAttackEngineTest` ran in engine 1.2.6:
+enemy baby at (9,10) lost 10 HP, king stayed at (8,8), measured 6,631 bytecodes (1,000 headroom
+under 20,000). Match evidence is **not run**.
+
 ## Baby Rat attacks (implemented 2026-10-18)
 
 `BabyRat.run` picks up cheese, checks sensed nearby robots for a legal bite, then moves. It always
