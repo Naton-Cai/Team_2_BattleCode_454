@@ -367,7 +367,8 @@ public class BabyRat {
     }
   }
 
-  // update our RatKing Location; Future scaffold to update kingloc to nearest king or whatever choice wanted
+  // update our RatKing Location; Future scaffold to update kingloc to nearest king or whatever
+  // choice wanted
   static void updateRatKingLoc(RobotController rc) throws GameActionException {
     int x = rc.readSharedArray(RatKing.LOCATION_X_SLOT);
     int y = rc.readSharedArray(RatKing.LOCATION_Y_SLOT);
