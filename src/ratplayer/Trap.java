@@ -4,6 +4,7 @@ import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import battlecode.common.TrapType;
 import battlecode.common.UnitType;
 
 /** Cat detection and placement logic used by baby rats. */
@@ -61,14 +62,15 @@ final class Trap {
    */
   static boolean placeTrap(RobotController rc) throws GameActionException {
 
-    if (!rc.isActionReady() || (long) rc.getGlobalCheese() - 10 < Config.MIN_CHEESE_RESERVE) {
+    boolean backstabbing = rc.getBackstabbingTeam() != null;
+    int cost = backstabbing ? TrapType.RAT_TRAP.buildCost : TrapType.CAT_TRAP.buildCost;
+    if (!rc.isActionReady() || (long) rc.getGlobalCheese() - cost < Config.MIN_CHEESE_RESERVE) {
       return false;
     }
     MapLocation ratLocation = rc.getLocation();
-    int turnsSinceBackstab = rc.getRoundNum();
     RobotInfo[] units;
 
-    if (turnsSinceBackstab - startofBackStabbing >= 100 && startofBackStabbing != 0) {
+    if (backstabbing) {
       units = detectRats(rc);
     } else {
       units = detectCats(rc);
@@ -88,7 +90,7 @@ final class Trap {
       // Only the first tile toward the cat is eligible because traps must be adjacent to the rat.
       MapLocation trapLocation = new MapLocation(ratLocation.x + stepX, ratLocation.y + stepY);
 
-      if (turnsSinceBackstab - startofBackStabbing >= 100 && startofBackStabbing != 0) {
+      if (backstabbing) {
         if (rc.canPlaceRatTrap(trapLocation)) {
           rc.placeRatTrap(trapLocation);
           return true;

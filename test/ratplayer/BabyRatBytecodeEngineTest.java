@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import battlecode.common.Direction;
+import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotInfo;
 import battlecode.common.Team;
@@ -113,6 +114,69 @@ public class BabyRatBytecodeEngineTest {
 
     assertEquals(0, world.getCheeseAmount(cheese));
     assertTrue(baby.getController().getRawCheese() >= 5);
+  }
+
+  @Test
+  public void addressedBirthSqueakSelectsImmediateRatTrapInEngine() throws GameActionException {
+    // Arrange a king behind the baby's cone and an opposing rat two tiles ahead. The real
+    // engine delivers the addressed birth squeak; no test-side static assignment reaches it.
+    start(new MapLocation(8, 8), Direction.NORTH);
+    world.spawnRobot(300, UnitType.RAT_KING, new MapLocation(8, 6), Direction.NORTH, 0, Team.A);
+    InternalRobot parent = world.getObjectInfo().getRobotByID(300);
+    parent.setMovementCooldownTurns(1000);
+    parent.setActionCooldownTurns(1000);
+    world.spawnRobot(301, UnitType.BABY_RAT, new MapLocation(8, 10), Direction.SOUTH, 0, Team.B);
+    assertTrue(parent.getController().squeak(baby.getID() | Integer.MIN_VALUE));
+
+    observeRound();
+
+    // A Gatherer never builds routine traps. A real rat trap proves the assigned Trapper
+    // executed, including the first-turn mode switch; its action cooldown is observable too.
+    assertTrue(world.hasRatTrap(new MapLocation(8, 9), Team.A));
+    assertTrue(baby.getController().getActionCooldownTurns() > 0);
+  }
+
+  @Test
+  public void carryingTrapperEngagesBeforeLegalDeliveryThenReturnsWhenEnemyDisappears()
+      throws GameActionException {
+    // Both objectives are visible: the king is northwest within legal transfer range, while
+    // an opponent northeast is outside bite/trap range. Keeping raw cheese proves the legal
+    // transfer was deliberately deferred; the northeast step proves return travel was deferred.
+    start(new MapLocation(8, 8), Direction.NORTH);
+    world.spawnRobot(300, UnitType.RAT_KING, new MapLocation(6, 10), Direction.NORTH, 0, Team.A);
+    InternalRobot parent = world.getObjectInfo().getRobotByID(300);
+    parent.setMovementCooldownTurns(1000);
+    parent.setActionCooldownTurns(1000);
+    parent.getController().writeSharedArray(RatKing.LOCATION_X_SLOT, 6);
+    parent.getController().writeSharedArray(RatKing.LOCATION_Y_SLOT, 10);
+    parent
+        .getController()
+        .writeSharedArray(RatKing.LOCATION_VALID_SLOT, RatKing.KING_LOCATION_PUBLISHED);
+    baby.addCheese(61);
+    world.spawnRobot(301, UnitType.BABY_RAT, new MapLocation(10, 10), Direction.SOUTH, 0, Team.B);
+    assertTrue(parent.getController().squeak(baby.getID() | Integer.MIN_VALUE));
+    // Initial bodies start at cooldown 10, which round start normally clears. Clear the action
+    // cooldown now solely to establish that this fixture offers a legal competing transfer.
+    baby.setActionCooldownTurns(0);
+    assertTrue(baby.getController().canTransferCheese(parent.getLocation(), 61));
+
+    observeRound();
+    assertEquals(61, baby.getController().getRawCheese());
+    assertEquals(new MapLocation(9, 9), baby.getLocation());
+
+    // Remove the threat and let real cooldowns/navigation run. No old combat location is saved.
+    world.destroyRobot(301);
+    int turns = 0;
+    while (baby.getController().getRawCheese() > 0 && turns < 10) {
+      observeRound();
+      turns++;
+    }
+    assertEquals(
+        "Cheese should be delivered once there is no visible combat target",
+        0,
+        baby.getController().getRawCheese());
+    System.out.println(
+        "Trapper engagement/delivery fixture: return turns=" + turns + "; peak=" + peakBytecodes);
   }
 
   /**

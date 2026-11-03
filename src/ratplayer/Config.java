@@ -44,6 +44,25 @@ public final class Config {
     NEAREST_VISIBLE
   }
 
+  enum BabyRole {
+    GATHERER,
+    TRAPPER,
+    SPAWNER
+  }
+
+  // Edit these counts between matches to try a new birth mix. Each cycle assigns all Gatherers,
+  // then all Trappers: 3/1 = G,G,G,T; 2/1 = G,G,T; 1/1 = G,T; 1/0 = only Gatherers.
+  // Zero disables that role. Counts must be nonnegative, with a positive sum that fits an int.
+  // Spawner remains inactive and is never part of the normal birth mix.
+  static final int DEFAULT_BABY_GATHERERS_PER_CYCLE = 3;
+  static final int DEFAULT_BABY_TRAPPERS_PER_CYCLE = 1;
+
+  static int BABY_GATHERERS_PER_CYCLE = DEFAULT_BABY_GATHERERS_PER_CYCLE;
+  static int BABY_TRAPPERS_PER_CYCLE = DEFAULT_BABY_TRAPPERS_PER_CYCLE;
+
+  /** Starting babies gather; selecting SPAWNER explicitly still uses the gathering fallback. */
+  static BabyRole BABY_STARTING_ROLE = BabyRole.GATHERER;
+
   enum BabyAction {
     ATTACK,
     DIG_DIRT,
@@ -70,7 +89,7 @@ public final class Config {
    */
   static int MIN_CHEESE_RESERVE_FOR_DIG = DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG;
 
-  /** Default baby-rat action order: attack, then dig. */
+  /** Default baby-rat action order: attack, trap for Trappers, then dig. */
   static final BabyAction[] DEFAULT_BABY_ACTION_ORDER = {
     BabyAction.ATTACK, BabyAction.TRAP, BabyAction.DIG_DIRT
   };
@@ -144,6 +163,9 @@ public final class Config {
    * Restore live configs to their starting values.
    */
   static void reset() {
+    BABY_STARTING_ROLE = BabyRole.GATHERER;
+    BABY_GATHERERS_PER_CYCLE = DEFAULT_BABY_GATHERERS_PER_CYCLE;
+    BABY_TRAPPERS_PER_CYCLE = DEFAULT_BABY_TRAPPERS_PER_CYCLE;
     KING_HOME_RADIUS = DEFAULT_KING_HOME_RADIUS;
     KING_STALL_TURNS = DEFAULT_KING_STALL_TURNS;
     KING_RETRY_TURNS = DEFAULT_KING_RETRY_TURNS;

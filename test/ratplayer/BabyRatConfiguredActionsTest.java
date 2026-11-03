@@ -19,11 +19,13 @@ public class BabyRatConfiguredActionsTest {
   @Before
   public void setUp() {
     Config.reset();
+    BabyRat.role = null;
   }
 
   @After
   public void tearDown() {
     Config.reset();
+    BabyRat.role = null;
   }
 
   @Test

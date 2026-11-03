@@ -96,6 +96,44 @@ public class BabyRatCatAvoidanceEngineTest {
         peakBytecodes > 0 && peakBytecodes < BABY_BYTECODE_LIMIT - BYTECODE_HEADROOM);
   }
 
+  @Test
+  public void cooperatingTrapperPlacesCatTrapAfterAttackMissThenFlees() throws Exception {
+    // No adjacent bite target: the default ATTACK -> TRAP order reaches the cat trap. Cat
+    // movement remains handled by the existing response even after the trap uses the action.
+    start(false, CAT_START);
+    freezeCat();
+    assignTrapper();
+    observeRound();
+    assertTrue(world.hasCatTrap(FORWARD, Team.A));
+    assertEquals(FLEE_SOUTH, baby.getLocation());
+  }
+
+  @Test
+  public void backstabbingTrapperWithNoTrapReusesForwardCatAttack() throws Exception {
+    // The adjacent enemy offers no eligible trap tile. Forward cat must remain ahead of the
+    // left enemy in the existing attack search, even for a backstabbing Trapper.
+    start(true, new MapLocation(8, 9));
+    freezeCat();
+    assignTrapper();
+    world.spawnRobot(301, UnitType.BABY_RAT, new MapLocation(7, 9), Direction.SOUTH, 0, Team.B);
+    observeRound();
+    assertFalse(world.hasRatTrap(new MapLocation(7, 9), Team.A));
+    assertTrue(world.getObjectInfo().getRobotByID(3).getHealth() < UnitType.CAT.health);
+    assertEquals(UnitType.BABY_RAT.health, world.getObjectInfo().getRobotByID(301).getHealth());
+    // A successful bite suppresses cat fleeing, leaving the role's normal greedy approach.
+    assertEquals(new MapLocation(7, 8), baby.getLocation());
+  }
+
+  private void assignTrapper() {
+    // Parent fits southwest of the baby and is behind its vision cone. Its cooldowns disable
+    // unrelated movement/spawning; the role still arrives through an actual engine squeak.
+    world.spawnRobot(300, UnitType.RAT_KING, new MapLocation(6, 6), Direction.NORTH, 0, Team.A);
+    InternalRobot parent = world.getObjectInfo().getRobotByID(300);
+    parent.setMovementCooldownTurns(1000);
+    parent.setActionCooldownTurns(1000);
+    assertTrue(parent.getController().squeak(baby.getID() | Integer.MIN_VALUE));
+  }
+
   private void freezeCat() {
     InternalRobot cat = world.getObjectInfo().getRobotByID(3);
     assertNotNull("Fixture must spawn a living cat", cat);
@@ -105,6 +143,10 @@ public class BabyRatCatAvoidanceEngineTest {
   }
 
   private void start() {
+    start(true, CAT_START);
+  }
+
+  private void start(boolean backstabbing, MapLocation catLocation) {
     String classes =
         RobotPlayer.class.getProtectionDomain().getCodeSource().getLocation().getPath();
     output = new ByteArrayOutputStream();
@@ -124,7 +166,7 @@ public class BabyRatCatAvoidanceEngineTest {
           Team.NEUTRAL,
           UnitType.CAT,
           UnitType.CAT.health,
-          CAT_START,
+          catLocation,
           Direction.SOUTH,
           0,
           0,
@@ -168,7 +210,9 @@ public class BabyRatCatAvoidanceEngineTest {
     GameMaker maker = new GameMaker(game, null, false);
     maker.makeGameHeader();
     world = new GameWorld(map, providers, maker.getMatchMaker());
-    world.backstab(Team.A);
+    if (backstabbing) {
+      world.backstab(Team.A);
+    }
     baby = world.getObjectInfo().getRobotByID(1);
   }
 

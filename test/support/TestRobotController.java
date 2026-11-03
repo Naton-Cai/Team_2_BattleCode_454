@@ -132,7 +132,8 @@ public final class TestRobotController implements RobotController {
   private boolean canAttackWithCheese;
   private GameActionException attackFailure;
   private GameActionException attackWithCheeseFailure;
-  private boolean squeakAccepted;
+  // A rat with no earlier message this turn can always squeak in the engine.
+  private boolean squeakAccepted = true;
   private Message[] squeaks = NO_MESSAGES;
   private GameActionException writeSharedArrayFailure;
   private int sharedArrayReads;
@@ -970,6 +971,10 @@ public final class TestRobotController implements RobotController {
   public void buildRat(MapLocation loc) throws GameActionException {
     record("buildRat:" + loc);
     throwIfSet(buildRatFailure);
+    // A successful engine build immediately exposes the newborn at the requested tile.
+    robotAtLocation =
+        new RobotInfo(
+            12345, team, UnitType.BABY_RAT, UnitType.BABY_RAT.health, loc, direction, 0, 0, null);
   }
 
   @Override
