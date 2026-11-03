@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import battlecode.common.Direction;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
+import battlecode.common.Message;
 import battlecode.common.RobotInfo;
 import battlecode.common.Team;
 import battlecode.common.UnitType;
@@ -22,6 +23,8 @@ import battlecode.world.control.PlayerControlProvider;
 import battlecode.world.control.TeamControlProvider;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 
@@ -409,6 +412,80 @@ public class RatKingEngineTest {
     assertNotNull(baby);
     assertEquals(UnitType.BABY_RAT, baby.getType());
     assertEquals(1, world.getTeamInfo().getNumBabyRats(Team.A));
+  }
+
+  @Test
+  public void oneKingAssignsEightRealBirthsAndNewbornsCompleteTheirTurns() throws Exception {
+    // Arrange one stationary king with enough cheese. The sandbox owns every birth and sends
+    // each role squeak; the test never writes a baby's role into its isolated static state.
+    start(new MapLocation(8, 8), Direction.NORTH, null);
+    king.setMovementCooldownTurns(1000);
+    setTeamCheese(10000);
+    int gatherers = 0;
+    int trappers = 0;
+    int babyPeak = 0;
+    long cycleLength = (long) Config.BABY_GATHERERS_PER_CYCLE + Config.BABY_TRAPPERS_PER_CYCLE;
+    List<InternalRobot> newborns = new ArrayList<>();
+    for (int turn = 0; turn < 8; turn++) {
+      round();
+      assertEquals(turn + 1, world.getTeamInfo().getNumBabyRats(Team.A));
+      world
+          .getObjectInfo()
+          .eachRobot(
+              robot -> {
+                if (robot.getTeam() == Team.A
+                    && robot.getType() == UnitType.BABY_RAT
+                    && !newborns.contains(robot)) {
+                  newborns.add(robot);
+                }
+                return true;
+              });
+      InternalRobot newborn = newborns.getLast();
+      for (InternalRobot existing : newborns) {
+        int used = existing.getBytecodesUsed();
+        // Newborns that have not been scheduled yet report zero; every completed turn is gated.
+        assertTrue("Baby turn leaves 1,000 bytecodes of headroom: " + used, used < 16500);
+        babyPeak = Math.max(babyPeak, used);
+      }
+      int addressed = 0;
+      for (Message message : newborn.getController().readSqueaks(-1)) {
+        if ((message.getBytes() & Integer.MAX_VALUE) == newborn.getID()) {
+          assertEquals(king.getID(), message.getSenderID());
+          assertEquals(
+              turn % cycleLength >= Config.BABY_GATHERERS_PER_CYCLE, message.getBytes() < 0);
+          addressed++;
+          if (message.getBytes() < 0) {
+            trappers++;
+          } else {
+            gatherers++;
+          }
+        }
+      }
+      assertEquals("One addressed birth squeak for " + newborn.getID(), 1, addressed);
+    }
+    // The sandbox loads compiled Config values, so this fixture follows the selected experiment.
+    long expectedGatherers =
+        (8 / cycleLength) * Config.BABY_GATHERERS_PER_CYCLE
+            + Math.min(8 % cycleLength, Config.BABY_GATHERERS_PER_CYCLE);
+    assertEquals(expectedGatherers, gatherers);
+    assertEquals(8 - expectedGatherers, trappers);
+    // Stop recruitment and let the final newborn execute its first complete turn.
+    king.setActionCooldownTurns(1000);
+    round();
+    for (InternalRobot newborn : newborns) {
+      int used = newborn.getBytecodesUsed();
+      assertTrue("Full baby turn with 1,000 headroom: " + used, used > 0 && used < 16500);
+      babyPeak = Math.max(babyPeak, used);
+    }
+    System.out.println(
+        "One-king birth fixture: "
+            + gatherers
+            + " Gatherers, "
+            + trappers
+            + " Trappers; king peak="
+            + peakBytecodes
+            + "; baby peak="
+            + babyPeak);
   }
 
   private void seedBabies(int count) {

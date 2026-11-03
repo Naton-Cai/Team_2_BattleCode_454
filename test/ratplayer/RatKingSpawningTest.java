@@ -17,6 +17,7 @@ import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import battlecode.common.Team;
 import battlecode.common.TrapType;
 import battlecode.common.UnitType;
 import org.junit.After;
@@ -30,7 +31,7 @@ public class RatKingSpawningTest {
   private final MapLocation candidate = new MapLocation(10, 12);
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     Config.reset();
     rc = mock(RobotController.class);
     when(rc.isActionReady()).thenReturn(true);
@@ -38,9 +39,24 @@ public class RatKingSpawningTest {
     when(rc.getCurrentRatCost()).thenReturn(40);
     when(rc.getLocation()).thenReturn(new MapLocation(10, 10));
     when(rc.canBuildRat(candidate)).thenReturn(true);
+    when(rc.senseRobotAtLocation(any()))
+        .thenAnswer(
+            invocation ->
+                new RobotInfo(
+                    12345,
+                    Team.A,
+                    UnitType.BABY_RAT,
+                    100,
+                    invocation.getArgument(0),
+                    battlecode.common.Direction.NORTH,
+                    0,
+                    0,
+                    null));
+    when(rc.squeak(org.mockito.ArgumentMatchers.anyInt())).thenReturn(true);
     // playTurn runs cat sensing before spawn; Mockito's default nearby-robot array is null.
     when(rc.senseNearbyRobots()).thenReturn(new RobotInfo[0]);
     RatKing.locationPublished = false;
+    RatKing.birthSequence = 0;
     RatKing.resetHome();
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
@@ -61,6 +77,11 @@ public class RatKingSpawningTest {
       InOrder order = inOrder(rc);
       order.verify(rc).canBuildRat(candidate);
       order.verify(rc).buildRat(candidate);
+      // Newborn sensing and its addressed role squeak follow the legal build.
+      order.verify(rc).senseRobotAtLocation(candidate);
+      order
+          .verify(rc)
+          .squeak(Config.BABY_GATHERERS_PER_CYCLE == 0 ? 12345 | Integer.MIN_VALUE : 12345);
       order.verifyNoMoreInteractions();
       verify(rc, times(1)).buildRat(candidate);
     }
@@ -137,6 +158,10 @@ public class RatKingSpawningTest {
         order.verify(rc).canBuildRat(clockwise[i]);
       }
       order.verify(rc).buildRat(clockwise[opening]);
+      order.verify(rc).senseRobotAtLocation(clockwise[opening]);
+      order
+          .verify(rc)
+          .squeak(Config.BABY_GATHERERS_PER_CYCLE == 0 ? 12345 | Integer.MIN_VALUE : 12345);
       order.verifyNoMoreInteractions();
       verify(rc, times(1)).buildRat(any());
     }

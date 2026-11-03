@@ -18,6 +18,7 @@ public class BabyRatTrapTest {
   @After
   public void resetBackstabbingState() {
     Trap.startofBackStabbing = 0;
+    BabyRat.role = null;
     Config.reset();
   }
 
@@ -98,26 +99,31 @@ public class BabyRatTrapTest {
     assertEquals("writeSharedArray:" + Trap.BACKSTABSLOT + ":24", controller.calls().get(0));
   }
 
-  /** Baby Rat skips the configured trap action before its 100-turn gate. */
+  /** A Trapper switches to rat traps on the first observed backstabbing turn. */
   @Test
-  public void doesNotTryTrapBeforeOneHundredBackstabbingTurns() throws Exception {
+  public void triesRatTrapOnFirstBackstabbingTurn() throws Exception {
     TestRobotController controller = readyController();
+    BabyRat.role = Config.BabyRole.TRAPPER;
     Config.BABY_ACTION_ORDER = new Config.BabyAction[] {Config.BabyAction.TRAP};
     controller.setRoundNum(1);
-    controller.setSharedArrayValue(Trap.BACKSTABSLOT, 1);
-    controller.setNearbyRobotsOnTeam(new RobotInfo[] {ratAt(new MapLocation(10, 14))});
+    controller.setCooperation(false);
+    controller.setBackstabbingTeam(Team.B);
+    controller.setNearbyRobotsOnTeam(new RobotInfo[] {ratAt(new MapLocation(10, 12))});
     controller.setCanPlaceRatTrap(true);
-    advanceTurns(controller, 49);
+    controller.setGlobalCheese(Config.MIN_CHEESE_RESERVE + 20);
     BabyRat.run(controller);
 
-    assertEquals(50, controller.getRoundNum());
-    assertEquals(0, trapPlacementCount(controller));
+    assertEquals(1, controller.getRoundNum());
+    assertEquals(1, trapPlacementCount(controller));
+    assertEquals(true, controller.calls().contains("placeRatTrap:[10, 11]"));
   }
 
   /** After 100 rounds since backstabbing began, Baby Rat places an opponent-rat trap. */
   @Test
   public void placesRatTrapAtTwoHundredBackstabbingTurns() throws Exception {
     TestRobotController controller = readyController();
+    BabyRat.role = Config.BabyRole.TRAPPER;
+    controller.setGlobalCheese(Config.MIN_CHEESE_RESERVE + 20);
     Config.BABY_ACTION_ORDER = new Config.BabyAction[] {Config.BabyAction.TRAP};
     controller.setRoundNum(1);
     controller.setSharedArrayValue(Trap.BACKSTABSLOT, 1);
@@ -135,6 +141,7 @@ public class BabyRatTrapTest {
 
   private static TestRobotController readyController() {
     Trap.startofBackStabbing = 0;
+    BabyRat.role = null;
     TestRobotController controller = new TestRobotController();
     controller.setLocation(ORIGIN);
     controller.setRoundNum(1);

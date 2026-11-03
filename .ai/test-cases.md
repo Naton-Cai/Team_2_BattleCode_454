@@ -278,3 +278,65 @@ backstabbing has already started.
 | Test | Setup | Expected outcome |
 | --- | --- | --- |
 | `engineBlockedKingBitesEnemyBabyAndLeavesBytecodeHeadroom` | King at (8,8) with movement/turning held, Team B baby at (9,10), spawn ring walled, backstab on. | Baby loses 10 HP, king stays put, no allied spawn, at least 1,000 headroom under 20,000. Measured: 6,631. |
+
+
+## Baby Rat roles — one spawning king (2026-11-02)
+
+Status: **implemented and run**. The user's scope clarification defers multi-king infrastructure
+and formation; publication slots and the shared turn lifecycle are unchanged.
+
+| Class / test | Setup | Expected outcome |
+| --- | --- | --- |
+| `BabyRolesTest.oneKingAssignsEightBirthsWithoutOverwritingNewbornSqueaks` | Eight successful builds; nonconsecutive sensed newborn IDs. | G/G/G/T repeats twice; every recipient reads its own assignment; no shared-array writes. |
+| `BabyRolesTest.blockedAndThrowingBuildsConsumeNeitherSequenceNorSqueak` | Blocked directions, then a build exception. | Counter stays unchanged and no squeak is sent. |
+| `BabyRatRolesTest.addressedSqueakAssignsOnceEvenWhenParentIsBehindBaby` | Addressed Trapper birth squeak; later conflicting squeak and mode change. | Parent need not be visible; lifetime role remains Trapper. |
+| `BabyRatRolesTest.startingBabyIgnoresOtherRecipientsOldMessagesAndDistantSources` | Wrong ID, stale message, or source outside spawn range. | Default Gatherer role. |
+| `BabyRatRolesTest.gathererAndSpawnerSkipRoutineTraps` / `explicitlySelectedSpawnerGathersWithoutFormation` | Legal traps or king formation are offered. | Gatherer/Spawner skip routine traps; Spawner gathers and never forms a king. |
+| `BabyRatRolesTest.cooperationAttackRetainsPriorityOverCatTrap` / `backstabbingTrapWinsImmediatelyAndAttackRemainsFallback` | Attack and trap opportunities, then blocked rat placement. | Cooperation attacks first; backstabbing traps immediately, with unchanged attack fallback. |
+| `BabyRatRolesTest.ratTrapReserveUsesActualTwentyCheeseCost` | Reserve + 19 vs reserve + 20. | Rat trap is refused below equality and succeeds at equality. |
+| `BabyRatRolesTest.trapperApproachesVisibleThreatWhileGathererAndSpawnerPursueCheese` / `trapperCarryingFortyOneKeepsVisibleThreatAheadOfReturn` | Cheese and threat in different directions; carry 40 vs 41. | Roles choose their intended objectives; a carrying Trapper engages a visible target and returns once it leaves sight. |
+| `BabyRatRolesTest.kingLookupPrefersNearestSensedAllyWithDeterministicTies` / `kingLookupRejectsVisiblyDisprovedPublicationAndEmptyState` | Existing publication, sensed allies/enemy, equal distances, empty/disproved center. | Nearest known ally by distance/x/y; no target for empty/disproved state. No unseen-king claim. |
+| `RatKingEngineTest.oneKingAssignsEightRealBirthsAndNewbornsCompleteTheirTurns` | Real sandbox king at (8,8); eight births and final newborn turn. | Six Gatherer and two Trapper squeaks, normal turns, peaks 7,144 king / 3,211 baby. |
+| `BabyRatBytecodeEngineTest.addressedBirthSqueakSelectsImmediateRatTrapInEngine` | Real addressed birth squeak; opposing rat two tiles ahead. | First backstab turn places rat trap; 2,710 full-turn bytecodes. |
+| `BabyRatCatAvoidanceEngineTest.cooperatingTrapperPlacesCatTrapAfterAttackMissThenFlees` | Visible distant cat; no bite target. | Cat trap then existing flee response; 2,994 bytecodes. |
+| `BabyRatCatAvoidanceEngineTest.backstabbingTrapperWithNoTrapReusesForwardCatAttack` | Forward cat and left enemy rat; no eligible trap. | Forward cat is bitten, enemy untouched; normal role movement; 2,935 bytecodes. |
+
+Existing spawning, pickup/threshold, configured ordering, cat-response, king geometry,
+current-type dispatch and recovery tests remain in the full regression suite.
+
+
+### Configurable birth mix follow-up (2026-11-02)
+
+Implemented and run in `BabyRolesTest`:
+
+| Test | Setup and expected outcome |
+| --- | --- |
+| `configurableCountsRepeatTwoToOneAndOneToOneMixes` | Explicit 2/1 and 1/1 counts produce GGTGGT and GTGTGT. |
+| `zeroCountDisablesEitherRoleAndLargerCountsKeepTheirGrouping` | 1/0 produces only Gatherers, 0/2 only Trappers, and 2/3 repeats GGTTT. |
+| `blockedBirthAtRoleBoundaryDoesNotConsumeNextTrapper` | After two Gatherers in a 2/1 cycle, a blocked build preserves the next Trapper assignment. |
+| `invalidMixesAreRejectedBeforeBuildingOrSqueaking` | Negative, all-zero, or overflowing counts throw before any birth or squeak. |
+| `largestValidCycleWrapsWithoutOverflow` | A cycle totaling Integer.MAX_VALUE assigns the last Trapper, wraps to zero, then assigns a Gatherer. |
+| `resetRestoresConfiguredExperimentDefaults` | Runtime overrides reset to the two defaults defined in Config. |
+
+The original 3:1 unit scenario is explicitly configured, while the real-engine eight-birth fixture
+now follows the compiled experiment counts. With unchanged 3:1 defaults, observed peaks were
+7,173 king / 3,215 baby bytecodes. Non-default mixes were unit-tested, not separately compiled
+into the engine during this follow-up.
+
+
+### Trapper engagement before delivery (2026-11-02 follow-up)
+
+Implemented and run. A target uses the existing Trapper selection: a visible cat during cooperation,
+or a visible opposing baby/king after backstabbing. Visibility/eligibility does not prove a clear
+route. Cat-response movement retains priority. Both transfer and normal return movement defer to
+that target, even above 40 cheese. After losing the target, the ordinary strict `> 40` return policy
+resumes. No old combat waypoint is retained after delivery; fresh targets or exploration apply.
+
+| Class / test | Expected outcome |
+| --- | --- |
+| `BabyRatRolesTest.trapperCarryingFortyOneKeepsVisibleThreatAheadOfReturn` | At 40 and 41 cheese, approach the target; once it leaves sight, return to king. |
+| `BabyRatRolesTest.trapperDefersLegalTransferUntilTargetLeavesSightThenSeeksFreshTarget` | Defer an otherwise legal 41-cheese transfer; deliver after target loss; use a new target after delivery. |
+| `BabyRatRolesTest.gathererStillTransfersWithVisibleEnemyAndCooperatingTrapperIgnoresOpponentRats` | Gatherer delivery is unchanged; cooperation-mode opponents do not suppress Trapper delivery. |
+| `BabyRatRolesTest.visibleCooperativeCatDefersTrapperDeliveryButFleeingStillWins` | Visible cat postpones delivery; preserved cat response flees instead of pursuing. |
+| `BabyRatRolesTest.trapperWithoutTargetKeepsStrictFortyCheeseThreshold` | No target: 40 does not deliver, 41 does. |
+| `BabyRatBytecodeEngineTest.carryingTrapperEngagesBeforeLegalDeliveryThenReturnsWhenEnemyDisappears` | Real Trapper keeps 61 cheese despite legal transfer and moves toward an opponent; after removal, delivers within three more rounds. Peak full-turn bytecodes: 3,091. |

@@ -19,6 +19,8 @@ public class RatKing {
   static final int LOCATION_VALID_SLOT = 2;
   static final int KING_LOCATION_PUBLISHED = 1;
   static boolean locationPublished;
+  // One spawning king for this feature; advance only after a successful birth.
+  static int birthSequence;
   private static final Direction[] openDirections = new Direction[8];
   private static final int[] openWeights = new int[8];
   private static MapLocation currentLocation;
@@ -530,6 +532,14 @@ public class RatKing {
 
   // Spawns a baby rat within the configured population and reserve limits.
   static boolean spawnBabyRat(RobotController rc) throws GameActionException {
+    long cycleLength = (long) Config.BABY_GATHERERS_PER_CYCLE + Config.BABY_TRAPPERS_PER_CYCLE;
+    if (Config.BABY_GATHERERS_PER_CYCLE < 0
+        || Config.BABY_TRAPPERS_PER_CYCLE < 0
+        || cycleLength == 0
+        || cycleLength > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          "Baby role counts must be nonnegative with a positive sum that fits an int");
+    }
     if (Config.MAX_BABY_RATS < 0
         || Config.MAX_BABY_RATS % GameConstants.NUM_ROBOTS_FOR_COST_INCREASE != 0
         || Config.MIN_CHEESE_RESERVE < 0) {
@@ -555,6 +565,16 @@ public class RatKing {
       MapLocation ratSpawnLocation = center.translate(2 * direction.dx, 2 * direction.dy);
       if (rc.canBuildRat(ratSpawnLocation)) {
         rc.buildRat(ratSpawnLocation);
+        RobotInfo newborn = rc.senseRobotAtLocation(ratSpawnLocation);
+        // All 31 positive ID bits are the address; the sign bit means Trapper.
+        int assignment = newborn.getID();
+        if (birthSequence % cycleLength >= Config.BABY_GATHERERS_PER_CYCLE) {
+          assignment |= Integer.MIN_VALUE;
+        }
+        birthSequence = (int) ((birthSequence + 1) % cycleLength);
+        if (!rc.squeak(assignment)) {
+          throw new IllegalStateException("King birth squeak was already consumed");
+        }
         return true;
       }
     }

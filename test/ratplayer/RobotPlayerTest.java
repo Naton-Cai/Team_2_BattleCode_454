@@ -32,6 +32,8 @@ public class RobotPlayerTest {
     Trap.startofBackStabbing = 0;
     RobotPlayer.rng.setSeed(6147);
     BabyRat.kingLoc = null;
+    BabyRat.role = null;
+    RatKing.birthSequence = 0;
     BabyRat.cheeseTile = null;
     BabyRat.pickedUpCheese = false;
     BabyRat.kingChecked = false;

@@ -40,9 +40,11 @@ public class RatKingTest {
     RobotPlayer.rng.setSeed(6147);
     RatKing.locationPublished = false;
     RatKing.resetHome();
+    RatKing.birthSequence = 0;
     Trap.startofBackStabbing = 0;
     rc = new TestRobotController();
     rc.setUnitType(UnitType.RAT_KING);
+    rc.setSqueakAccepted(true);
     rc.setLocation(new MapLocation(10, 10));
     rc.setMapWidth(60);
     rc.setMapHeight(60);
@@ -199,6 +201,7 @@ public class RatKingTest {
   public void restoreConfig() {
     Config.reset();
     RatKing.resetHome();
+    RatKing.birthSequence = 0;
   }
 
   @Test
