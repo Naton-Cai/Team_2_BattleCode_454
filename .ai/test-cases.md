@@ -278,3 +278,35 @@ backstabbing has already started.
 | Test | Setup | Expected outcome |
 | --- | --- | --- |
 | `engineBlockedKingBitesEnemyBabyAndLeavesBytecodeHeadroom` | King at (8,8) with movement/turning held, Team B baby at (9,10), spawn ring walled, backstab on. | Baby loses 10 HP, king stays put, no allied spawn, at least 1,000 headroom under 20,000. Measured: 6,631. |
+
+## Rat King last-resort bite of an adjacent cat
+
+Status: **implemented and run** (2026-11-09). Engine bytecode evidence is **run**. Match evidence is
+**not run**.
+
+Requirements are in `.ai/tasks/rat-king-adjacent-cat-attack.md`. A king bites a cat on the attack
+ring (`r² <= 8`) only when it cannot step and the spawn-ring tile toward that cat accepts neither
+dirt nor a cat trap. The bite spends no cheese and runs in cooperation. A legal step, placeable
+dirt, or a placeable cat trap skips it. Enemy-rat bites still take the action first.
+
+### Controller tests (`ratplayer.RatKingAttackTest`)
+
+Same fixture as the backstab-attack tests, except the cat cases use cooperation, health at
+`KING_CAT_FLEE_HEALTH`, dirt refused, and cat trap refused unless a test says otherwise.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `attacksAdjacentCatWhenStuckAndCannotBlock` | Cooperation, movement not ready, cat at (10,12), spawn otherwise legal. | One `attack:(10,12):0`, no spawn, no cat trap. |
+| `attacksAdjacentCatOnKnightRingTile` | Cat at (11,12). | One bite at (11,12). |
+| `doesNotAttackDistantCatWhenStuck` | Cat at (10,16). | No attack. |
+| `doesNotAttackAdjacentCatWhenKingCanStep` | Movement ready, cat at (10,12). | A step, no attack. |
+| `doesNotAttackAdjacentCatWhenDirtCanBePlaced` | Stuck, `canPlaceDirt` true. | One `placeDirt`, no attack. |
+| `doesNotAttackAdjacentCatWhenCatTrapCanBePlaced` | Stuck, `canPlaceCatTrap` true. | No attack and no `placeCatTrap`. |
+| `adjacentCatAttackFailureContainedAtTurnBoundary` | First cat bite throws; failure cleared before the second turn. | One attempt per turn; second turn bites. |
+
+### Engine tests (`ratplayer.RatKingAttackEngineTest`)
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `engineStuckKingBitesAdjacentCatAndLeavesBytecodeHeadroom` | King at (8,8) with movement held, cat 2x2 anchored at (9,10), backstab on. | Cat loses 10 HP, king stays put, at least 1,000 headroom under 20,000. Measured: 9,725. |
+

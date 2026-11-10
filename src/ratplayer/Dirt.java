@@ -42,15 +42,22 @@ final class Dirt {
     return true;
   }
 
-  static boolean tryPlace(RobotController rc, MapLocation location) throws GameActionException {
-    // Visible traps are allied; enemy traps are hidden as TrapType.NONE (spec p. 199).
+  /**
+   * Whether {@link #tryPlace} would place on {@code location}. Does not place. Visible traps are
+   * allied; enemy traps are hidden as {@link TrapType#NONE} (spec p. 199).
+   */
+  static boolean canPlace(RobotController rc, MapLocation location) throws GameActionException {
     if (rc.canSenseLocation(location)) {
       MapInfo info = rc.senseMapInfo(location);
       if (info != null && info.getTrap() != TrapType.NONE) {
         return false;
       }
     }
-    if (!rc.canPlaceDirt(location)) {
+    return rc.canPlaceDirt(location);
+  }
+
+  static boolean tryPlace(RobotController rc, MapLocation location) throws GameActionException {
+    if (!canPlace(rc, location)) {
       return false;
     }
     rc.placeDirt(location);

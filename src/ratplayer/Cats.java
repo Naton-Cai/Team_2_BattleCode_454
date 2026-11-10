@@ -56,14 +56,26 @@ final class Cats {
    */
   static void placeDirtTowardCat(RobotController rc, MapLocation catLocation)
       throws GameActionException {
-    MapLocation origin = rc.getLocation();
-    int stepX = Integer.compare(catLocation.x - origin.x, 0);
-    int stepY = Integer.compare(catLocation.y - origin.y, 0);
-    if (stepX == 0 && stepY == 0) {
+    MapLocation tile = blockingTile(rc, catLocation);
+    if (tile == null) {
       return;
     }
+    Dirt.tryPlace(rc, tile);
+  }
+
+  /**
+   * First tile outside this unit's footprint on the Chebyshev step toward {@code target}. Kings use
+   * the spawn-ring tile (two steps from center).
+   */
+  static MapLocation blockingTile(RobotController rc, MapLocation target) {
+    MapLocation origin = rc.getLocation();
+    int stepX = Integer.compare(target.x - origin.x, 0);
+    int stepY = Integer.compare(target.y - origin.y, 0);
+    if (stepX == 0 && stepY == 0) {
+      return null;
+    }
     int step = 1 + (rc.getType().size - 1) / 2;
-    Dirt.tryPlace(rc, new MapLocation(origin.x + step * stepX, origin.y + step * stepY));
+    return new MapLocation(origin.x + step * stepX, origin.y + step * stepY);
   }
 
   /** Opposite heading from {@code catLocation}, or {@link Direction#CENTER} if none. */

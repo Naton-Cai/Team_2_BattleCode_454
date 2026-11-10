@@ -129,8 +129,8 @@ public final class Config {
 
   /**
    * A king using {@link CatResponseStrategy#BLOCK_AND_FLEE_WHEN_LOW_HEALTH} with health at or below
-   * this value, and a visible cat, blocks and flees. Starting value is full king HP because kings
-   * do not attack.
+   * this value, and a visible cat, blocks and flees. Starting value is full king HP so a visible
+   * cat always tries dirt and flee before a last-resort bite.
    */
   static int KING_CAT_FLEE_HEALTH = DEFAULT_KING_CAT_FLEE_HEALTH;
 
