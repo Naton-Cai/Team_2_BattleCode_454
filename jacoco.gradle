@@ -12,15 +12,7 @@ jacoco {
   toolVersion = '0.8.12'
 }
 
-def coverageClasses = fileTree(dir: "$buildDir/classes", includes: ["**/*.class"])
-def verificationCoverageClasses =
-    fileTree(
-        dir: "$buildDir/classes",
-        includes: ["**/*.class"],
-        excludes: [
-          "**/ratplayer_sprint1/**/*.class",
-          "**/ratplayer_sprint1_always_attacks/**/*.class"
-        ])
+def coverageClasses = fileTree(dir: "$buildDir/classes", includes: ["ratplayer/**/*.class"])
 
 jacocoTestReport {
   dependsOn test
@@ -35,7 +27,7 @@ jacocoTestReport {
 jacocoTestCoverageVerification {
   dependsOn jacocoTestReport
   sourceDirectories.setFrom(files("src"))
-  classDirectories.setFrom(verificationCoverageClasses)
+  classDirectories.setFrom(coverageClasses)
   violationRules {
     rule {
       limit {
