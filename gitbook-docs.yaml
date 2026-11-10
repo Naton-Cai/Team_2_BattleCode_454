@@ -1,0 +1,12 @@
+﻿$schema: https://api.gitbook.com/gitbook-docs.yaml
+version: 1
+site:
+  title: Battlecode 2026 Scaffold - Java
+  structure:
+    - type: space
+      key: battlecode-docs
+      title: Battlecode 2026 Documentation
+      path: docs
+      default: true
+      content:
+        directory: ./
