@@ -2,6 +2,8 @@
 
 When a rat king's health is at or below a configurable threshold and a cat is visible, the king places blocking dirt and walks the other way. Baby-rat cat policy is unchanged. Kings are not at pounce-kill risk: a cat cannot land on a king (spec p. 15) and kills kings by scratching (20 HP).
 
+A later change (`.ai/tasks/rat-king-adjacent-cat-attack.md`) adds a last-resort bite when the king cannot step, place that dirt, or place a cat trap. The dirt-and-flee policy in this document is unchanged.
+
 ## Engine rules
 
 Rules come from the supplied `specs.md`, with amendments through engine v1.2.6. Page numbers are original PDF pages.

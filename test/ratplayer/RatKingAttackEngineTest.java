@@ -16,11 +16,13 @@ import battlecode.server.GameMaker;
 import battlecode.world.GameWorld;
 import battlecode.world.InternalRobot;
 import battlecode.world.LiveMap;
+import battlecode.world.MapSymmetry;
 import battlecode.world.control.NullControlProvider;
 import battlecode.world.control.PlayerControlProvider;
 import battlecode.world.control.TeamControlProvider;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import org.junit.After;
 import org.junit.Test;
 
@@ -78,6 +80,101 @@ public class RatKingAttackEngineTest {
             + " headroom, got "
             + peakBytecodes,
         peakBytecodes > 0 && peakBytecodes < KING_BYTECODE_LIMIT - BYTECODE_HEADROOM);
+  }
+
+  /**
+   * A movement-locked king bites a cat standing on the attack ring when that cat occupies the
+   * blocking tile, so dirt and a cat trap cannot be placed there.
+   *
+   * <p>Arrange: north-facing king at (8,8) with movement held, cat 2x2 anchored at (9,10), backstab
+   * already started. Act: one instrumented turn. Assert: the cat lost 10 HP, the king stayed put,
+   * and the turn stays under 19,000.
+   */
+  @Test
+  public void engineStuckKingBitesAdjacentCatAndLeavesBytecodeHeadroom() {
+    startAdjacentCat();
+    InternalRobot cat = world.getObjectInfo().getRobotByID(3);
+    assertNotNull(cat);
+    cat.setMovementCooldownTurns(1000);
+    cat.setActionCooldownTurns(1000);
+    cat.setTurningCooldownTurns(1000);
+    int healthBefore = cat.getHealth();
+
+    int used = observeRound();
+
+    System.out.println("engineStuckKingBitesAdjacentCat peak=" + peakBytecodes + " used=" + used);
+    System.out.flush();
+    assertEquals(KING_START, king.getLocation());
+    assertEquals(healthBefore - 10, cat.getHealth());
+    assertTrue(
+        "Expected a king cat-bite peak with at least "
+            + BYTECODE_HEADROOM
+            + " headroom, got "
+            + peakBytecodes,
+        peakBytecodes > 0 && peakBytecodes < KING_BYTECODE_LIMIT - BYTECODE_HEADROOM);
+  }
+
+  private void startAdjacentCat() {
+    String classes =
+        RobotPlayer.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+    output = new ByteArrayOutputStream();
+    player =
+        new PlayerControlProvider(
+            Team.A, "ratplayer", CrossPlayLanguage.JAVA, null, classes, output, false);
+    TeamControlProvider providers = new TeamControlProvider();
+    providers.registerControlProvider(Team.A, player);
+    providers.registerControlProvider(Team.B, new NullControlProvider());
+    providers.registerControlProvider(Team.NEUTRAL, new NullControlProvider());
+    MapLocation catStart = new MapLocation(9, 10);
+    RobotInfo[] bodies = {
+      new RobotInfo(1, Team.A, UnitType.RAT_KING, 600, KING_START, Direction.NORTH, 0, 0, null),
+      new RobotInfo(
+          2, Team.B, UnitType.RAT_KING, 500, new MapLocation(17, 17), Direction.SOUTH, 0, 0, null),
+      new RobotInfo(
+          3, Team.NEUTRAL, UnitType.CAT, UnitType.CAT.health, catStart, Direction.SOUTH, 0, 0, null)
+    };
+    int tiles = 20 * 20;
+    ArrayList<Integer> catIds = new ArrayList<>();
+    catIds.add(3);
+    ArrayList<int[]> catWaypoints = new ArrayList<>();
+    catWaypoints.add(new int[] {catStart.x + catStart.y * 20});
+    LiveMap map =
+        new LiveMap(
+            20,
+            20,
+            new MapLocation(0, 0),
+            6147,
+            100,
+            "RatKingAdjacentCatFixture",
+            MapSymmetry.ROTATIONAL,
+            new boolean[tiles],
+            new boolean[tiles],
+            new boolean[tiles],
+            new int[tiles],
+            catIds,
+            catWaypoints,
+            bodies);
+    GameInfo game =
+        new GameInfo(
+            "ratplayer",
+            CrossPlayLanguage.JAVA,
+            "ratplayer",
+            classes,
+            "stationary",
+            CrossPlayLanguage.JAVA,
+            "stationary",
+            null,
+            new String[] {map.getMapName()},
+            null,
+            false);
+    GameMaker maker = new GameMaker(game, null, false);
+    maker.makeGameHeader();
+    world = new GameWorld(map, providers, maker.getMatchMaker());
+    world.backstab(Team.A);
+    king = world.getObjectInfo().getRobotByID(1);
+    king.setMovementCooldownTurns(1000);
+    king.setTurningCooldownTurns(1000);
+    RatKing.locationPublished = false;
   }
 
   private void start() {

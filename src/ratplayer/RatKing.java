@@ -84,6 +84,9 @@ public class RatKing {
     if (cannotFlee && rc.getBackstabbingTeam() != null) {
       attacked = attackEnemyRat(rc);
     }
+    if (!attacked && cannotFlee) {
+      attacked = attackAdjacentCat(rc);
+    }
     if (!fled && !attacked && !spawnBabyRat(rc)) {
       Dirt.digAroundKing(rc);
     }
@@ -106,8 +109,9 @@ public class RatKing {
   }
 
   /**
-   * Places dirt toward the nearest visible cat and steps the other way. Kings do not bite cats, so
-   * this policy never waits on a missed attack.
+   * Places dirt toward the nearest visible cat and steps the other way. This policy does not bite.
+   * A later last-resort bite runs only when the king cannot step, place blocking dirt, or place a
+   * cat trap.
    *
    * @return true if this policy handled movement
    */
@@ -162,8 +166,9 @@ public class RatKing {
   }
 
   /**
-   * Zero-cheese bite of the first clockwise enemy baby or king on the attack ring. Cats and allies
-   * are ignored. Rechecks {@code canAttack} immediately before the bite.
+   * Zero-cheese bite of the first clockwise enemy baby or king on the attack ring. Cats are left for
+   * {@link #attackAdjacentCat}. Allies are ignored. Rechecks {@code canAttack} immediately before
+   * the bite.
    *
    * @return true if a bite was issued
    */
@@ -193,6 +198,49 @@ public class RatKing {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Zero-cheese bite of the first clockwise cat on the attack ring. Runs only when no step is legal
+   * and the spawn-ring tile toward that cat can take neither dirt nor a cat trap. A cat bite does
+   * not end cooperation (spec v1.2.6 p. 23). Rechecks {@code canAttack} immediately before the bite.
+   *
+   * @return true if a bite was issued
+   */
+  static boolean attackAdjacentCat(RobotController rc) throws GameActionException {
+    MapLocation center = rc.getLocation();
+    for (int i = 0; i < ATTACK_DX.length; i++) {
+      MapLocation location = center.translate(ATTACK_DX[i], ATTACK_DY[i]);
+      if (!rc.canSenseRobotAtLocation(location)) {
+        continue;
+      }
+      RobotInfo target = rc.senseRobotAtLocation(location);
+      if (target == null || target.getType() != UnitType.CAT) {
+        continue;
+      }
+      if (canBlockCat(rc, target.getLocation())) {
+        continue;
+      }
+      if (!rc.canAttack(location, 0)) {
+        continue;
+      }
+      rc.attack(location, 0);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * True when the spawn-ring tile toward {@code catLocation} can take blocking dirt or a cat trap.
+   * Either alternative suppresses the last-resort bite. This check does not place either one.
+   */
+  private static boolean canBlockCat(RobotController rc, MapLocation catLocation)
+      throws GameActionException {
+    MapLocation tile = Cats.blockingTile(rc, catLocation);
+    if (tile == null) {
+      return false;
+    }
+    return Dirt.canPlace(rc, tile) || rc.canPlaceCatTrap(tile);
   }
 
   /** One greedy step on the opposite heading from {@code catLocation}, then publish if moved. */

@@ -63,6 +63,19 @@ turn-boundary recovery, and all-headings-blocked. `RatKingAttackEngineTest` ran 
 enemy baby at (9,10) lost 10 HP, king stayed at (8,8), measured 6,631 bytecodes (1,000 headroom
 under 20,000). Match evidence is **not run**.
 
+## Rat King last-resort bite of an adjacent cat (implemented 2026-11-09)
+
+Requirements are in `.ai/tasks/rat-king-adjacent-cat-attack.md`. A king bites a cat on the 16-tile
+attack ring only when it cannot step and the spawn-ring tile toward that cat can take neither
+blocking dirt nor a cat trap. The bite spends no cheese and does not require a backstab. An enemy
+rat bite, when one is issued, still comes first. A legal step, placeable dirt, or a placeable cat
+trap skips the bite. This change does not place the trap.
+
+`RatKingAttackTest` covers the stuck bite, the knight ring, a distant cat, a legal step, placeable
+dirt, a placeable cat trap, and turn-boundary recovery. `RatKingAttackEngineTest` ran in engine
+1.2.6: cat anchored at (9,10) lost 10 HP, king stayed at (8,8), measured 9,725 bytecodes (1,000
+headroom under 20,000). Match evidence is **not run**.
+
 ## Baby Rat attacks (implemented 2026-10-18)
 
 `BabyRat.run` picks up cheese, checks sensed nearby robots for a legal bite, then moves. It always

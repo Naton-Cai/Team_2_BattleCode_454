@@ -16,7 +16,8 @@ import org.junit.Test;
 import support.TestRobotController;
 
 /**
- * Controller checks for king bites of enemy rats after a backstab, only when the king cannot flee.
+ * Controller checks for king bites when the king cannot flee: enemy rats after a backstab, and an
+ * adjacent cat when dirt and a cat trap are also unavailable.
  *
  * <p>These tests record {@code attack}, {@code buildRat}, {@code placeDirt}, and movement calls.
  * They do not show what the engine allows. Named cases are in {@code .ai/test-cases.md}.
@@ -280,6 +281,153 @@ public class RatKingAttackTest {
 
     assertEquals("attack:" + NORTH_RING + ":0", firstCall(controller, "attack:"));
     assertNull(firstCall(controller, "move:"));
+  }
+
+  /**
+   * A stuck king bites an adjacent cat during cooperation when the blocking tile cannot take dirt
+   * or a cat trap. Cat bites do not require a backstab.
+   *
+   * <p>Arrange: cooperation, movement not ready, cat at (10,12), dirt and cat trap refused, spawn
+   * otherwise legal. Act: one {@code playTurn}. Assert: one zero-cheese bite and no spawn.
+   */
+  @Test
+  public void attacksAdjacentCatWhenStuckAndCannotBlock() {
+    TestRobotController controller = stuckCatController(NORTH_RING);
+    controller.setCanBuildRat(true);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(1, countCalls(controller, "attack:"));
+    assertEquals("attack:" + NORTH_RING + ":0", firstCall(controller, "attack:"));
+    assertEquals(0, countCalls(controller, "buildRat:"));
+    assertEquals(0, countCalls(controller, "placeCatTrap:"));
+  }
+
+  /**
+   * The knight-offset attack-ring tiles are adjacent for a 3x3 king ({@code r² <= 8}).
+   *
+   * <p>Arrange: cat at (11,12), movement not ready, dirt and cat trap refused. Act: one {@code
+   * playTurn}. Assert: one bite at (11,12).
+   */
+  @Test
+  public void attacksAdjacentCatOnKnightRingTile() {
+    TestRobotController controller = stuckCatController(KNIGHT_RING);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals("attack:" + KNIGHT_RING + ":0", firstCall(controller, "attack:"));
+  }
+
+  /**
+   * A visible cat beyond the attack ring is not adjacent, so a stuck king does not bite it.
+   *
+   * <p>Arrange: cat at (10,16), movement not ready, dirt and cat trap refused. Act: one {@code
+   * playTurn}. Assert: no attack.
+   */
+  @Test
+  public void doesNotAttackDistantCatWhenStuck() {
+    TestRobotController controller = stuckCatController(DISTANT_NORTH);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(0, countCalls(controller, "attack:"));
+  }
+
+  /**
+   * A legal step is the preferred escape. An adjacent cat is not bitten while the king can move.
+   *
+   * <p>Arrange: movement ready, headings legal, cat at (10,12), dirt and cat trap refused. Act: one
+   * {@code playTurn}. Assert: one south step and no attack.
+   */
+  @Test
+  public void doesNotAttackAdjacentCatWhenKingCanStep() {
+    TestRobotController controller = stuckCatController(NORTH_RING);
+    controller.setMovementReady(true);
+    controller.setCanMove(true);
+    controller.setForwardAllowed(true);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(0, countCalls(controller, "attack:"));
+    assertEquals(1, countCalls(controller, "move:" + Direction.SOUTH));
+  }
+
+  /**
+   * Blocking dirt is preferred to a bite. The king does not bite while the spawn-ring tile can take
+   * dirt.
+   *
+   * <p>Arrange: stuck king, cat at (10,12), {@code canPlaceDirt} true, cat trap refused. Act: one
+   * {@code playTurn}. Assert: one {@code placeDirt} and no attack.
+   */
+  @Test
+  public void doesNotAttackAdjacentCatWhenDirtCanBePlaced() {
+    TestRobotController controller = stuckCatController(NORTH_RING);
+    controller.setCanPlaceDirt(true);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(1, countCalls(controller, "placeDirt:"));
+    assertEquals(0, countCalls(controller, "attack:"));
+  }
+
+  /**
+   * A legal cat trap on the blocking tile also suppresses the bite. This change does not place the
+   * trap; it only refuses the attack.
+   *
+   * <p>Arrange: stuck king, cat at (10,12), dirt refused, {@code canPlaceCatTrap} true. Act: one
+   * {@code playTurn}. Assert: no attack and no {@code placeCatTrap}.
+   */
+  @Test
+  public void doesNotAttackAdjacentCatWhenCatTrapCanBePlaced() {
+    TestRobotController controller = stuckCatController(NORTH_RING);
+    controller.setCanPlaceCatTrap(true);
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(0, countCalls(controller, "attack:"));
+    assertEquals(0, countCalls(controller, "placeCatTrap:"));
+  }
+
+  /**
+   * A {@code GameActionException} from the cat bite reaches {@link RobotPlayer#playTurn} and is not
+   * retried that turn. Clearing the failure lets the next turn bite once.
+   *
+   * <p>Arrange: stuck king, adjacent cat, first {@code attack} throws. Act: two {@code playTurn}s,
+   * with the failure cleared between them. Assert: one attack attempt per turn.
+   */
+  @Test
+  public void adjacentCatAttackFailureContainedAtTurnBoundary() {
+    TestRobotController controller = stuckCatController(NORTH_RING);
+    controller.setAttackWithCheeseFailure(
+        new GameActionException(GameActionExceptionType.CANT_DO_THAT, "test king cat attack"));
+
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(1, RobotPlayer.turnCount);
+    assertEquals(1, countCalls(controller, "attack:"));
+
+    controller.setAttackWithCheeseFailure(null);
+    RobotPlayer.playTurn(controller);
+
+    assertEquals(2, RobotPlayer.turnCount);
+    assertEquals(2, countCalls(controller, "attack:"));
+  }
+
+  /**
+   * Cooperation, movement locked, and an adjacent cat whose blocking tile accepts neither dirt nor
+   * a cat trap.
+   */
+  private static TestRobotController stuckCatController(MapLocation catLocation) {
+    TestRobotController controller = attackController();
+    controller.setCooperation(true);
+    controller.setBackstabbingTeam(null);
+    controller.setHealth(Config.KING_CAT_FLEE_HEALTH);
+    controller.setCanPlaceDirt(false);
+    controller.setCanPlaceCatTrap(false);
+    RobotInfo cat = catAt(catLocation);
+    controller.setNearbyRobots(new RobotInfo[] {cat});
+    controller.setRobotAtLocation(cat);
+    return controller;
   }
 
   private static TestRobotController attackController() {
