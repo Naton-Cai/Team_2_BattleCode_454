@@ -27,6 +27,7 @@ public class RobotPlayerTest {
   @Before
   public void resetRobotLocalState() {
     RobotPlayer.turnCount = 0;
+    RatKing.kingRegistry = new KingRegistry();
     RatKing.locationPublished = false;
     RatKing.resetHome();
     Trap.startofBackStabbing = 0;
@@ -219,20 +220,19 @@ public class RobotPlayerTest {
     // Assert: invalidate, write, validate, move, then republish the same center.
     assertEquals(
         Arrays.asList(
-            "writeSharedArray:2:0",
+            "writeSharedArray:2:513",
             "writeSharedArray:0:4",
             "writeSharedArray:1:7",
             "writeSharedArray:2:1",
             "moveForward",
-            "writeSharedArray:2:0",
+            "writeSharedArray:2:513",
             "writeSharedArray:0:4",
             "writeSharedArray:1:7",
             "writeSharedArray:2:1"),
         controller.calls());
-    assertEquals(4, controller.readSharedArray(RatKing.LOCATION_X_SLOT));
-    assertEquals(7, controller.readSharedArray(RatKing.LOCATION_Y_SLOT));
-    assertEquals(
-        RatKing.KING_LOCATION_PUBLISHED, controller.readSharedArray(RatKing.LOCATION_VALID_SLOT));
+    assertEquals(4, controller.readSharedArray(0));
+    assertEquals(7, controller.readSharedArray(1));
+    assertEquals(1, controller.readSharedArray(2));
     assertEquals(1, controller.moveCount());
     assertEquals(0, controller.turnCount());
   }
@@ -413,16 +413,16 @@ public class RobotPlayerTest {
     // Arrange: cheese above the return threshold, unpublished center, forward allowed.
     TestRobotController controller = babyRat();
     controller.setRawCheese(carryingCheese);
-    controller.setSharedArrayValue(RatKing.LOCATION_X_SLOT, 8);
-    controller.setSharedArrayValue(RatKing.LOCATION_Y_SLOT, 8);
+    controller.setSharedArrayValue(0, 8);
+    controller.setSharedArrayValue(1, 8);
     controller.setForwardAllowed(true);
 
     // Act.
     RobotPlayer.playTurn(controller);
 
-    // Assert: three king-location reads and one start-round slot read precede wander.
+    // Assert: one king stamp read and one start-round slot read precede wander.
     assertEquals(Arrays.asList("moveForward"), controller.calls());
-    assertEquals(4, controller.sharedArrayReadCount());
+    assertEquals(2, controller.sharedArrayReadCount());
     assertEquals(carryingCheese, controller.getRawCheese());
     assertEquals(0, controller.turnCount());
   }
@@ -493,9 +493,11 @@ public class RobotPlayerTest {
 
   /** Slot 2 set to the published flag makes (x, y) the king center a baby rat will trust. */
   private static void publishKing(TestRobotController controller, int x, int y) {
-    controller.setSharedArrayValue(RatKing.LOCATION_X_SLOT, x);
-    controller.setSharedArrayValue(RatKing.LOCATION_Y_SLOT, y);
-    controller.setSharedArrayValue(RatKing.LOCATION_VALID_SLOT, RatKing.KING_LOCATION_PUBLISHED);
+    controller.setMapWidth(60);
+    controller.setMapHeight(60);
+    controller.setSharedArrayValue(0, x);
+    controller.setSharedArrayValue(1, y);
+    controller.setSharedArrayValue(2, 1);
   }
 
   /** A passable tile. {@code amount} 0 is visible ground that is not a cheese pile. */

@@ -1,16 +1,14 @@
 package ratplayer;
 
 import battlecode.common.GameActionException;
-import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.UnitType;
 
 /** Team mine records, independent of visibility and robot-local initialization. */
 public final class CheeseMines {
-  // Reserve 0–8 for three x/y/valid king records; only 0–2 are currently implemented.
-  static final int FIRST_SLOT = 9;
-  static final int MAX_CAPACITY = (GameConstants.SHARED_ARRAY_SIZE - FIRST_SLOT) / 2;
+  static final int FIRST_SLOT = KingRegistry.FIRST_MINE_SLOT;
+  static final int MAX_CAPACITY = (KingRegistry.FIRST_EXTRA_KING_SLOT - FIRST_SLOT) / 2;
 
   private CheeseMines() {}
 

@@ -36,22 +36,23 @@ public class CheeseMinesTest {
     // A test or match override must not leak into the next default configuration.
     Config.MAX_CHEESE_MINES = 5;
     Config.reset();
-    assertEquals(18, Config.MAX_CHEESE_MINES);
+    assertEquals(10, Config.MAX_CHEESE_MINES);
   }
 
   @Test
-  public void defaultCapacityRetainsLargestBundledMapPopulation() throws Exception {
-    // TheHeist and cheeseguardians each contain 18 mines in engine 1.2.6.
-    assertEquals(18, Config.MAX_CHEESE_MINES);
-    for (int i = 0; i < 18; i++) {
+  public void defaultCapacityRetainsFirstTenWithoutOverwritingKing() throws Exception {
+    // A map with more than ten discoveries keeps the first ten team records.
+    rc.setSharedArrayValue(29, 777);
+    assertEquals(10, Config.MAX_CHEESE_MINES);
+    for (int i = 0; i < 10; i++) {
       CheeseMines.publish(rc, new MapLocation(i, 59));
     }
-    for (int i = 0; i < 18; i++) {
+    for (int i = 0; i < 10; i++) {
       assertEquals(new MapLocation(i, 59), CheeseMines.read(rc, i));
     }
-    // The 19th discovery cannot consume the first entry reserved for future uses.
+    // An eleventh discovery cannot overwrite the first entry for king ID 3.
     CheeseMines.publish(rc, new MapLocation(59, 59));
-    assertEquals(0, rc.readSharedArray(45));
+    assertEquals(777, rc.readSharedArray(29));
   }
 
   @Test
@@ -109,19 +110,19 @@ public class CheeseMinesTest {
     Config.MAX_CHEESE_MINES = 0;
     CheeseMines.publish(rc, new MapLocation(0, 0));
     assertEquals(0, rc.readSharedArray(10));
-    Config.MAX_CHEESE_MINES = 27;
-    for (int i = 0; i < 27; i++) {
+    Config.MAX_CHEESE_MINES = 10;
+    for (int i = 0; i < 10; i++) {
       CheeseMines.publish(rc, new MapLocation(i, 59));
     }
-    assertEquals(new MapLocation(26, 59), CheeseMines.read(rc, 26));
-    assertEquals(60, rc.readSharedArray(62));
-    assertEquals(0, rc.readSharedArray(63));
-    Config.MAX_CHEESE_MINES = 28;
+    assertEquals(new MapLocation(9, 59), CheeseMines.read(rc, 9));
+    assertEquals(60, rc.readSharedArray(28));
+    assertEquals(0, rc.readSharedArray(29));
+    Config.MAX_CHEESE_MINES = 11;
     try {
       CheeseMines.publish(rc, new MapLocation(59, 59));
       fail("Oversized allocation must fail explicitly");
     } catch (IllegalArgumentException expected) {
-      assertEquals(0, rc.readSharedArray(63));
+      assertEquals(0, rc.readSharedArray(29));
     }
   }
 }

@@ -34,6 +34,7 @@ public class RatKingAttackTest {
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
     Trap.startofBackStabbing = 0;
+    RatKing.kingRegistry = new KingRegistry();
     RatKing.locationPublished = false;
     RatKing.resetHome();
   }
@@ -42,6 +43,7 @@ public class RatKingAttackTest {
   public void tearDown() {
     Config.reset();
     Trap.startofBackStabbing = 0;
+    RatKing.kingRegistry = new KingRegistry();
     RatKing.locationPublished = false;
     RatKing.resetHome();
   }

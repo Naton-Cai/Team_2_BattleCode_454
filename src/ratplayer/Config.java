@@ -59,8 +59,8 @@ public final class Config {
   /** Living allied baby rat cap; must be nonnegative and a multiple of four. Zero stops spawning. */
   static int MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
 
-  /** Retained mine cap, 0–27. Change for the whole team between matches, not during a game. */
-  static int MAX_CHEESE_MINES = 18;
+  /** Retained mine cap, 0–10. Change for the whole team between matches, not during a game. */
+  static int MAX_CHEESE_MINES = CheeseMines.MAX_CAPACITY;
 
   /** Minimum global cheese left after paying for a spawn, before round-end upkeep. */
   static int MIN_CHEESE_RESERVE = DEFAULT_MIN_CHEESE_RESERVE;
@@ -148,7 +148,7 @@ public final class Config {
     KING_STALL_TURNS = DEFAULT_KING_STALL_TURNS;
     KING_RETRY_TURNS = DEFAULT_KING_RETRY_TURNS;
     MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
-    MAX_CHEESE_MINES = 18;
+    MAX_CHEESE_MINES = CheeseMines.MAX_CAPACITY;
     MIN_CHEESE_RESERVE = DEFAULT_MIN_CHEESE_RESERVE;
     MIN_CHEESE_RESERVE_FOR_DIG = DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG;
     BABY_ACTION_ORDER = DEFAULT_BABY_ACTION_ORDER;

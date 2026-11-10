@@ -304,13 +304,6 @@ public class BabyRat {
 
   // update our RatKing Location
   static void updateRatKingLoc(RobotController rc) throws GameActionException {
-    int x = rc.readSharedArray(RatKing.LOCATION_X_SLOT);
-    int y = rc.readSharedArray(RatKing.LOCATION_Y_SLOT);
-    int published = rc.readSharedArray(RatKing.LOCATION_VALID_SLOT);
-    if (published != RatKing.KING_LOCATION_PUBLISHED) {
-      kingLoc = null;
-      return;
-    }
-    kingLoc = new MapLocation(x, y);
+    kingLoc = KingRegistry.readPrimary(rc);
   }
 }

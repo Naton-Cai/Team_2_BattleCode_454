@@ -1,5 +1,22 @@
 # Project state
 
+### Team shared array
+
+The current `ratplayer` layout allocates 36 of the 64 slots. Both unit types can read the array.
+Only Rat Kings can write it. Each slot holds a value from 0 through 1023.
+
+| Slots | Contents |
+| --- | --- |
+| 0–2 | Rat King ID 0 |
+| 3–5 | Rat King ID 1 |
+| 6–8 | Rat King ID 2 |
+| 9–28 | 10 cheese mine records, two slots each |
+| 29–31 | Rat King ID 3 |
+| 32–34 | Rat King ID 4 |
+| 35–44 | Unallocated, 10 slots |
+| 45 | Backstab start round, with zero meaning unset |
+| 46–63 | Unallocated, 18 slots |
+
 ## Dirt collection (baby rats 2026-10-28, kings 2026-10-29)
 
 Requirements are in `.ai/tasks/baby-rat-dirt-collection.md`. Named tests are in `.ai/test-cases.md`.
@@ -149,7 +166,7 @@ The following focused tests are in `ratplayer.BabyRatCheesePickupTest`. They use
 
 ### RatKing
 
-The following tests are in `ratplayer.RatKingTest` unless another class is named. Shared slots 0 and 1 store the center coordinates; slot 2 stores validity.
+The following tests are in `ratplayer.RatKingTest` unless another class is named. Single-king tests use the first registry record in shared slots 0–2.
 
 - `ratKingRunsSpawnBehaviorWhenCheeseIsAvailable`: with movement ready, enough cheese, and a legal spawn location, the king moves once and runs the existing spawning behavior. This integration test is in `RobotPlayerTest`.
 - `publishesInitialAndMovedCentersBeforeSpawning`: publishes the initial center, moves once, then publishes the actual new center before spawning. Unreserved shared slots stay unchanged.
@@ -214,18 +231,4 @@ The following added tests are in `ratplayer.RatKingEngineTest`. They run the act
 - `engineActionCooldownThenBlockedNorthFallsBackClockwise`: action cooldown initially prevents spawning. With the king stationary at (8,8), dirt blocks north at (8,10); the next turn spawns northeast at (10,10). Removing the dirt allows a second baby at north on the following turn. This confirms diagonal spawn legality in engine 1.2.6 despite the local API comment describing a radius of two.
 - `movedKingSpawnsNorthOfActualNewCenter`: the king moves from (8,8) to (8,9), then creates a baby at (8,11), using its actual new location.
 
-#### Global shared-array layout (default `MAX_CHEESE_MINES = 18`)
-
-64 entries total; each entry holds 0–1023. Only kings write; all rats can read.
-
-| Slots | Entries | Purpose / encoding | Status |
-| --- | ---: | --- | --- |
-| 0–2 | 3 | Existing king location: x, y, valid (`1` = published) | Active single-record protocol |
-| 3–5 | 3 | Reserved for a second king location | Reserved; not implemented |
-| 6–8 | 3 | Reserved for a third king location | Reserved; not implemented |
-| 9–44 | 36 | Mines 1–18: two entries each, x then y+1 | Allocated |
-| 45 | 1 | Tracks Start of backstabbing round to track how long after the first backstab can we still place cattraps | Allocated |
-| 46–63 | 19 | Available for future uses or increased mine capacity | Free |
-
-**Budget: 3 active king entries + 6 reserved king entries + 36 mine entries + 19 free = 64.**
-A mine's second entry is zero until committed; y+1 commits its exact coordinate.
+See the [current team shared-array layout](#team-shared-array) above for slot allocations.
