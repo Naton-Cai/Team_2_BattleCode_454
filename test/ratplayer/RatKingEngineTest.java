@@ -376,7 +376,7 @@ public class RatKingEngineTest {
     round();
     assertEquals(initialBabyCount + 1, world.getTeamInfo().getNumBabyRats(Team.A));
     assertEquals(Config.MIN_CHEESE_RESERVE - 2, world.getTeamInfo().getCheese(Team.A));
-    assertNotNull(world.getRobot(new MapLocation(8, 10)));
+    assertNotNull(world.getRobot(new MapLocation(10, 10)));
   }
 
   @Test
@@ -399,13 +399,13 @@ public class RatKingEngineTest {
   }
 
   @Test
-  public void movedKingSpawnsNorthOfActualNewCenter() {
-    // A real forward move must precede placement; the old north candidate becomes king footprint.
+  public void movedKingSpawnsTowardMapCenterFromActualNewCenter() {
+    // A real forward move must precede placement; spawn uses the center-facing ring tile.
     start(new MapLocation(8, 8), Direction.NORTH, null);
     world.getTeamInfo().addCheese(Team.A, 1000);
     round();
     assertEquals(new MapLocation(8, 9), king.getLocation());
-    InternalRobot baby = world.getRobot(new MapLocation(8, 11));
+    InternalRobot baby = world.getRobot(new MapLocation(10, 11));
     assertNotNull(baby);
     assertEquals(UnitType.BABY_RAT, baby.getType());
     assertEquals(1, world.getTeamInfo().getNumBabyRats(Team.A));

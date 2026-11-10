@@ -597,10 +597,23 @@ public class RatKing {
     if (cost >= stopPrice || (long) rc.getGlobalCheese() - cost < Config.MIN_CHEESE_RESERVE) {
       return false;
     }
-    // Check all eight directions clockwise from north; the engine validates each candidate.
+    // Try the map-center heading first, then retain the existing north-clockwise fallback order.
     MapLocation center = rc.getLocation();
+    Direction centerHeading =
+        center.directionTo(new MapLocation(rc.getMapWidth() / 2, rc.getMapHeight() / 2));
+    if (centerHeading == Direction.CENTER) {
+      centerHeading = Direction.NORTH;
+    }
+    MapLocation ratSpawnLocation = center.translate(2 * centerHeading.dx, 2 * centerHeading.dy);
+    if (rc.canBuildRat(ratSpawnLocation)) {
+      rc.buildRat(ratSpawnLocation);
+      return true;
+    }
     for (Direction direction : RobotPlayer.directions) {
-      MapLocation ratSpawnLocation = center.translate(2 * direction.dx, 2 * direction.dy);
+      if (direction == centerHeading) {
+        continue;
+      }
+      ratSpawnLocation = center.translate(2 * direction.dx, 2 * direction.dy);
       if (rc.canBuildRat(ratSpawnLocation)) {
         rc.buildRat(ratSpawnLocation);
         return true;
