@@ -37,6 +37,8 @@ public class RatKingSpawningTest {
     when(rc.getGlobalCheese()).thenReturn(Config.MIN_CHEESE_RESERVE + 40);
     when(rc.getCurrentRatCost()).thenReturn(40);
     when(rc.getLocation()).thenReturn(new MapLocation(10, 10));
+    when(rc.getMapWidth()).thenReturn(21);
+    when(rc.getMapHeight()).thenReturn(21);
     when(rc.canBuildRat(candidate)).thenReturn(true);
     // playTurn runs cat sensing before spawn; Mockito's default nearby-robot array is null.
     when(rc.senseNearbyRobots()).thenReturn(new RobotInfo[0]);
@@ -141,6 +143,24 @@ public class RatKingSpawningTest {
       order.verifyNoMoreInteractions();
       verify(rc, times(1)).buildRat(any());
     }
+  }
+
+  @Test
+  public void triesTowardMapCenterBeforeNorthFallback() throws Exception {
+    // Arrange: on a 22x22 map the center is northeast of the king; its spawn tile is legal.
+    // Act: attempt one spawn. Assert: the center-facing tile is checked and built first.
+    MapLocation northeast = new MapLocation(10, 10);
+    when(rc.getLocation()).thenReturn(new MapLocation(8, 8));
+    when(rc.getMapWidth()).thenReturn(22);
+    when(rc.getMapHeight()).thenReturn(22);
+    when(rc.canBuildRat(northeast)).thenReturn(true);
+
+    RatKing.spawnBabyRat(rc);
+
+    InOrder order = inOrder(rc);
+    order.verify(rc).canBuildRat(northeast);
+    order.verify(rc).buildRat(northeast);
+    order.verifyNoMoreInteractions();
   }
 
   @Test
