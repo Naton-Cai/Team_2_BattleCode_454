@@ -54,6 +54,7 @@ public class RatKing {
     java.util.Arrays.fill(turnMines, 0);
     Trap.writeStartofBackStabbing(rc);
     identifyCheeseMines(rc);
+    // Refresh the heartbeat even when stationary so another king cannot reclaim this ID.
     if (!locationPublished || kingRegistry.lastRound() != rc.getRoundNum()) {
       updateLoc(rc);
     }

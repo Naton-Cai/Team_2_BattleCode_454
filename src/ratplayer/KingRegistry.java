@@ -5,7 +5,7 @@ import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 
-/** Shared king locations, with robot-local state for each publisher. */
+/** Shared king locations; IDs identify reusable registry slots, not engine robot IDs. */
 final class KingRegistry {
   static final int CAPACITY = GameConstants.MAX_NUMBER_OF_RAT_KINGS;
   static final int FIRST_MINE_SLOT = 9;
@@ -24,6 +24,7 @@ final class KingRegistry {
   }
 
   static int slot(int id) {
+    // Keep IDs 0–2 in slots 0–8 and IDs 3–4 after the existing mine records (9–28).
     return id < 3 ? 3 * id : FIRST_EXTRA_KING_SLOT + 3 * (id - 3);
   }
 
@@ -47,6 +48,7 @@ final class KingRegistry {
       }
     }
     if (id < 0) {
+      // First publication claims the lowest free or expired ID; retain it while publishing.
       for (int candidate = 0; candidate < CAPACITY; candidate++) {
         if (available(rc, slot(candidate), round)) {
           id = candidate;
@@ -66,6 +68,7 @@ final class KingRegistry {
     rc.writeSharedArray(slot + 2, stamp);
     pendingStamp = stamp;
     rc.writeSharedArray(slot, center.x);
+    // Split the round across packed Y and the commit stamp; stamp zero means unused.
     rc.writeSharedArray(slot + 1, center.y + COORDINATE_BLOCK * (round / ROUND_BLOCK));
     rc.writeSharedArray(slot + 2, round % ROUND_BLOCK + 1);
     pendingStamp = 0;
