@@ -30,6 +30,7 @@ public class RatKingDirtTest {
     Config.reset();
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
+    RatKing.kingRegistry = new KingRegistry();
     RatKing.locationPublished = false;
     RatKing.resetHome();
   }
@@ -102,6 +103,7 @@ public class RatKingDirtTest {
     assertEquals(1, countCalls(atReserve, "removeDirt:"));
 
     RobotPlayer.turnCount = 0;
+    RatKing.kingRegistry = new KingRegistry();
     RatKing.locationPublished = false;
     RatKing.resetHome();
     TestRobotController belowReserve = dirtController();

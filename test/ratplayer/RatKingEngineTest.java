@@ -3,6 +3,7 @@ package ratplayer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import battlecode.common.Direction;
@@ -38,6 +39,167 @@ public class RatKingEngineTest {
     if (player != null) {
       player.matchEnded();
     }
+  }
+
+  @Test
+  public void promotedKingPublishesIndependentlyWhileCarrierUsesPrimary() throws Exception {
+    // Both kings act in the first round. The first moves north and the second stays still.
+    start(new MapLocation(8, 8), Direction.NORTH, null);
+    setTeamCheese(100);
+    MapLocation secondCenter = new MapLocation(13, 9);
+    world.spawnRobot(200, UnitType.BABY_RAT, secondCenter, Direction.WEST, 0, Team.A);
+    int helperId = 210;
+    for (Direction direction : Direction.allDirections()) {
+      if (direction != Direction.CENTER) {
+        world.spawnRobot(
+            helperId++, UnitType.BABY_RAT, secondCenter.add(direction), Direction.WEST, 0, Team.A);
+      }
+    }
+    InternalRobot second = world.getObjectInfo().getRobotByID(200);
+    assertNotNull(second);
+    // The fixture invokes the real engine upgrade; the bot does not initiate formation.
+    second.setActionCooldownTurns(0);
+    assertTrue(second.getController().canBecomeRatKing());
+    second.getController().becomeRatKing();
+    second.setMovementCooldownTurns(1000);
+    MapLocation deliveryTile = new MapLocation(10, 9);
+    world.spawnRobot(201, UnitType.BABY_RAT, deliveryTile, Direction.WEST, 0, Team.A);
+    InternalRobot carrier = world.getObjectInfo().getRobotByID(201);
+    carrier.addCheese(41);
+    int before = world.getTeamInfo().getCheese(Team.A);
+    round();
+
+    int firstRound = world.getCurrentRound();
+    assertEquals(new MapLocation(8, 9), KingRegistry.read(carrier.getController(), 0, firstRound));
+    assertEquals(secondCenter, KingRegistry.read(carrier.getController(), 1, firstRound));
+    assertEquals(0, carrier.getController().getRawCheese());
+    assertEquals(before + 41 - 4, world.getTeamInfo().getCheese(Team.A));
+    int kingPeak = Math.max(king.getBytecodesUsed(), second.getBytecodesUsed());
+    int babyPeak = carrier.getBytecodesUsed();
+
+    String log = output.toString(StandardCharsets.UTF_8);
+    assertFalse(log, log.contains("Exception"));
+    assertTrue("King peak bytecodes: " + kingPeak, kingPeak > 0 && kingPeak < 19000);
+    assertTrue("Baby peak bytecodes: " + babyPeak, babyPeak > 0 && babyPeak < 16500);
+    System.out.println("Two-king fixture peak bytecodes: king=" + kingPeak + ", baby=" + babyPeak);
+  }
+
+  @Test
+  public void replacementReclaimsPrimaryIdWithoutCarrierSwitchingToSurvivor() throws Exception {
+    MapLocation deadCenter = new MapLocation(9, 8);
+    MapLocation survivorCenter = new MapLocation(12, 8);
+    start(deadCenter, Direction.NORTH, null);
+    setTeamCheese(200);
+    king.setMovementCooldownTurns(1000);
+    InternalRobot survivor = spawnStationaryKing(200, survivorCenter);
+    round();
+
+    // Even with a reachable survivor, the carrier only delivers to a fresh ID 0.
+    world.destroyRobot(1);
+    MapLocation firstDeliveryTile = new MapLocation(10, 6);
+    world.spawnRobot(201, UnitType.BABY_RAT, firstDeliveryTile, Direction.NORTH, 0, Team.A);
+    InternalRobot carrier = world.getObjectInfo().getRobotByID(201);
+    carrier.addCheese(41);
+    carrier.setMovementCooldownTurns(1000);
+    assertTrue(carrier.getController().canSenseLocation(deadCenter));
+    carrier.setActionCooldownTurns(0);
+    assertTrue(carrier.getController().canTransferCheese(survivorCenter, 41));
+    int before = world.getTeamInfo().getCheeseTransferred(Team.A);
+    world.runRound();
+    assertEquals(
+        deadCenter, KingRegistry.read(carrier.getController(), 0, world.getCurrentRound()));
+    assertEquals(41, carrier.getController().getRawCheese());
+    assertEquals(before, world.getTeamInfo().getCheeseTransferred(Team.A));
+
+    // Let the dead king's heartbeat expire before a replacement exists.
+    world.runRound();
+    assertNull(KingRegistry.readPrimary(carrier.getController()));
+    assertEquals(41, carrier.getController().getRawCheese());
+    assertEquals(before, world.getTeamInfo().getCheeseTransferred(Team.A));
+
+    // The replacement claims ID 0 after expiry. The same carrier will deliver to it.
+    MapLocation replacementCenter = new MapLocation(8, 8);
+    InternalRobot replacement = spawnStationaryKing(202, replacementCenter);
+    // The carrier acts before the replacement publishes. Run another round after it registers.
+    world.runRound();
+    assertEquals(
+        replacementCenter, KingRegistry.read(carrier.getController(), 0, world.getCurrentRound()));
+    assertEquals(
+        survivorCenter, KingRegistry.read(carrier.getController(), 1, world.getCurrentRound()));
+    // Move the carrier so only the replacement is within transfer range.
+    carrier.setMovementCooldownTurns(0);
+    assertTrue(carrier.getController().canMove(Direction.WEST));
+    carrier.getController().move(Direction.WEST);
+    Direction towardReplacement = carrier.getLocation().directionTo(replacementCenter);
+    if (carrier.getDirection() != towardReplacement) {
+      carrier.setTurningCooldownTurns(0);
+      carrier.getController().turn(towardReplacement);
+    }
+    carrier.setActionCooldownTurns(0);
+    carrier.addCheese(41 - carrier.getController().getRawCheese());
+    assertTrue(carrier.getController().canTransferCheese(replacementCenter, 41));
+    assertFalse(carrier.getController().canTransferCheese(survivorCenter, 41));
+    before = world.getTeamInfo().getCheeseTransferred(Team.A);
+    world.runRound();
+    assertEquals(0, carrier.getController().getRawCheese());
+    assertEquals(before + 41, world.getTeamInfo().getCheeseTransferred(Team.A));
+    assertTurnBudget(survivor, 19000);
+    assertTurnBudget(replacement, 19000);
+    assertTurnBudget(carrier, 16500);
+  }
+
+  @Test
+  public void fiveKingsPublishWithoutOverwritingFullMineRegistry() throws Exception {
+    // All five kings refresh beside a full eighteen-mine registry and the backstab record.
+    MapLocation[] centers = {
+      new MapLocation(3, 3),
+      new MapLocation(8, 3),
+      new MapLocation(13, 3),
+      new MapLocation(3, 10),
+      new MapLocation(8, 10)
+    };
+    start(centers[0], Direction.NORTH, null);
+    setTeamCheese(200);
+    king.setMovementCooldownTurns(1000);
+    for (int i = 0; i < 18; i++) {
+      CheeseMines.publish(king.getController(), new MapLocation(i, 6));
+    }
+    InternalRobot[] kings = new InternalRobot[centers.length];
+    kings[0] = king;
+    for (int i = 1; i < kings.length; i++) {
+      kings[i] = spawnStationaryKing(200 + i, centers[i]);
+    }
+
+    for (int turn = 0; turn < 3; turn++) {
+      round();
+      int currentRound = world.getCurrentRound();
+      for (int i = 0; i < kings.length; i++) {
+        assertEquals(centers[i], KingRegistry.read(king.getController(), i, currentRound));
+        assertEquals(
+            currentRound + 1, king.getController().readSharedArray(KingRegistry.slot(i) + 2));
+        assertTurnBudget(kings[i], 19000);
+      }
+      for (int i = 0; i < 18; i++) {
+        assertEquals(new MapLocation(i, 6), CheeseMines.read(king.getController(), i));
+      }
+      assertEquals(1, king.getController().readSharedArray(Trap.BACKSTABSLOT));
+    }
+  }
+
+  private InternalRobot spawnStationaryKing(int id, MapLocation center) {
+    world.spawnRobot(id, UnitType.RAT_KING, center, Direction.NORTH, 0, Team.A);
+    InternalRobot spawned = world.getObjectInfo().getRobotByID(id);
+    assertNotNull(spawned);
+    spawned.setMovementCooldownTurns(1000);
+    return spawned;
+  }
+
+  private void assertTurnBudget(InternalRobot robot, int limit) {
+    String log = output.toString(StandardCharsets.UTF_8);
+    assertFalse(log, log.contains("Exception"));
+    int used = robot.getBytecodesUsed();
+    assertTrue(
+        "Expected full-turn bytecodes below " + limit + ", got " + used, used > 0 && used < limit);
   }
 
   @Test
@@ -488,7 +650,7 @@ public class RatKingEngineTest {
     assertFalse(log, log.contains("Exception"));
     assertEquals(king.getLocation().x, world.readSharedArray(0, Team.A));
     assertEquals(king.getLocation().y, world.readSharedArray(1, Team.A));
-    assertEquals(1, world.readSharedArray(2, Team.A));
+    assertEquals(world.getCurrentRound() + 1, world.readSharedArray(2, Team.A));
     int used = king.getBytecodesUsed();
     peakBytecodes = Math.max(peakBytecodes, used);
     // Full turns include initialization, sensing, actions, logging, and Clock.yield().

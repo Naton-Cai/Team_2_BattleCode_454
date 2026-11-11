@@ -13,15 +13,10 @@ import battlecode.common.UnitType;
 import ratplayer.navigation.Navigation;
 
 public class RatKing {
-  // Single-king shared-array protocol; static fields themselves are robot-local.
-  static final int LOCATION_X_SLOT = 0;
-  static final int LOCATION_Y_SLOT = 1;
-  static final int LOCATION_VALID_SLOT = 2;
-  static final int KING_LOCATION_PUBLISHED = 1;
+  static KingRegistry kingRegistry = new KingRegistry();
   static boolean locationPublished;
   private static final Direction[] openDirections = new Direction[8];
   private static final int[] openWeights = new int[8];
-  private static MapLocation currentLocation;
 
   // A bit per map tile records mine discoveries, not terrain or routes (spec v1.2.6 pp.6,18).
   private static final long[] seenMines = new long[GameConstants.MAP_MAX_HEIGHT];
@@ -59,6 +54,10 @@ public class RatKing {
     java.util.Arrays.fill(turnMines, 0);
     Trap.writeStartofBackStabbing(rc);
     identifyCheeseMines(rc);
+    // Refresh the heartbeat even when stationary so another king cannot reclaim this ID.
+    if (!locationPublished || kingRegistry.lastRound() != rc.getRoundNum()) {
+      updateLoc(rc);
+    }
     // Snapshot before cat flee or home travel changes readiness; a successful step is preferred.
     boolean cannotFlee = cannotFlee(rc);
     boolean fled = respondToCats(rc);
@@ -69,9 +68,6 @@ public class RatKing {
         escapeMines[y] |= turnMines[y];
       }
     } else {
-      if (!locationPublished) {
-        updateLoc(rc);
-      }
       if (Clock.getBytecodeNum() < NAVIGATION_BYTECODE_CUTOFF) {
         if (escaping) {
           finishEscape(rc);
@@ -609,17 +605,8 @@ public class RatKing {
     return false;
   }
 
-  // update our RatKing Location to the global array
   static void updateLoc(RobotController rc) throws GameActionException {
-    // Retry from the actual location next turn if any write fails.
     locationPublished = false;
-    currentLocation = rc.getLocation();
-
-    // Baby rats should only read from global array if slot 2 equals 1
-    rc.writeSharedArray(LOCATION_VALID_SLOT, 0);
-    rc.writeSharedArray(LOCATION_X_SLOT, currentLocation.x);
-    rc.writeSharedArray(LOCATION_Y_SLOT, currentLocation.y);
-    rc.writeSharedArray(LOCATION_VALID_SLOT, KING_LOCATION_PUBLISHED);
-    locationPublished = true;
+    locationPublished = kingRegistry.publish(rc);
   }
 }

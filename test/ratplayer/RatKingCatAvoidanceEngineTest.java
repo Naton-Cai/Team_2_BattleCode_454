@@ -116,8 +116,8 @@ public class RatKingCatAvoidanceEngineTest {
     assertNotNull(baby);
     // Actual center is east, old home northeast, new home southeast. East proves center tracking.
     assertEquals(new MapLocation(3, 6), baby.getLocation());
-    assertEquals(8, baby.getController().readSharedArray(RatKing.LOCATION_X_SLOT));
-    assertEquals(6, baby.getController().readSharedArray(RatKing.LOCATION_Y_SLOT));
+    assertEquals(8, baby.getController().readSharedArray(0));
+    assertEquals(6, baby.getController().readSharedArray(1));
     for (int turn = 0; turn < 4; turn++) {
       observeRound();
       assertEquals(new MapLocation(8, 6), king.getLocation());

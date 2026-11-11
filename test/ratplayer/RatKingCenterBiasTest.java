@@ -25,6 +25,7 @@ public class RatKingCenterBiasTest {
   public void setUp() {
     Config.reset();
     RatKing.resetHome();
+    RatKing.kingRegistry = new KingRegistry();
     RatKing.locationPublished = false;
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);

@@ -38,6 +38,7 @@ public class RatKingTest {
     Config.reset();
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
+    RatKing.kingRegistry = new KingRegistry();
     RatKing.locationPublished = false;
     RatKing.resetHome();
     Trap.startofBackStabbing = 0;
@@ -91,12 +92,12 @@ public class RatKingTest {
     assertEquals(777, rc.readSharedArray(63));
     assertEquals(
         List.of(
-            "writeSharedArray:2:0",
+            "writeSharedArray:2:513",
             "writeSharedArray:0:10",
             "writeSharedArray:1:10",
             "writeSharedArray:2:1",
             "moveForward",
-            "writeSharedArray:2:0",
+            "writeSharedArray:2:513",
             "writeSharedArray:0:10",
             "writeSharedArray:1:11",
             "writeSharedArray:2:1"),
@@ -596,7 +597,7 @@ public class RatKingTest {
       assertEquals(new MapLocation(10, 11), rc.getLocation());
       assertFalse(RatKing.locationPublished);
       if (write > 1) {
-        assertEquals(0, rc.readSharedArray(2));
+        assertEquals(513, rc.readSharedArray(2));
       }
       rc.calls().clear();
       rc.setForwardAllowed(false);
@@ -613,7 +614,7 @@ public class RatKingTest {
     rc.failSharedWrite(2, failure());
     RobotPlayer.playTurn(rc);
     assertEquals(0, rc.moveCount());
-    assertEquals(0, rc.readSharedArray(2));
+    assertEquals(513, rc.readSharedArray(2));
     RobotPlayer.playTurn(rc);
     assertPosition(10, 11);
   }

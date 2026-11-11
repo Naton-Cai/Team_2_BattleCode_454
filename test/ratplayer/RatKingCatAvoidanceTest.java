@@ -31,6 +31,7 @@ public class RatKingCatAvoidanceTest {
     Config.reset();
     RobotPlayer.turnCount = 0;
     RobotPlayer.rng.setSeed(6147);
+    RatKing.kingRegistry = new KingRegistry();
     RatKing.locationPublished = false;
     RatKing.resetHome();
   }
@@ -38,6 +39,7 @@ public class RatKingCatAvoidanceTest {
   @After
   public void tearDown() {
     Config.reset();
+    RatKing.kingRegistry = new KingRegistry();
     RatKing.locationPublished = false;
     RatKing.resetHome();
   }

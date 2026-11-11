@@ -1,6 +1,7 @@
 package ratplayer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import battlecode.common.Direction;
 import battlecode.common.MapLocation;
@@ -96,6 +97,23 @@ public class BabyRatTrapTest {
 
     assertEquals(24, Trap.startofBackStabbing);
     assertEquals("writeSharedArray:" + Trap.BACKSTABSLOT + ":24", controller.calls().get(0));
+  }
+
+  @Test
+  public void kingReadsExistingBackstabRoundWithoutMistakingMineDataForIt() throws Exception {
+    // Slot 45 now contains mine data. Both king and baby readers must use slot 51.
+    TestRobotController controller = readyController();
+    controller.setCooperation(false);
+    controller.setSharedArrayValue(45, 33);
+    controller.setSharedArrayValue(51, 7);
+
+    Trap.writeStartofBackStabbing(controller);
+
+    assertEquals(7, Trap.startofBackStabbing);
+    assertTrue(controller.calls().isEmpty());
+    Trap.startofBackStabbing = 0;
+    Trap.updateStartofBackStabbing(controller);
+    assertEquals(7, Trap.startofBackStabbing);
   }
 
   /** Baby Rat skips the configured trap action before its 100-turn gate. */
