@@ -23,9 +23,9 @@ public class KingRegistryTest {
   @Test
   public void fivePublishersKeepSeparateRecordsAcrossRoundEncodingBoundary() throws Exception {
     // Each publisher has its own local state. All publishers use the same team array.
-    rc.setSharedArrayValue(9, 17);
-    rc.setSharedArrayValue(28, 19);
-    rc.setSharedArrayValue(45, 23);
+    rc.setSharedArrayValue(15, 17);
+    rc.setSharedArrayValue(50, 19);
+    rc.setSharedArrayValue(51, 23);
     KingRegistry[] kings = new KingRegistry[5];
     rc.setRoundNum(1022);
     for (int i = 0; i < kings.length; i++) {
@@ -41,11 +41,11 @@ public class KingRegistryTest {
       kings[i].publish(rc);
       assertEquals(new MapLocation(i + 1, 57), KingRegistry.read(rc, i, 1023));
     }
-    assertEquals(17, rc.readSharedArray(9));
-    assertEquals(19, rc.readSharedArray(28));
-    assertEquals(23, rc.readSharedArray(45));
-    assertEquals(4, rc.readSharedArray(29));
-    assertEquals(5, rc.readSharedArray(32));
+    assertEquals(17, rc.readSharedArray(15));
+    assertEquals(19, rc.readSharedArray(50));
+    assertEquals(23, rc.readSharedArray(51));
+    assertEquals(4, rc.readSharedArray(9));
+    assertEquals(5, rc.readSharedArray(12));
     assertNull(KingRegistry.read(rc, 0, 1025));
     assertNull(KingRegistry.read(rc, 0, 2000));
   }
@@ -125,22 +125,33 @@ public class KingRegistryTest {
   }
 
   @Test
-  public void primaryLookupIgnoresOtherIdsAndKeepsLastCommittedCenter() throws Exception {
-    // Registry readers can expire records while legacy cheese return still follows ID 0.
+  public void primaryLookupAcceptsPreviousRoundButExpiresWithoutFollowingOtherIds()
+      throws Exception {
+    // Accept a heartbeat before the king's next turn, including across the encoding boundary.
     rc.setRoundNum(1023);
     MapLocation primary = new MapLocation(10, 9);
     rc.setLocation(primary);
     new KingRegistry().publish(rc);
-    rc.setRoundNum(1025);
-    assertNull(KingRegistry.read(rc, 0, 1025));
+    assertEquals(primary, KingRegistry.readPrimary(rc));
+    KingRegistry second = new KingRegistry();
+    MapLocation survivor = new MapLocation(12, 10);
+    rc.setLocation(survivor);
+    second.publish(rc);
+    rc.setRoundNum(1024);
     assertEquals(primary, KingRegistry.readPrimary(rc));
 
-    // An interrupted primary record is unavailable even when another king has published.
-    rc.setRoundNum(1024);
-    rc.setLocation(new MapLocation(12, 10));
-    new KingRegistry().publish(rc);
+    // A live ID 1 does not make the expired primary a valid delivery destination.
+    rc.setRoundNum(1025);
+    second.publish(rc);
+    assertNull(KingRegistry.readPrimary(rc));
+    assertEquals(survivor, KingRegistry.read(rc, 1, 1025));
+    // Refreshing the baby's cached destination must clear the old location too.
+    BabyRat.kingLoc = primary;
+    BabyRat.updateRatKingLoc(rc);
+    assertNull(BabyRat.kingLoc);
+
+    // An interrupted primary record is also unavailable.
     rc.setSharedArrayValue(2, 769);
     assertNull(KingRegistry.readPrimary(rc));
-    assertEquals(new MapLocation(12, 10), KingRegistry.read(rc, 1, 1024));
   }
 }

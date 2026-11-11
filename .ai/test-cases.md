@@ -12,8 +12,8 @@ Implemented and run with engine 1.2.6 in `ratplayer.RatKingEngineTest`. The 20×
 | Test | Setup and expected outcome |
 | --- | --- |
 | `promotedKingPublishesIndependentlyWhileCarrierUsesPrimary` | Promote a second king through the engine API. Both kings publish independently and the carrier still delivers to ID 0. |
-| `replacementReclaimsPrimaryIdWithoutCarrierSwitchingToSurvivor` | Kill ID 0 with a reachable ID 1. The carrier keeps its cheese. After the record expires, a replacement claims ID 0 and the carrier can deliver to it. |
-| `fiveKingsPublishAcrossBothSlotRanges` | Run five stationary allied kings for three rounds. Every ID refreshes in its own record, including IDs 3 and 4 immediately after the mine records. The existing mine and backstab records survive. |
+| `replacementReclaimsPrimaryIdWithoutCarrierSwitchingToSurvivor` | Kill ID 0 with a reachable ID 1. After two rounds the primary lookup returns null and the carrier keeps its cheese. A replacement claims ID 0 and the carrier can deliver to it. |
+| `fiveKingsPublishWithoutOverwritingFullMineRegistry` | Run five stationary allied kings for three rounds with all 18 mine records filled. Every ID refreshes in slots 0–14; all mine records and the backstab round at slot 51 survive. |
 
 The scenarios check for bot exceptions and enforce full-turn bytecode headroom. The exact
 validation command was `./gradlew classes test spotlessCheck`. Results are in

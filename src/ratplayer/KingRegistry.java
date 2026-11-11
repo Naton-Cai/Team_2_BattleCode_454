@@ -8,8 +8,7 @@ import battlecode.common.RobotController;
 /** Shared king locations; IDs identify reusable registry slots, not engine robot IDs. */
 final class KingRegistry {
   static final int CAPACITY = GameConstants.MAX_NUMBER_OF_RAT_KINGS;
-  static final int FIRST_MINE_SLOT = 9;
-  static final int FIRST_EXTRA_KING_SLOT = 29;
+  static final int FIRST_MINE_SLOT = 3 * CAPACITY;
   private static final int ROUND_BLOCK = 512;
   private static final int PENDING_ROUND_BLOCK = 4;
   private static final int COORDINATE_BLOCK = 64;
@@ -24,8 +23,8 @@ final class KingRegistry {
   }
 
   static int slot(int id) {
-    // Keep IDs 0–2 in slots 0–8 and IDs 3–4 after the existing mine records (9–28).
-    return id < 3 ? 3 * id : FIRST_EXTRA_KING_SLOT + 3 * (id - 3);
+    // Each king owns consecutive x, packed Y, and heartbeat slots in 0–14.
+    return 3 * id;
   }
 
   boolean publish(RobotController rc) throws GameActionException {
@@ -100,9 +99,9 @@ final class KingRegistry {
     return read(rc, id, round, true);
   }
 
-  /** Legacy cheese return follows the last committed primary center, regardless of age. */
+  /** Cheese carriers follow ID 0 only while its heartbeat is fresh. */
   static MapLocation readPrimary(RobotController rc) throws GameActionException {
-    return read(rc, 0, 0, false);
+    return read(rc, 0, rc.getRoundNum(), true);
   }
 
   private static MapLocation read(RobotController rc, int id, int round, boolean requireFresh)

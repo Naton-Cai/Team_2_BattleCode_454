@@ -7,8 +7,10 @@ import battlecode.common.UnitType;
 
 /** Team mine records, independent of visibility and robot-local initialization. */
 public final class CheeseMines {
+  // Mine pairs start after all five king records (slots 0–14).
   static final int FIRST_SLOT = KingRegistry.FIRST_MINE_SLOT;
-  static final int MAX_CAPACITY = (KingRegistry.FIRST_EXTRA_KING_SLOT - FIRST_SLOT) / 2;
+  // Eighteen pairs occupy 15–50; slot 51 is reserved for the backstab round.
+  static final int MAX_CAPACITY = (Trap.BACKSTABSLOT - FIRST_SLOT) / 2;
 
   private CheeseMines() {}
 

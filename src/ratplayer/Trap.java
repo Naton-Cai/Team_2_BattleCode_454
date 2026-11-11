@@ -8,7 +8,8 @@ import battlecode.common.UnitType;
 
 /** Cat detection and placement logic used by baby rats. */
 final class Trap {
-  static final int BACKSTABSLOT = 45;
+  // First slot after the king and mine records; zero means backstabbing has not started.
+  static final int BACKSTABSLOT = 51;
   public static int startofBackStabbing = 0;
 
   /**
@@ -106,7 +107,7 @@ final class Trap {
   // if our internal startofBackStabbing isn't updated and backstabbing is happening
   static void writeStartofBackStabbing(RobotController rc) throws GameActionException {
     if (startofBackStabbing == 0 && !rc.isCooperation()) {
-      int readRoundValue = rc.readSharedArray(45);
+      int readRoundValue = rc.readSharedArray(BACKSTABSLOT);
 
       // array hasn't been writen to so update it with the new value
       if (readRoundValue == 0) {

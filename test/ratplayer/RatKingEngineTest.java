@@ -3,6 +3,7 @@ package ratplayer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import battlecode.common.Direction;
@@ -93,7 +94,7 @@ public class RatKingEngineTest {
     InternalRobot survivor = spawnStationaryKing(200, survivorCenter);
     round();
 
-    // Even with a reachable survivor, the carrier keeps its legacy ID 0 destination.
+    // Even with a reachable survivor, the carrier only delivers to a fresh ID 0.
     world.destroyRobot(1);
     MapLocation firstDeliveryTile = new MapLocation(10, 6);
     world.spawnRobot(201, UnitType.BABY_RAT, firstDeliveryTile, Direction.NORTH, 0, Team.A);
@@ -107,6 +108,12 @@ public class RatKingEngineTest {
     world.runRound();
     assertEquals(
         deadCenter, KingRegistry.read(carrier.getController(), 0, world.getCurrentRound()));
+    assertEquals(41, carrier.getController().getRawCheese());
+    assertEquals(before, world.getTeamInfo().getCheeseTransferred(Team.A));
+
+    // Let the dead king's heartbeat expire before a replacement exists.
+    world.runRound();
+    assertNull(KingRegistry.readPrimary(carrier.getController()));
     assertEquals(41, carrier.getController().getRawCheese());
     assertEquals(before, world.getTeamInfo().getCheeseTransferred(Team.A));
 
@@ -142,8 +149,8 @@ public class RatKingEngineTest {
   }
 
   @Test
-  public void fiveKingsPublishAcrossBothSlotRanges() throws Exception {
-    // Exercise the extra slots with real king turns, while preserving a shared mine and backstab.
+  public void fiveKingsPublishWithoutOverwritingFullMineRegistry() throws Exception {
+    // All five kings refresh beside a full eighteen-mine registry and the backstab record.
     MapLocation[] centers = {
       new MapLocation(3, 3),
       new MapLocation(8, 3),
@@ -154,8 +161,9 @@ public class RatKingEngineTest {
     start(centers[0], Direction.NORTH, null);
     setTeamCheese(200);
     king.setMovementCooldownTurns(1000);
-    MapLocation mine = new MapLocation(3, 6);
-    CheeseMines.publish(king.getController(), mine);
+    for (int i = 0; i < 18; i++) {
+      CheeseMines.publish(king.getController(), new MapLocation(i, 6));
+    }
     InternalRobot[] kings = new InternalRobot[centers.length];
     kings[0] = king;
     for (int i = 1; i < kings.length; i++) {
@@ -171,7 +179,9 @@ public class RatKingEngineTest {
             currentRound + 1, king.getController().readSharedArray(KingRegistry.slot(i) + 2));
         assertTurnBudget(kings[i], 19000);
       }
-      assertEquals(mine, CheeseMines.read(king.getController(), 0));
+      for (int i = 0; i < 18; i++) {
+        assertEquals(new MapLocation(i, 6), CheeseMines.read(king.getController(), i));
+      }
       assertEquals(1, king.getController().readSharedArray(Trap.BACKSTABSLOT));
     }
   }
