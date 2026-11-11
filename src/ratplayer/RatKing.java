@@ -50,11 +50,6 @@ public class RatKing {
 
   // handles our Rat King turn logic
   static void run(RobotController rc) throws GameActionException {
-    // Every 100 turns, print out what type of robot we are.
-    if (RobotPlayer.turnCount % 100 == 0) {
-      System.out.println("Turn " + RobotPlayer.turnCount + ": I am a " + rc.getType().toString());
-    }
-
     handledCatsThisTurn = false;
     java.util.Arrays.fill(turnMines, 0);
     Trap.writeStartofBackStabbing(rc);
@@ -549,7 +544,6 @@ public class RatKing {
 
   // handles our cheese picking up logic
   static void pickUpCheese(RobotController rc) throws GameActionException {
-    System.out.println("Turn " + RobotPlayer.turnCount + ": Rat King Picking Up Cheese");
     // Re-sense after movement; pickup range includes tiles beyond the center.
     MapInfo[] infos = rc.senseNearbyMapInfos();
     observeMines(rc, infos);

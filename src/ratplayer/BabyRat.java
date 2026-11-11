@@ -18,11 +18,6 @@ public class BabyRat {
 
   // handles our BabyRat turn logic
   static void run(RobotController rc) throws GameActionException {
-    // Every 100 turns, print out what type of robot we are.
-    if (RobotPlayer.turnCount % 100 == 0) {
-      System.out.println("Turn " + RobotPlayer.turnCount + ": I am a " + rc.getType().toString());
-    }
-
     kingLoc = null;
     cheeseTile = null;
     pickedUpCheese = false;
@@ -270,16 +265,8 @@ public class BabyRat {
   static void wander(RobotController rc) throws GameActionException {
     Navigation.resetFollow();
     if (rc.canMoveForward()) {
-      System.out.println("Turn " + RobotPlayer.turnCount + ": Trying to move " + rc.getDirection());
       rc.moveForward();
     } else {
-      System.out.println(
-          "Couldn't move forward on turn "
-              + RobotPlayer.turnCount
-              + " at location "
-              + rc.getLocation()
-              + " facing "
-              + rc.getDirection());
       // If we can't move forward, try to turn a random direction.
       int randomDirection = RobotPlayer.rng.nextInt(8);
       Direction dir = RobotPlayer.directions[randomDirection];
