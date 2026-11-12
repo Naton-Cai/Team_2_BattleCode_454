@@ -10,6 +10,7 @@ import battlecode.common.UnitType;
 import ratplayer.navigation.Navigation;
 
 public class BabyRat {
+  static BabyRole role;
   static MapLocation kingLoc = null;
   static MapLocation cheeseTile = null;
   static boolean pickedUpCheese = false;
@@ -18,6 +19,14 @@ public class BabyRat {
 
   // handles our BabyRat turn logic
   static void run(RobotController rc) throws GameActionException {
+    KingFormation.assign(rc);
+    if (role != null) {
+      switch (role) {
+        case SPAWNER:
+          KingFormation.run(rc);
+          return;
+      }
+    }
     kingLoc = null;
     cheeseTile = null;
     pickedUpCheese = false;

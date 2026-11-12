@@ -2,8 +2,8 @@
 
 ### Team shared array
 
-The current `ratplayer` layout allocates 52 of the 64 slots. Both unit types can read the array.
-Only Rat Kings can write it. Each slot holds a value from 0 through 1023.
+The current `ratplayer` layout reserves **53 of 64 slots**, leaving **11 free (53–63)**.
+Both unit types can read the array; only Rat Kings can write it. Each slot holds 0–1023.
 
 | Slots | Contents |
 | --- | --- |
@@ -14,7 +14,8 @@ Only Rat Kings can write it. Each slot holds a value from 0 through 1023.
 | 12–14 | Rat King ID 4 |
 | 15–50 | 18 cheese mine records, two slots each |
 | 51 | Backstab start round, with zero meaning unset |
-| 52–63 | Unallocated, 12 slots |
+| 52 | King spawning: single formation lock/token; 0 = free, 1–1023 = active group |
+| 53–63 | Unallocated, 11 slots |
 
 ## Dirt collection (baby rats 2026-10-28, kings 2026-10-29)
 
@@ -244,3 +245,75 @@ The following added tests are in `ratplayer.RatKingEngineTest`. They run the act
 - `movedKingSpawnsNorthOfActualNewCenter`: the king moves from (8,8) to (8,9), then creates a baby at (8,11), using its actual new location.
 
 See the [current team shared-array layout](#team-shared-array) above for slot allocations.
+
+## Explicit Spawner formation (2026-11-11)
+
+Implemented on the working tree based on `893b30e`. `RatKing.requestKingFormation()` arms the
+next successful birth as chosen and the following six as fodder. No production strategy calls
+it automatically. `BabyRole.SPAWNER` dispatches to `KingFormation`; unassigned babies retain
+existing behavior. The chosen selects a fixed fully sensed site, followers occupy assigned
+neighbors, and promotion uses the engine legality guard. One shared reservation uses slots
+52–62, after king/mine/backstab records. Only kings write; babies communicate by squeaks.
+
+The user approved fixed-center assembly, one chosen plus six fodder, and deferring relocation
+and dead-member replacement. Death or a permanently invalid site can hold the reservation
+indefinitely. Additional roles and automatic expansion policy remain unimplemented.
+
+`./gradlew spotlessApply classes test spotlessCheck` passed: 259 passed, two manual BFS tests
+skipped, including 14 formation controller tests and two engine fixtures. Engine 1.2.6, Java
+21.0.13.0.3, Gradle 8.10; 20×20 `SpawnerFormationFixture`, seed 6147, team A. Seven real births
+promoted on round 11; next king turn released the reservation and published registry ID 1.
+Peak full-turn bytecodes: baby 4,320 / king 7,766. XML evidence is under
+`build/test-results/test/TEST-ratplayer.KingFormation*.xml`; these generated files are ignored.
+No replay or comparative matches. `feature.md` is also ignored; tracked implementation and
+these notes preserve the agreed scope. Engine 1.2.6 retains the promoted center in the baby
+population counter, so engine assertions inspect unit types and consumed IDs directly.
+
+### Placement and communication follow-up (2026-11-11)
+
+Implemented a bounded initial-site ranking: maximize separation from known king centers (fresh
+registry plus sensed kings), then known passable outer-ring tiles, then birth distance and x/y.
+The user approved extending communication so traveling fodder forwards READY and followers can
+learn a center from a valid ARRIVED message. No new shared slots, persistent state, message kinds,
+or pathfinder. Automatic requests, relocation, and dead-member replacement remain deferred.
+
+Initial minimum-gap/open-space trials regressed DefaultSmall: a follower could not hear READY,
+and later the original king settled at (7,21), overlapping the proposed (9,19) footprint.
+Forwarding fixed center discovery; maximizing actual king separation fixed that replay's site.
+Published-mine avoidance was tested and discarded because no mine was known when selection ran.
+
+`./gradlew spotlessApply classes test spotlessCheck` passed: 264 passed, two existing manual BFS
+cases skipped. Open-map fixture promotion remained round 11; observed baby peak increased from
+4,320 to 10,099 (limit 17,500), king peak stayed 7,766. Added 87/removed 13 production lines,
+all in KingFormation.java. Site scoring runs only until a center is committed.
+
+Same DefaultSmall map, side A, examplefuncsplayer opponent, engine/toolchain and bot seed as the
+prior preview: promotion improved from round 53 at (8,20) to round 31 at (8,18). This is one local
+comparison, not a general strategy claim. New replay: matches/spawner-placement-20261111/separation.bc26.
+That directory retains source snapshots, patch, XML, full logs and trial history in README.md.
+All are local ignored artifacts. Temporary request/logging removed; original RatKing.java restored.
+
+### One-slot formation protocol (2026-11-11; supersedes the 11-slot encoding above)
+
+Formation now writes only slot 52: 0 is free, otherwise the active token is `round % 1023 + 1`
+from reservation time. It is not an ID, count, heartbeat, or expiry. It is held for the whole
+group and released only by the chosen rat's first king turn if its local token still matches.
+Slots 53–63 are unallocated (11 free); existing slots 0–51 are unchanged. Tests fill reclaimed
+entries with canaries and verify they remain intact in controller and real-engine scenarios.
+
+BIRTH uses one 32-bit squeak: tag[31:27], index[26:24], rendezvous[23:12], newborn tile[11:0].
+Coordinates use six bits per axis. Newborns check their original birth tile/round and capture
+slot 52's token. READY/ARRIVED use tag[31:25], token[24:15], index[14:12], center[11:0].
+Normal births require no acknowledgment. IDs/roles/rendezvous/recruitment state remain local;
+Message supplies sender ID, source, and round automatically. A failed birth send pauses further
+births, invites the exact full-ID recipient (negative payload), receives HELLO, then sends ASSIGN
+with token/index/rendezvous. Invited recipients wait in place for metadata; fallback remains
+range-limited and has no dead-parent/member recovery policy.
+
+`./gradlew spotlessApply classes test spotlessCheck` passed: 266 passed, two existing manual BFS
+cases skipped, including 20 formation unit tests and three engine fixtures. Normal fixture
+promotion remained round 11, baby peak 9,730 / king 7,766; forced failed-birth-squeak fixture
+also promoted (baby peak 9,394). Engine 1.2.6, OpenJDK 21.0.13.0.3, Gradle 8.10.
+Same DefaultSmall/examplefuncsplayer side-A replay retained promotion round 31 at (8,18).
+Evidence: matches/spawner-one-slot-20261111/README.md, XML snapshots, and default-small.bc26.
+Temporary trigger/log removed and sources restored. PR.md and feature.md describe this protocol.

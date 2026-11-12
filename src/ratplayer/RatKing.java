@@ -45,6 +45,7 @@ public class RatKing {
 
   // handles our Rat King turn logic
   static void run(RobotController rc) throws GameActionException {
+    KingFormation.promoted(rc);
     handledCatsThisTurn = false;
     java.util.Arrays.fill(turnMines, 0);
     Trap.writeStartofBackStabbing(rc);
@@ -566,6 +567,11 @@ public class RatKing {
     java.util.Arrays.fill(escapeMines, 0);
   }
 
+  /** Request the next successful birth as chosen, followed by six formation followers. */
+  public static void requestKingFormation() {
+    KingFormation.request();
+  }
+
   // Spawns a baby rat within the configured population and reserve limits.
   static boolean spawnBabyRat(RobotController rc) throws GameActionException {
     if (Config.MAX_BABY_RATS < 0
@@ -573,6 +579,10 @@ public class RatKing {
         || Config.MIN_CHEESE_RESERVE < 0) {
       throw new IllegalArgumentException(
           "Baby cap must be a nonnegative multiple of the cost step; reserve must be nonnegative");
+    }
+    if (KingFormation.hasPendingBirth()) {
+      KingFormation.flushBirth(rc);
+      return false;
     }
     if (!rc.isActionReady()) {
       return false;
@@ -587,6 +597,7 @@ public class RatKing {
     if (cost >= stopPrice || (long) rc.getGlobalCheese() - cost < Config.MIN_CHEESE_RESERVE) {
       return false;
     }
+    KingFormation.prepare(rc);
     // Try the map-center heading first, then retain the existing north-clockwise fallback order.
     MapLocation center = rc.getLocation();
     Direction centerHeading =
@@ -597,6 +608,7 @@ public class RatKing {
     MapLocation ratSpawnLocation = center.translate(2 * centerHeading.dx, 2 * centerHeading.dy);
     if (rc.canBuildRat(ratSpawnLocation)) {
       rc.buildRat(ratSpawnLocation);
+      KingFormation.born(rc, ratSpawnLocation);
       return true;
     }
     for (Direction direction : RobotPlayer.directions) {
@@ -606,6 +618,7 @@ public class RatKing {
       ratSpawnLocation = center.translate(2 * direction.dx, 2 * direction.dy);
       if (rc.canBuildRat(ratSpawnLocation)) {
         rc.buildRat(ratSpawnLocation);
+        KingFormation.born(rc, ratSpawnLocation);
         return true;
       }
     }
