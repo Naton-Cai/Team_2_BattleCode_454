@@ -245,3 +245,49 @@ The following added tests are in `ratplayer.RatKingEngineTest`. They run the act
 - `movedKingSpawnsNorthOfActualNewCenter`: the king moves from (8,8) to (8,9), then creates a baby at (8,11), using its actual new location.
 
 See the [current team shared-array layout](#team-shared-array) above for slot allocations.
+
+
+## Requested king formation may exceed the ordinary baby cap (2026-11-11)
+
+A funded explicit formation request can now claim the one-slot reservation before the population
+cap check. Only the reservation's recruiting king bypasses Config.MAX_BABY_RATS, and only until
+its chosen plus six fodder have been assigned. A waiting request owned by another king does not
+bypass the cap. Ordinary births, including the eighth birth after formation recruitment, remain
+capped. KingFormation.recruiting() exposes this narrow exception to RatKing.spawnBabyRat().
+
+Each birth still reads the actual current engine price and requires global cheese minus that
+price to remain at/above Config.MIN_CHEESE_RESERVE (default 200). Higher prices as population grows
+are checked again; insufficient funds pause recruitment without advancing its index. No whole
+cohort prepayment, automatic expansion trigger, extra shared slot, or recovery policy was added.
+
+The original focused above-cap test failed before the fix. Final ./gradlew spotlessApply classes
+test spotlessCheck passed: 270 passed, two existing manual BFS tests skipped. Three unit cases
+cover exactly seven exempt births, rising-cost/reserve boundaries, and competing kings. An engine
+fixture starts with 32 parked existing babies, proves ordinary cap enforcement and one-below/
+equal reserve boundaries, pauses for lack of funds, recruits seven above cap without losing old
+babies, promotes, and rejects an eighth above-cap ordinary birth. Observed fixture peaks: baby
+9,730 / king 9,257; promotion and first king completion by round 14.
+
+The previously blocked jail side-B/request-100 replay now recruits indices 0–4 on rounds 100–104,
+pauses for funds, recruits 5–6 on rounds 233/238, and promotes on round 241 at (31,7). Same map,
+side and examplefuncsplayer opponent as the prior random suite; no logged exceptions. Evidence:
+matches/spawner-cap-20261111/jail-B-round100.bc26, its log, and README.md. Temporary trigger/logging
+removed and candidate sources restored. Stuck/lost-member recovery remains deferred.
+
+## Prefunding experiment reverted; staged recruitment retained (2026-11-11)
+
+Selected the staged-recruitment implementation with the population-cap exemption for review.
+A request recruits the chosen and six fodder as each birth becomes affordable while preserving
+Config.MIN_CHEESE_RESERVE (default 200). Only that recruiting king may exceed the ordinary baby
+cap, for seven assignments. No whole-cohort budget gate, automatic trigger, or movement hold.
+The single shared formation token remains slot 52; slots 53–63 are still free.
+
+The experimental prefunding gate and its specific tests were removed. Production and formation
+test files match the saved staged baseline byte-for-byte. ./gradlew classes test spotlessCheck
+passed: 270 passed, two existing manual BFS tests skipped, including cap-exemption and real-engine
+promotion coverage. Existing fixed-tile pathing and lost-member recovery limitations remain.
+
+Keep matches/spawner-prefund-20261111/REPORT.md and its replays as historical evidence: staged
+formed four kings in four comparisons; prefunding formed two. Prefunding tightened recruitment
+but delayed or missed expansion. That sample motivated reverting the experiment, not a general
+strategy-performance claim. Earlier cap-exemption notes above describe the retained behavior.

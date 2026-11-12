@@ -324,3 +324,31 @@ Same fixture as the backstab-attack tests, except the cat cases use cooperation,
 | Test | Setup | Expected outcome |
 | --- | --- | --- |
 | `engineStuckKingBitesAdjacentCatAndLeavesBytecodeHeadroom` | King at (8,8) with movement held, cat 2x2 anchored at (9,10), backstab on. | Cat loses 10 HP, king stays put, at least 1,000 headroom under 20,000. Measured: 9,725. |
+
+## Requested formation population-cap exemption (2026-11-11)
+
+KingFormationTest adds requestedFormationBypassesCapForOnlyItsSevenBirths (ordinary capped birth
+refused; chosen plus six above-cap births allowed; eighth refused),
+capExemptionPreservesReserveAtEqualityAndRechecksRisingCosts (one below/equal reserve plus current
+price, both before claiming and during recruitment), and
+waitingRequestCannotBypassCapWhileAnotherKingOwnsTheGroup (no competing above-cap births).
+
+KingFormationEngineTest.requestedFormationExceedsFullPopulationOnlyWhileFundedAndRecruiting seeds
+32 ordinary babies away from the footprint. It verifies the cap before request, one-below/equal
+actual-price reserve boundaries, a funding pause and resume, seven additional members, real
+promotion, surviving original babies, and capped ordinary spawning afterward. Slot canaries and
+complete-turn budget gates remain active. Engine 1.2.6, SpawnerFormationFixture seed 6147, side A;
+observed peaks baby 9,730 / king 9,257, first promoted-king turn by round 14.
+
+./gradlew spotlessApply classes test spotlessCheck: 270 passed, two manual BFS cases skipped.
+A real jail side-B/request-100 match previously assigned zero members due to the cap; the fix
+assigned all seven and promoted at round 241. Full evidence under matches/spawner-cap-20261111/.
+
+## Prefunding experiment reverted (2026-11-11)
+
+Restored the staged-recruitment tests listed in Requested formation population-cap exemption.
+Removed prefunding-only tests and restored first-birth/per-birth reserve equality coverage.
+./gradlew classes test spotlessCheck passed: 270 passed, two existing manual BFS tests skipped.
+Formation tests and production code match the saved staged/cap-exempt baseline exactly.
+The discarded prefunding tests, results, and comparison replays remain archived under
+matches/spawner-prefund-20261111/; they do not describe current behavior.

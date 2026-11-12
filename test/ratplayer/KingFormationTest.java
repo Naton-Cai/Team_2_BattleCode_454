@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameActionExceptionType;
+import battlecode.common.GameConstants;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.Message;
@@ -295,6 +296,87 @@ public class KingFormationTest {
     KingFormation.run(rc);
     assertEquals(selected, KingFormation.center);
     verify(rc).squeak(KingFormation.packet(KingFormation.READY, 1023, 6, selected));
+  }
+
+  @Test
+  public void requestedFormationBypassesCapForOnlyItsSevenBirths() throws Exception {
+    MapLocation birth = new MapLocation(10, 12);
+    when(rc.canBuildRat(birth)).thenReturn(true);
+    when(rc.senseRobotAtLocation(birth)).thenReturn(robot(200, birth));
+    when(rc.getGlobalCheese()).thenReturn(10000);
+    int stopPrice =
+        GameConstants.BUILD_ROBOT_BASE_COST
+            + GameConstants.BUILD_ROBOT_COST_INCREASE
+                * (Config.MAX_BABY_RATS / GameConstants.NUM_ROBOTS_FOR_COST_INCREASE);
+    when(rc.getCurrentRatCost()).thenReturn(stopPrice);
+    assertFalse(RatKing.spawnBabyRat(rc)); // Ordinary births remain capped.
+
+    RatKing.requestKingFormation();
+    for (int slot = 0; slot < 7; slot++) {
+      // Formation births themselves raise population and price above the normal cap.
+      when(rc.getCurrentRatCost())
+          .thenReturn(
+              stopPrice
+                  + (slot / GameConstants.NUM_ROBOTS_FOR_COST_INCREASE)
+                      * GameConstants.BUILD_ROBOT_COST_INCREASE);
+      assertTrue(
+          "Formation birth " + slot + " must bypass the strategy cap", RatKing.spawnBabyRat(rc));
+      verify(rc).squeak(birthPacket(slot, birth, birth));
+    }
+    assertFalse(
+        RatKing.spawnBabyRat(rc)); // Seven assigned: an eighth cannot inherit the exemption.
+    verify(rc, times(7)).buildRat(birth);
+  }
+
+  @Test
+  public void capExemptionPreservesReserveAtEqualityAndRechecksRisingCosts() throws Exception {
+    MapLocation birth = new MapLocation(10, 12);
+    when(rc.canBuildRat(birth)).thenReturn(true);
+    when(rc.senseRobotAtLocation(birth)).thenReturn(robot(200, birth));
+    int cost =
+        GameConstants.BUILD_ROBOT_BASE_COST
+            + GameConstants.BUILD_ROBOT_COST_INCREASE
+                * (Config.MAX_BABY_RATS / GameConstants.NUM_ROBOTS_FOR_COST_INCREASE);
+    when(rc.getCurrentRatCost()).thenReturn(cost);
+    RatKing.requestKingFormation();
+    when(rc.getGlobalCheese()).thenReturn(Config.MIN_CHEESE_RESERVE + cost - 1);
+    assertFalse(RatKing.spawnBabyRat(rc));
+    verify(rc, never()).buildRat(any());
+    assertEquals(0, shared[KingFormation.STATE]);
+    when(rc.getGlobalCheese()).thenReturn(Config.MIN_CHEESE_RESERVE + cost);
+    assertTrue(RatKing.spawnBabyRat(rc));
+
+    // Being partway through a requested group must not bypass the next birth's higher price.
+    int higherCost = cost + GameConstants.BUILD_ROBOT_COST_INCREASE;
+    when(rc.getCurrentRatCost()).thenReturn(higherCost);
+    when(rc.getGlobalCheese()).thenReturn(Config.MIN_CHEESE_RESERVE + higherCost - 1);
+    assertFalse(RatKing.spawnBabyRat(rc));
+    verify(rc, times(1)).buildRat(birth);
+    when(rc.getGlobalCheese()).thenReturn(Config.MIN_CHEESE_RESERVE + higherCost);
+    assertTrue(RatKing.spawnBabyRat(rc));
+    verify(rc).squeak(birthPacket(1, birth, birth));
+  }
+
+  @Test
+  public void waitingRequestCannotBypassCapWhileAnotherKingOwnsTheGroup() throws Exception {
+    RatKing.requestKingFormation();
+    RatKing.spawnBabyRat(rc); // First king reserves, but all placement checks are blocked.
+    int token = shared[KingFormation.STATE];
+    KingFormation.reset();
+    clearInvocations(rc);
+    when(rc.getID()).thenReturn(101);
+    when(rc.canBuildRat(new MapLocation(10, 12))).thenReturn(true);
+    when(rc.getGlobalCheese()).thenReturn(10000);
+    when(rc.getCurrentRatCost())
+        .thenReturn(
+            GameConstants.BUILD_ROBOT_BASE_COST
+                + GameConstants.BUILD_ROBOT_COST_INCREASE
+                    * (Config.MAX_BABY_RATS / GameConstants.NUM_ROBOTS_FOR_COST_INCREASE));
+    RatKing.requestKingFormation();
+    assertFalse(RatKing.spawnBabyRat(rc));
+    assertEquals(token, shared[KingFormation.STATE]);
+    verify(rc, never()).buildRat(any());
+    verify(rc, never()).writeSharedArray(anyInt(), anyInt());
   }
 
   @Test

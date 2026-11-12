@@ -56,7 +56,10 @@ public final class Config {
     BLOCK_AND_FLEE_WHEN_LOW_HEALTH
   }
 
-  /** Living allied baby rat cap; must be nonnegative and a multiple of four. Zero stops spawning. */
+  /**
+   * Ordinary baby cap; nonnegative and a multiple of four. Zero stops ordinary births. Explicit
+   * formation recruitment may exceed this cap, while still respecting the cheese reserve.
+   */
   static int MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
 
   /** Retained mine cap, 0–18. Change for the whole team between matches, not during a game. */

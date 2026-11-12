@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import battlecode.common.Direction;
+import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotInfo;
 import battlecode.common.Team;
@@ -156,6 +157,90 @@ public class KingFormationEngineTest {
     System.out.println(
         "One-slot retry fixture chosen="
             + chosen
+            + " babyPeak="
+            + babyPeak
+            + " kingPeak="
+            + kingPeak);
+  }
+
+  @Test
+  public void requestedFormationExceedsFullPopulationOnlyWhileFundedAndRecruiting()
+      throws Exception {
+    start();
+    int cap = Config.MAX_BABY_RATS;
+    Set<Integer> existing = new HashSet<>();
+    for (int i = 0; i < cap; i++) {
+      int id = 300 + i;
+      existing.add(id);
+      world.spawnRobot(
+          id,
+          UnitType.BABY_RAT,
+          new MapLocation(1 + i % 18, 1 + i / 18),
+          Direction.NORTH,
+          0,
+          Team.A);
+      InternalRobot parked = world.getObjectInfo().getRobotByID(id);
+      // Existing non-Spawners stay away from the new footprint; no deaths free population slots.
+      parked.setMovementCooldownTurns(1000);
+      parked.setTurningCooldownTurns(1000);
+      parked.setActionCooldownTurns(1000);
+    }
+    cheese(2000);
+    round();
+    assertEquals(cap, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertEquals(0, world.readSharedArray(KingFormation.STATE, Team.A));
+    robotClass(1, "ratplayer.RatKing").getMethod("requestKingFormation").invoke(null);
+    int cost = world.getObjectInfo().getRobotByID(1).getController().getCurrentRatCost();
+
+    // One cheese below reserve + actual above-cap price refuses even a requested birth.
+    cheese(Config.MIN_CHEESE_RESERVE + cost - 1);
+    round();
+    assertEquals(cap, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertEquals(0, world.readSharedArray(KingFormation.STATE, Team.A));
+    cheese(Config.MIN_CHEESE_RESERVE + cost);
+    round();
+    assertEquals(cap + 1, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertEquals(
+        Config.MIN_CHEESE_RESERVE - GameConstants.RAT_KING_CHEESE_CONSUMPTION,
+        world.getTeamInfo().getCheese(Team.A));
+    round(); // Remaining cheese cannot fund the next member while preserving the reserve.
+    assertEquals(cap + 1, world.getTeamInfo().getNumBabyRats(Team.A));
+
+    cheese(2000);
+    Set<Integer> members = new HashSet<>();
+    int chosen = 0;
+    for (int turn = 0; turn < 60; turn++) {
+      for (InternalRobot robot : world.getAllRobots(Team.A, 0)) {
+        if (robot.getID() != 1 && !existing.contains(robot.getID())) members.add(robot.getID());
+      }
+      if (chosen == 0 && !members.isEmpty()) chosen = members.iterator().next();
+      InternalRobot leader = world.getObjectInfo().getRobotByID(chosen);
+      if (members.size() == 7 && leader.getType() == UnitType.RAT_KING) break;
+      round();
+      assertTrue(
+          "No eighth formation birth above cap",
+          world.getTeamInfo().getNumBabyRats(Team.A) <= cap + 7);
+    }
+    assertEquals(7, members.size());
+    InternalRobot leader = world.getObjectInfo().getRobotByID(chosen);
+    assertEquals(debug(), UnitType.RAT_KING, leader.getType());
+    for (int id : existing) assertNotNull(world.getObjectInfo().getRobotByID(id));
+    round(); // The chosen releases the reservation; ordinary spawning is capped again.
+    assertEquals(0, world.readSharedArray(KingFormation.STATE, Team.A));
+    for (InternalRobot robot : world.getAllRobots(Team.A, 0)) {
+      assertTrue(
+          "Only the original population and two kings may remain",
+          existing.contains(robot.getID()) || robot.getID() == 1 || robot.getID() == chosen);
+    }
+    System.out.println(
+        "Above-cap fixture existing="
+            + cap
+            + " recruited="
+            + members.size()
+            + " chosen="
+            + chosen
+            + " round="
+            + world.getCurrentRound()
             + " babyPeak="
             + babyPeak
             + " kingPeak="

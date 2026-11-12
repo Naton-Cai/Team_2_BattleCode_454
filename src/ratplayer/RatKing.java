@@ -572,7 +572,7 @@ public class RatKing {
     KingFormation.request();
   }
 
-  // Spawns a baby rat within the configured population and reserve limits.
+  // Ordinary births obey the population cap; requested formation births still obey the reserve.
   static boolean spawnBabyRat(RobotController rc) throws GameActionException {
     if (Config.MAX_BABY_RATS < 0
         || Config.MAX_BABY_RATS % GameConstants.NUM_ROBOTS_FOR_COST_INCREASE != 0
@@ -594,10 +594,14 @@ public class RatKing {
             + (long) GameConstants.BUILD_ROBOT_COST_INCREASE
                 * (Config.MAX_BABY_RATS / GameConstants.NUM_ROBOTS_FOR_COST_INCREASE);
     int cost = rc.getCurrentRatCost();
-    if (cost >= stopPrice || (long) rc.getGlobalCheese() - cost < Config.MIN_CHEESE_RESERVE) {
+    if ((long) rc.getGlobalCheese() - cost < Config.MIN_CHEESE_RESERVE) {
       return false;
     }
+    // Claim before the cap check so a funded request can recruit its seven babies at/above the cap.
     KingFormation.prepare(rc);
+    if (cost >= stopPrice && !KingFormation.recruiting()) {
+      return false;
+    }
     // Try the map-center heading first, then retain the existing north-clockwise fallback order.
     MapLocation center = rc.getLocation();
     Direction centerHeading =

@@ -88,6 +88,11 @@ final class KingFormation {
     }
   }
 
+  /** Only this group's recruiting king may exceed the ordinary baby cap, for seven assignments. */
+  static boolean recruiting() {
+    return ownsGroup && recruited < 7;
+  }
+
   /** RatKing checks this before another spawn, even if action cooldown or cheese blocks a birth. */
   static boolean hasPendingBirth() {
     return pendingIndex >= 0;
