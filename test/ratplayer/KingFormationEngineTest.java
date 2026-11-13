@@ -117,7 +117,7 @@ public class KingFormationEngineTest {
   }
 
   /**
-   * Scenario: a footprint tile becomes impassable after the chosen commits to its site.
+   * Scenario: one of the site's nine tiles gets dirt on it after the chosen picked the site.
    *
    * <p>Expected: the chosen notices the visible dirt, selects a different site, and still
    * promotes; without relocation the engine would refuse promotion forever.
@@ -145,7 +145,7 @@ public class KingFormationEngineTest {
     // Act
     runUntilKing(leader, 120);
 
-    // Assert: promoted somewhere whose footprint excludes the dirt tile.
+    // Assert: became a king somewhere else, with the dirt tile outside its 3x3.
     assertEquals(debug(), UnitType.RAT_KING, leader.getType());
     assertNotEquals(first, leader.getLocation());
     assertTrue(
@@ -185,7 +185,7 @@ public class KingFormationEngineTest {
    */
   @Test
   public void killedChosenIsReplacedAndFormationCompletes() throws Exception {
-    // Arrange: the king sees its newborn chosen next to it (r^2 = 8) for one round, then it is
+    // Arrange: the king sees its newborn chosen two tiles away for one round, then it is
     // removed, as a cat crush would.
     int first = requestWith(volunteers(6));
     round();

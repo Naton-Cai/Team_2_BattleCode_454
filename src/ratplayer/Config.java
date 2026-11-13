@@ -21,36 +21,50 @@ public final class Config {
   static final int KING_SEARCH_EDGE_MARGIN = 3;
   static final int KING_SEARCH_INWARD_WEIGHT = 3;
 
-  // King formation strategy values (KingFormation), not engine rules.
-  /** Rounds after its birth before a chosen gives up and becomes an ordinary baby. */
-  static final int FORMATION_TIMEOUT_ROUNDS = 300;
+  // ---- King formation (see KingFormation) ----
+  // Strategy values are first guesses, not tuned. Tests may override them; reset() restores them.
+  static final int DEFAULT_FORMATION_TIMEOUT_ROUNDS = 300;
+  static final int DEFAULT_FORMATION_TRAVEL_ROUNDS = 20;
+  static final int DEFAULT_FORMATION_SITE_ROUNDS = 60;
+  static final int DEFAULT_FORMATION_LISTEN_ROUNDS = 3;
+  static final int DEFAULT_FORMATION_IGNORE_ROUNDS = 30;
+  static final int DEFAULT_FORMATION_KING_CLEARANCE = 4;
+  static final int DEFAULT_FORMATION_RETRIES = 2;
 
-  /** Rounds a chosen may spend failing to reach its site before re-selecting another. */
-  static final int FORMATION_TRAVEL_ROUNDS = 20;
+  /** How many rounds the chosen keeps trying before it gives up and becomes a normal baby. */
+  static int FORMATION_TIMEOUT_ROUNDS = DEFAULT_FORMATION_TIMEOUT_ROUNDS;
 
-  /** Rounds a chosen keeps one site before trying another; fodder follow the new RECRUIT. */
-  static final int FORMATION_SITE_ROUNDS = 60;
+  /** How many rounds the chosen may try to walk onto its site before picking a different one. */
+  static int FORMATION_TRAVEL_ROUNDS = DEFAULT_FORMATION_TRAVEL_ROUNDS;
+
+  /** How many rounds the chosen keeps one site in total before trying a different one. */
+  static int FORMATION_SITE_ROUNDS = DEFAULT_FORMATION_SITE_ROUNDS;
+
+  /** How many rounds a fodder baby waits without hearing the chosen before going back to work. */
+  static int FORMATION_LISTEN_ROUNDS = DEFAULT_FORMATION_LISTEN_ROUNDS;
+
+  /** How many rounds a baby ignores a chosen after finding that chosen's ring already full. */
+  static int FORMATION_IGNORE_ROUNDS = DEFAULT_FORMATION_IGNORE_ROUNDS;
 
   /**
-   * A chosen seen this close to its king's center last round and gone now is dead (one tile per
-   * round cannot leave r^2 = 25 vision). Engine-derived bound, not a tuning knob: keep at most 12.
+   * How far (in king steps, diagonals count as one) a new site must be from any king or cat.
+   * Bigger keeps the site safe if a king moves; smaller keeps it closer to baby traffic.
    */
-  static final int FORMATION_LOST_DISTANCE_SQUARED = 12;
+  static int FORMATION_KING_CLEARANCE = DEFAULT_FORMATION_KING_CLEARANCE;
 
-  /** Automatic re-requests per explicit request after the chosen is lost. */
-  static final int FORMATION_RETRIES = 2;
+  /** How many times a king automatically re-requests after seeing its chosen die. */
+  static int FORMATION_RETRIES = DEFAULT_FORMATION_RETRIES;
 
-  /** Rounds of recruiter silence before fodder resumes ordinary work. */
-  static final int FORMATION_LISTEN_ROUNDS = 3;
-
-  /** Rounds a baby ignores a recruiter whose ring it found full. */
-  static final int FORMATION_IGNORE_ROUNDS = 30;
-
-  /** Ring allies that, with the chosen, meet the engine's seven-rat rule (spec v1.2.6 p.14). */
+  // Fixed by engine rules; do not tune.
+  /** Babies needed around the chosen: the engine wants 7 rats in the 3x3 (spec v1.2.6 p.14). */
   static final int FORMATION_FODDER_NEEDED = 6;
 
-  /** Minimum Chebyshev gap from a chosen site to a king or cat when selecting it. */
-  static final int FORMATION_KING_CLEARANCE = 4;
+  /**
+   * Distance squared from its king where a vanished chosen must be dead. A baby moves one tile per
+   * round, so from this close it cannot walk out of the king's view (distance squared 25) in one
+   * round. Must stay at 12 or less.
+   */
+  static final int FORMATION_LOST_DISTANCE_SQUARED = 12;
 
   static final int DEFAULT_KING_HOME_RADIUS = 4;
   static final int DEFAULT_KING_STALL_TURNS = 10;
@@ -193,5 +207,12 @@ public final class Config {
     KING_CAT_RESPONSE_STRATEGY = DEFAULT_KING_CAT_RESPONSE_STRATEGY;
     BABY_CAT_FLEE_HEALTH = DEFAULT_BABY_CAT_FLEE_HEALTH;
     KING_CAT_FLEE_HEALTH = DEFAULT_KING_CAT_FLEE_HEALTH;
+    FORMATION_TIMEOUT_ROUNDS = DEFAULT_FORMATION_TIMEOUT_ROUNDS;
+    FORMATION_TRAVEL_ROUNDS = DEFAULT_FORMATION_TRAVEL_ROUNDS;
+    FORMATION_SITE_ROUNDS = DEFAULT_FORMATION_SITE_ROUNDS;
+    FORMATION_LISTEN_ROUNDS = DEFAULT_FORMATION_LISTEN_ROUNDS;
+    FORMATION_IGNORE_ROUNDS = DEFAULT_FORMATION_IGNORE_ROUNDS;
+    FORMATION_KING_CLEARANCE = DEFAULT_FORMATION_KING_CLEARANCE;
+    FORMATION_RETRIES = DEFAULT_FORMATION_RETRIES;
   }
 }

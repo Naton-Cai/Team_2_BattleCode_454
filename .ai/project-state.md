@@ -362,3 +362,16 @@ so they were not retried. No measured formation gain in this sample. Deaths away
 still rely on the caller re-requesting after FORMATION_TIMEOUT_ROUNDS. Evidence: local
 matches/simple-formation-20261112/retry/.
 
+## King formation readability cleanup (2026-11-12)
+
+No behavior change. KingFormation is split into labelled king, baby, fodder, chosen and site
+sections with plain-language comments; long conditions became named helpers (isCloser,
+isUsableSite, siteFailed, footprintClear, sweepCone, loadKings). Squeak payloads are now a small
+tag (CHOSEN = 1 << 12, RECRUIT = 2 << 12) above the packed tile. The seven strategy values in
+Config follow the existing DEFAULT_ + reset() pattern so tests can override them;
+FORMATION_FODDER_NEEDED and FORMATION_LOST_DISTANCE_SQUARED stay final (engine-derived).
+
+Verified: 273 tests passed, two existing manual BFS cases skipped; engine fixtures promote on the
+same rounds (55, 57). Re-running the 40-game batch reproduced every promotion round, game result
+and retry count exactly (40/40 identical). Evidence: local matches/simple-formation-20261112/cleanup/.
+

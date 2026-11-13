@@ -300,7 +300,7 @@ public class KingFormationTest {
   }
 
   /**
-   * Scenario: the engine reports promotion legal (seven allies, cheese, footprint, caps).
+   * Scenario: the engine says the chosen can become a king (enough rats, cheese, clear 3x3).
    *
    * <p>Expected: the chosen promotes immediately, wherever it stands, and clears its baby role so
    * next turn's type dispatch runs it as a king.
@@ -343,11 +343,11 @@ public class KingFormationTest {
    * Scenario: the nearer candidate is within FORMATION_KING_CLEARANCE of a published king.
    *
    * <p>Expected: it is skipped for the farther candidate, so a king stepping toward the site does
-   * not immediately make the footprint illegal (spec p.14: no overlap with a king).
+   * not immediately make the site illegal (a new king may not overlap a king, spec p.14).
    */
   @Test
   public void chosenSkipsSitesTooCloseToAKing() throws Exception {
-    // Arrange: king 0 published at (10,9): Chebyshev 4 to (10,13), 5 to (10,14).
+    // Arrange: king 0 at (10,9) is 4 steps from (10,13) (too close) and 5 from (10,14).
     becomeChosen();
     openTerrain(new MapLocation(10, 13), new MapLocation(10, 14));
     publishKingAt(100, new MapLocation(10, 9));
@@ -382,7 +382,7 @@ public class KingFormationTest {
   }
 
   /**
-   * Scenario: a footprint tile of the committed site becomes impassable (e.g. dirt placed).
+   * Scenario: one of the site's nine tiles gets blocked after the chosen picked it (e.g. dirt).
    *
    * <p>Expected: the chosen re-selects a different open site the same turn.
    */
@@ -473,10 +473,10 @@ public class KingFormationTest {
   }
 
   /**
-   * Scenario: the king saw its chosen last round close to its center (r^2 = 2) and now cannot.
+   * Scenario: the king saw its chosen last round one diagonal step from its center and now cannot.
    *
    * <p>Expected: the request is re-armed. A live baby moves at most one tile per round, so it
-   * could not have left king vision (r^2 = 25): it died, typically to a cat.
+   * could not have walked out of the king's view in one round: it died, typically to a cat.
    */
   @Test
   public void kingRearmsWhenANearbyChosenVanishes() throws Exception {
@@ -494,7 +494,7 @@ public class KingFormationTest {
   }
 
   /**
-   * Scenario: the chosen was last seen just outside the provable zone (r^2 = 13 > 12), or the
+   * Scenario: the chosen was last seen too far away to be sure (distance squared 13, limit 12), or the
    * king missed a round of observation, and then it is gone.
    *
    * <p>Expected: no re-arm. It may simply have walked out of view; sites sit near the vision edge,
@@ -502,7 +502,7 @@ public class KingFormationTest {
    */
   @Test
   public void farOrStaleSightingIsNotTreatedAsDeath() throws Exception {
-    // Arrange/act: seen at r^2 = 13 (3,2), gone next round.
+    // Arrange/act: seen 3 east and 2 north of the king (distance squared 13), gone next round.
     bornChosen();
     seeChosenAt(101, HERE.translate(3, 2));
     when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(false);
@@ -528,7 +528,7 @@ public class KingFormationTest {
    */
   @Test
   public void automaticRetriesAreCappedPerRequest() throws Exception {
-    // Arrange: each chosen is born on HERE (r^2 = 0) and is gone the next round.
+    // Arrange: each chosen is born right next to the king and is gone the next round.
     when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(false);
     bornChosen();
     int now = 100;
