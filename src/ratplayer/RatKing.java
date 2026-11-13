@@ -45,7 +45,6 @@ public class RatKing {
 
   // handles our Rat King turn logic
   static void run(RobotController rc) throws GameActionException {
-    KingFormation.promoted(rc);
     handledCatsThisTurn = false;
     java.util.Arrays.fill(turnMines, 0);
     Trap.writeStartofBackStabbing(rc);
@@ -567,7 +566,7 @@ public class RatKing {
     java.util.Arrays.fill(escapeMines, 0);
   }
 
-  /** Request the next successful birth as chosen, followed by six formation followers. */
+  /** Request one chosen birth; it recruits six existing babies by squeak. Not yet called. */
   public static void requestKingFormation() {
     KingFormation.request();
   }
@@ -579,10 +578,6 @@ public class RatKing {
         || Config.MIN_CHEESE_RESERVE < 0) {
       throw new IllegalArgumentException(
           "Baby cap must be a nonnegative multiple of the cost step; reserve must be nonnegative");
-    }
-    if (KingFormation.hasPendingBirth()) {
-      KingFormation.flushBirth(rc);
-      return false;
     }
     if (!rc.isActionReady()) {
       return false;
@@ -597,9 +592,8 @@ public class RatKing {
     if ((long) rc.getGlobalCheese() - cost < Config.MIN_CHEESE_RESERVE) {
       return false;
     }
-    // Claim before the cap check so a funded request can recruit its seven babies at/above the cap.
-    KingFormation.prepare(rc);
-    if (cost >= stopPrice && !KingFormation.recruiting()) {
+    // Only the one requested chosen birth may exceed the ordinary cap.
+    if (cost >= stopPrice && !KingFormation.requested()) {
       return false;
     }
     // Try the map-center heading first, then retain the existing north-clockwise fallback order.

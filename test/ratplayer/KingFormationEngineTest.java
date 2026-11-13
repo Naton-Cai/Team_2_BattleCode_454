@@ -2,11 +2,11 @@ package ratplayer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import battlecode.common.Direction;
-import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotInfo;
 import battlecode.common.Team;
@@ -23,228 +23,215 @@ import battlecode.world.control.TeamControlProvider;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import org.junit.After;
 import org.junit.Test;
 
-/** Real newborn recruitment, assembly, promotion, and next-type dispatch in engine 1.2.6. */
+/**
+ * Real engine 1.2.6 runs of the squeak-recruited king formation.
+ *
+ * <p>Fixture: 20x20 open map, our king fixed at (4,4), enemy king at (17,17), no cats. Babies are
+ * placed with ids 300+ next to where the chosen spawns (toward the map center, around (6,6)). The
+ * recruiting king's baby cap is set to zero, so the only birth the request may cause is the chosen
+ * itself. Every round asserts no logged exception and bytecode use below the per-unit limits with
+ * headroom (baby 17,500 / king 20,000, spec v1.2.6 p.18).
+ */
 public class KingFormationEngineTest {
+  private static final int FIRST_VOLUNTEER = 300;
+
   private GameWorld world;
   private PlayerControlProvider player;
   private ByteArrayOutputStream output;
   private int babyPeak;
   private int kingPeak;
-  private boolean consumeBirthSqueak;
 
   @After
   public void stop() {
-    if (player != null) player.matchEnded();
+    if (player != null) {
+      player.matchEnded();
+    }
   }
 
+  /**
+   * Scenario: the normal path. Six existing babies stand near the chosen's birth tile.
+   *
+   * <p>Expected: exactly one baby is born above the cap, it promotes, all six volunteers are
+   * consumed, and the next round runs the new robot as a king that publishes itself.
+   */
   @Test
-  public void requestedSevenBirthsAssemblePromoteAndPublishIndependentKing() throws Exception {
-    start();
-    // Initialize the real sandbox without recruiting, then invoke the explicit API in that copy.
-    cheese(100);
-    round();
-    assertEquals(0, world.getTeamInfo().getNumBabyRats(Team.A));
-    Class<?> kingClass = robotClass(1, "ratplayer.RatKing");
-    kingClass.getMethod("requestKingFormation").invoke(null);
-    cheese(2000);
-    Set<Integer> newborns = new HashSet<>();
-    int chosen = 0;
-    for (int turn = 0; turn < 35 && newborns.size() < 7; turn++) {
-      round();
-      for (InternalRobot robot : world.getAllRobots(Team.A, 0)) {
-        if (robot.getID() != 1) newborns.add(robot.getID());
-      }
-      if (chosen == 0 && !newborns.isEmpty()) chosen = newborns.iterator().next();
-    }
-    assertEquals("Exactly seven requested births must be observable", 7, newborns.size());
-    // Preserve enough for promotion while preventing an unrelated eighth baby from spawning.
-    cheese(100);
+  public void chosenRecruitsSixExistingBabiesAndPromotes() throws Exception {
+    // Arrange: six volunteers in a block east of the expected site.
+    int chosen = requestWith(volunteers(6));
     InternalRobot leader = world.getObjectInfo().getRobotByID(chosen);
-    assertNotNull(leader);
-    for (int turn = 0; turn < 60 && leader.getType() != UnitType.RAT_KING; turn++) round();
+
+    // Act: run until promotion or a generous bound.
+    int rounds = runUntilKing(leader, 80);
+
+    // Assert: promoted, two kings, every volunteer absorbed, one extra baby only.
     assertEquals(debug(), UnitType.RAT_KING, leader.getType());
     assertEquals(2, world.getTeamInfo().getNumRatKings(Team.A));
-    // Inspect actual unit types: engine 1.2.6's population counter retains the promoted center.
-    for (InternalRobot robot : world.getAllRobots(Team.A, 0)) {
-      assertEquals(UnitType.RAT_KING, robot.getType());
+    for (int id = FIRST_VOLUNTEER; id < FIRST_VOLUNTEER + 6; id++) {
+      assertEquals(null, world.getObjectInfo().getRobotByID(id));
     }
-    for (int id : newborns) {
-      if (id != chosen) assertEquals(null, world.getObjectInfo().getRobotByID(id));
-    }
-    int promotionRound = world.getCurrentRound();
-    round(); // Current-type dispatch, group release, and independent king publication.
-    assertEquals(0, world.readSharedArray(KingFormation.STATE, Team.A));
-    assertNotNull(KingRegistry.read(leader.getController(), 0, world.getCurrentRound()));
-    assertEquals(
-        leader.getLocation(),
-        KingRegistry.read(leader.getController(), 1, world.getCurrentRound()));
+    round(); // Next-type dispatch: the new king runs RatKing and claims a registry ID.
+    assertNotNull(KingRegistry.read(leader.getController(), 1, world.getCurrentRound()));
     System.out.println(
-        "Formation seed=6147 map=SpawnerFormationFixture side=A chosen="
-            + chosen
-            + " members="
-            + newborns
-            + " promotionRound="
-            + promotionRound
-            + " babyPeak="
+        "Formation promoted after "
+            + rounds
+            + " rounds babyPeak="
             + babyPeak
             + " kingPeak="
             + kingPeak);
   }
 
+  /**
+   * Scenario: more volunteers than the ring needs.
+   *
+   * <p>Expected: promotion still happens; babies seeing six ring allies leave, so at least four of
+   * twelve survive (a 3x3 holds at most eight absorbed babies) and survivors return to ordinary
+   * roles after the recruiter falls silent.
+   */
   @Test
-  public void insufficientCheeseKeepsAssembledGroupAliveUntilFundingArrives() throws Exception {
-    start();
-    cheese(100);
-    round();
-    robotClass(1, "ratplayer.RatKing").getMethod("requestKingFormation").invoke(null);
-    cheese(2000);
-    Set<Integer> newborns = new HashSet<>();
-    int chosen = 0;
-    for (int turn = 0; turn < 35 && newborns.size() < 7; turn++) {
-      round();
-      for (InternalRobot robot : world.getAllRobots(Team.A, 0)) {
-        if (robot.getID() != 1) newborns.add(robot.getID());
-      }
-      if (chosen == 0 && !newborns.isEmpty()) chosen = newborns.iterator().next();
-    }
-    assertEquals(7, newborns.size());
+  public void excessVolunteersReturnToOrdinaryWork() throws Exception {
+    // Arrange
+    int chosen = requestWith(volunteers(12));
     InternalRobot leader = world.getObjectInfo().getRobotByID(chosen);
-    for (int turn = 0; turn < 15; turn++) {
-      cheese(49);
+
+    // Act: promote, then let the silence window pass.
+    runUntilKing(leader, 80);
+    for (int i = 0; i <= Config.FORMATION_LISTEN_ROUNDS + 1; i++) {
       round();
-      assertEquals(UnitType.BABY_RAT, leader.getType());
     }
-    assertEquals(7, world.getTeamInfo().getNumBabyRats(Team.A));
-    cheese(100);
-    for (int turn = 0; turn < 15 && leader.getType() == UnitType.BABY_RAT; turn++) round();
+
+    // Assert
     assertEquals(debug(), UnitType.RAT_KING, leader.getType());
+    int survivors = 0;
+    for (int id = FIRST_VOLUNTEER; id < FIRST_VOLUNTEER + 12; id++) {
+      if (world.getObjectInfo().getRobotByID(id) != null) {
+        survivors++;
+        assertEquals("Survivor " + id + " must be ordinary", null, role(id));
+      }
+    }
+    assertTrue("At most eight babies fit in a 3x3: " + survivors, survivors >= 4);
+    System.out.println("Excess volunteers survived=" + survivors + " of 12");
   }
 
+  /**
+   * Scenario: a footprint tile becomes impassable after the chosen commits to its site.
+   *
+   * <p>Expected: the chosen notices the visible dirt, selects a different site, and still
+   * promotes; without relocation the engine would refuse promotion forever.
+   */
   @Test
-  public void failedBirthSqueakRecoversInEngineAndReclaimedSlotsStayUntouched() throws Exception {
-    start();
-    cheese(100);
-    round();
-    robotClass(1, "ratplayer.RatKing").getMethod("requestKingFormation").invoke(null);
-    consumeBirthSqueak = true; // Real engine one-squeak limit, not a canned false return.
-    cheese(2000);
-    Set<Integer> newborns = new HashSet<>();
-    int chosen = 0;
-    for (int turn = 0; turn < 40 && newborns.size() < 7; turn++) {
-      round();
-      for (InternalRobot robot : world.getAllRobots(Team.A, 0)) {
-        if (robot.getID() != 1) newborns.add(robot.getID());
-      }
-      if (chosen == 0 && !newborns.isEmpty()) chosen = newborns.iterator().next();
-    }
-    assertFalse("The fixture must actually consume the first birth's squeak", consumeBirthSqueak);
-    assertEquals(7, newborns.size());
-    cheese(100);
+  public void blockedSiteIsReplacedAndFormationStillPromotes() throws Exception {
+    // Arrange: wait until the chosen has committed to a site, then dirt an empty ring tile.
+    int chosen = requestWith(volunteers(6));
     InternalRobot leader = world.getObjectInfo().getRobotByID(chosen);
-    for (int turn = 0; turn < 60 && leader.getType() == UnitType.BABY_RAT; turn++) round();
+    MapLocation first = null;
+    for (int i = 0; i < 10 && first == null; i++) {
+      round();
+      first = site(chosen);
+    }
+    assertNotNull("Chosen must commit to a site", first);
+    MapLocation dirt = null;
+    for (Direction direction : RobotPlayer.directions) {
+      MapLocation tile = first.add(direction);
+      if (dirt == null && world.getRobot(tile) == null) {
+        dirt = tile;
+      }
+    }
+    world.setDirt(dirt, true);
+
+    // Act
+    runUntilKing(leader, 120);
+
+    // Assert: promoted somewhere whose footprint excludes the dirt tile.
     assertEquals(debug(), UnitType.RAT_KING, leader.getType());
-    round();
-    assertEquals(0, world.readSharedArray(KingFormation.STATE, Team.A));
-    assertEquals(
-        leader.getLocation(),
-        KingRegistry.read(leader.getController(), 1, world.getCurrentRound()));
-    System.out.println(
-        "One-slot retry fixture chosen="
-            + chosen
-            + " babyPeak="
-            + babyPeak
-            + " kingPeak="
-            + kingPeak);
+    assertNotEquals(first, leader.getLocation());
+    assertTrue(
+        Math.max(
+                Math.abs(leader.getLocation().x - dirt.x),
+                Math.abs(leader.getLocation().y - dirt.y))
+            > 1);
   }
 
+  /**
+   * Scenario: nobody answers the recruiter.
+   *
+   * <p>Expected: no further births (the request covered one chosen only), and after the timeout the
+   * chosen gives up and is an ordinary baby again instead of waiting forever.
+   */
   @Test
-  public void requestedFormationExceedsFullPopulationOnlyWhileFundedAndRecruiting()
-      throws Exception {
+  public void chosenWithoutVolunteersGivesUpAfterTimeout() throws Exception {
+    // Arrange
+    int chosen = requestWith(new MapLocation[0]);
+
+    // Act: run past the give-up deadline.
+    for (int i = 0; i < Config.FORMATION_TIMEOUT_ROUNDS + 2; i++) {
+      round();
+    }
+
+    // Assert
+    assertEquals(1, world.getTeamInfo().getNumBabyRats(Team.A));
+    assertEquals(UnitType.BABY_RAT, world.getObjectInfo().getRobotByID(chosen).getType());
+    assertEquals(null, role(chosen));
+  }
+
+  /** Block of volunteers just east of the chosen's expected birth tile (6,6). */
+  private static MapLocation[] volunteers(int count) {
+    MapLocation[] result = new MapLocation[count];
+    for (int i = 0; i < count; i++) {
+      result[i] = new MapLocation(8 + i % 3, 6 + i / 3);
+    }
+    return result;
+  }
+
+  /** Spawn volunteers, request a formation with cap zero, and return the chosen's ID. */
+  private int requestWith(MapLocation[] babies) throws Exception {
     start();
-    int cap = Config.MAX_BABY_RATS;
-    Set<Integer> existing = new HashSet<>();
-    for (int i = 0; i < cap; i++) {
-      int id = 300 + i;
-      existing.add(id);
+    for (int i = 0; i < babies.length; i++) {
       world.spawnRobot(
-          id,
-          UnitType.BABY_RAT,
-          new MapLocation(1 + i % 18, 1 + i / 18),
-          Direction.NORTH,
-          0,
-          Team.A);
-      InternalRobot parked = world.getObjectInfo().getRobotByID(id);
-      // Existing non-Spawners stay away from the new footprint; no deaths free population slots.
-      parked.setMovementCooldownTurns(1000);
-      parked.setTurningCooldownTurns(1000);
-      parked.setActionCooldownTurns(1000);
+          FIRST_VOLUNTEER + i, UnitType.BABY_RAT, babies[i], Direction.NORTH, 0, Team.A);
     }
-    cheese(2000);
-    round();
-    assertEquals(cap, world.getTeamInfo().getNumBabyRats(Team.A));
-    assertEquals(0, world.readSharedArray(KingFormation.STATE, Team.A));
+    cheese(100);
+    round(); // Volunteers take an ordinary turn before any request exists.
+    Field cap = robotClass(1, "ratplayer.Config").getDeclaredField("MAX_BABY_RATS");
+    cap.setAccessible(true);
+    cap.setInt(null, 0);
     robotClass(1, "ratplayer.RatKing").getMethod("requestKingFormation").invoke(null);
-    int cost = world.getObjectInfo().getRobotByID(1).getController().getCurrentRatCost();
-
-    // One cheese below reserve + actual above-cap price refuses even a requested birth.
-    cheese(Config.MIN_CHEESE_RESERVE + cost - 1);
-    round();
-    assertEquals(cap, world.getTeamInfo().getNumBabyRats(Team.A));
-    assertEquals(0, world.readSharedArray(KingFormation.STATE, Team.A));
-    cheese(Config.MIN_CHEESE_RESERVE + cost);
-    round();
-    assertEquals(cap + 1, world.getTeamInfo().getNumBabyRats(Team.A));
-    assertEquals(
-        Config.MIN_CHEESE_RESERVE - GameConstants.RAT_KING_CHEESE_CONSUMPTION,
-        world.getTeamInfo().getCheese(Team.A));
-    round(); // Remaining cheese cannot fund the next member while preserving the reserve.
-    assertEquals(cap + 1, world.getTeamInfo().getNumBabyRats(Team.A));
-
     cheese(2000);
-    Set<Integer> members = new HashSet<>();
+    round();
     int chosen = 0;
-    for (int turn = 0; turn < 60; turn++) {
-      for (InternalRobot robot : world.getAllRobots(Team.A, 0)) {
-        if (robot.getID() != 1 && !existing.contains(robot.getID())) members.add(robot.getID());
-      }
-      if (chosen == 0 && !members.isEmpty()) chosen = members.iterator().next();
-      InternalRobot leader = world.getObjectInfo().getRobotByID(chosen);
-      if (members.size() == 7 && leader.getType() == UnitType.RAT_KING) break;
-      round();
-      assertTrue(
-          "No eighth formation birth above cap",
-          world.getTeamInfo().getNumBabyRats(Team.A) <= cap + 7);
-    }
-    assertEquals(7, members.size());
-    InternalRobot leader = world.getObjectInfo().getRobotByID(chosen);
-    assertEquals(debug(), UnitType.RAT_KING, leader.getType());
-    for (int id : existing) assertNotNull(world.getObjectInfo().getRobotByID(id));
-    round(); // The chosen releases the reservation; ordinary spawning is capped again.
-    assertEquals(0, world.readSharedArray(KingFormation.STATE, Team.A));
     for (InternalRobot robot : world.getAllRobots(Team.A, 0)) {
-      assertTrue(
-          "Only the original population and two kings may remain",
-          existing.contains(robot.getID()) || robot.getID() == 1 || robot.getID() == chosen);
+      if (robot.getID() != 1
+          && (robot.getID() < FIRST_VOLUNTEER || robot.getID() >= FIRST_VOLUNTEER + 100)) {
+        chosen = robot.getID();
+      }
     }
-    System.out.println(
-        "Above-cap fixture existing="
-            + cap
-            + " recruited="
-            + members.size()
-            + " chosen="
-            + chosen
-            + " round="
-            + world.getCurrentRound()
-            + " babyPeak="
-            + babyPeak
-            + " kingPeak="
-            + kingPeak);
+    assertTrue("Exactly one chosen must be born", chosen != 0);
+    assertEquals(babies.length + 1, world.getTeamInfo().getNumBabyRats(Team.A));
+    return chosen;
+  }
+
+  private int runUntilKing(InternalRobot leader, int limit) {
+    int rounds = 0;
+    while (rounds < limit && leader.getType() == UnitType.BABY_RAT) {
+      round();
+      rounds++;
+    }
+    return rounds;
+  }
+
+  private Object role(int id) throws Exception {
+    Field role = robotClass(id, "ratplayer.BabyRat").getDeclaredField("role");
+    role.setAccessible(true);
+    return role.get(null);
+  }
+
+  private MapLocation site(int id) throws Exception {
+    Field site = robotClass(id, "ratplayer.KingFormation").getDeclaredField("site");
+    site.setAccessible(true);
+    return (MapLocation) site.get(null);
   }
 
   private void start() {
@@ -253,16 +240,7 @@ public class KingFormationEngineTest {
     output = new ByteArrayOutputStream();
     player =
         new PlayerControlProvider(
-            Team.A, "ratplayer", CrossPlayLanguage.JAVA, null, classes, output, false) {
-          @Override
-          public void runRobot(InternalRobot robot) {
-            if (consumeBirthSqueak && robot.getID() == 1 && world.getCurrentRound() == 2) {
-              assertTrue(robot.getController().squeak(0));
-              consumeBirthSqueak = false;
-            }
-            super.runRobot(robot);
-          }
-        };
+            Team.A, "ratplayer", CrossPlayLanguage.JAVA, null, classes, output, false);
     TeamControlProvider providers = new TeamControlProvider();
     providers.registerControlProvider(Team.A, player);
     providers.registerControlProvider(Team.B, new NullControlProvider());
@@ -273,8 +251,7 @@ public class KingFormationEngineTest {
       new RobotInfo(
           2, Team.B, UnitType.RAT_KING, 500, new MapLocation(17, 17), Direction.SOUTH, 0, 0, null)
     };
-    LiveMap map =
-        new LiveMap(20, 20, new MapLocation(0, 0), 6147, 150, "SpawnerFormationFixture", bodies);
+    LiveMap map = new LiveMap(20, 20, new MapLocation(0, 0), 6147, 700, "FormationFixture", bodies);
     GameInfo game =
         new GameInfo(
             "ratplayer",
@@ -291,12 +268,13 @@ public class KingFormationEngineTest {
     GameMaker maker = new GameMaker(game, null, false);
     maker.makeGameHeader();
     world = new GameWorld(map, providers, maker.getMatchMaker());
+    // No cats on this map: backstab keeps cooperation's all-cats-defeated end from firing (p.4).
     world.backstab(Team.A);
-    for (int slot = 53; slot < 64; slot++) world.writeSharedArray(slot, 777, Team.A);
-    world.getObjectInfo().getRobotByID(1).setMovementCooldownTurns(1000);
+    // Keep the parent stationary so the fixture geometry is reproducible.
+    world.getObjectInfo().getRobotByID(1).setMovementCooldownTurns(10000);
   }
 
-  /** Host-only reflection selects the actual robot-local copy; the bot uses no reflection. */
+  /** Host-only reflection selects the robot-local class copy; the bot itself uses no reflection. */
   private Class<?> robotClass(int id, String name) throws Exception {
     Field sandboxes = PlayerControlProvider.class.getDeclaredField("sandboxes");
     sandboxes.setAccessible(true);
@@ -312,9 +290,6 @@ public class KingFormationEngineTest {
 
   private void round() {
     world.runRound();
-    for (int slot = 53; slot < 64; slot++) {
-      assertEquals("Reclaimed slot " + slot + " changed", 777, world.readSharedArray(slot, Team.A));
-    }
     assertFalse(debug(), output.toString(StandardCharsets.UTF_8).contains("Exception"));
     for (InternalRobot robot : world.getAllRobots(Team.A, 0)) {
       int used = robot.getBytecodesUsed();
@@ -323,7 +298,7 @@ public class KingFormationEngineTest {
         assertTrue("King cutoff: " + used, used < 19000);
       } else {
         babyPeak = Math.max(babyPeak, used);
-        assertTrue("Baby cutoff: " + used, used < 16500);
+        assertTrue("Baby cutoff id=" + robot.getID() + ": " + used, used < 16500);
       }
     }
   }

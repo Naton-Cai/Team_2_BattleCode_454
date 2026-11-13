@@ -2,7 +2,7 @@
 
 ### Team shared array
 
-The current `ratplayer` layout reserves **53 of 64 slots**, leaving **11 free (53–63)**.
+The current `ratplayer` layout reserves **52 of 64 slots**, leaving **12 free (52–63)**.
 Both unit types can read the array; only Rat Kings can write it. Each slot holds 0–1023.
 
 | Slots | Contents |
@@ -14,8 +14,7 @@ Both unit types can read the array; only Rat Kings can write it. Each slot holds
 | 12–14 | Rat King ID 4 |
 | 15–50 | 18 cheese mine records, two slots each |
 | 51 | Backstab start round, with zero meaning unset |
-| 52 | King spawning: single formation lock/token; 0 = free, 1–1023 = active group |
-| 53–63 | Unallocated, 11 slots |
+| 52–63 | Unallocated, 12 slots (king formation uses none; see 2026-11-12 entry) |
 
 ## Dirt collection (baby rats 2026-10-28, kings 2026-10-29)
 
@@ -291,3 +290,53 @@ Keep matches/spawner-prefund-20261111/REPORT.md and its replays as historical ev
 formed four kings in four comparisons; prefunding formed two. Prefunding tightened recruitment
 but delayed or missed expansion. That sample motivated reverting the experiment, not a general
 strategy-performance claim. Earlier cap-exemption notes above describe the retained behavior.
+
+## Simplified squeak-recruited king formation (2026-11-12)
+
+Branch experiment/simple-king-formation, based on 37b7f42. Replaces the seven-birth/slot-ID
+formation and supersedes the 2026-11-11 entries above on this branch (seven exempt births,
+slot 52 token, staged recruitment). Requests stay explicit: RatKing.requestKingFormation() is
+still not called by any gameplay policy; the team decides when to attempt.
+
+Implemented: the armed king's next birth (cap-exempt, MIN_CHEESE_RESERVE still applies) gets a
+CHOSEN squeak addressed by birth tile. The chosen picks the nearest fully sensed passable 3x3,
+squeaks RECRUIT(site) every turn and calls canBecomeRatKing every turn (engine is the only
+completion check, spec v1.2.6 p.14). Ordinary babies hearing RECRUIT walk to the nearest free
+ring tile and hold silently. No shared-array slots, IDs, slot grants or acknowledgments.
+BabyRole is now CHOSEN/FODDER. RatKing no longer calls a promoted() hook; the chosen clears its
+own baby state when it promotes.
+
+Guardrails (Config values are initial strategy choices, untuned): request kept if the birth
+squeak fails; promotion attempted anywhere legal; site needs clearance 4 (Chebyshev) from kings
+and cats and its N/E/S/W tiles two steps out on the map (edge rings were sealed off by early
+fodder on evileye); site replaced on visible wall/dirt/king/cat overlap, after 20 rounds unable
+to reach it, or after 60 rounds on it; no site in view -> step clear of the nearest king, then
+circle it; give up after 300 rounds or when engine king caps make promotion impossible (5 kings,
+or 2 after round 1200); fodder release after 3 silent rounds; fodder leave and ignore a
+recruiter for 30 rounds when they see 6 ring allies or no free ring tile.
+
+Rejected after matches: requiring known-passable approach tiles (pushed the chosen away from
+traffic; EscapeTheNight 107->212, cheeseguardians-B lost); fleeing visible cats (no deaths
+prevented, evileye-A slower). Evidence in the local report below.
+
+Verified: ./gradlew spotlessApply classes test spotlessCheck passed: 267 passed, two existing
+manual BFS cases skipped; KingFormation line coverage 168/189 (controller tests; engine tests run
+in sandbox class loaders that JaCoCo does not count). Four real-engine fixtures: six volunteers
+promote (fixture peaks baby 4,725 / king 7,683), excess volunteers survive and return to ordinary
+roles (6 of 12), dirt on the committed site forces relocation then promotion, no volunteers gives
+up after the timeout with no extra births.
+
+Matches (temporary request at round 100, logging only; production restored and checked against
+the saved patch): 20 maps x both sides vs examplefuncsplayer. Same inputs on the existing-rat-fodder
+working tree: formed 36/40 vs 35/40; median request-to-king 13 vs 39 rounds; of 31 paired
+successes 28 faster, 5 slower (evileye-A, jail A/B, trapped-A, DefaultSmall-B). Failures:
+sittingducks A/B and tiny-A chosen killed by a cat seconds after it came into view; canyoudig-A
+lost the game at round 144 before the reserve allowed the chosen birth. Formation-turn peaks in
+matches: chosen 7,195 / fodder 1,660 bytecodes; no logged exceptions. One opponent, one request
+round; not a win-rate or reliability claim.
+
+Known limits: recruitment reach is the squeak radius (sqrt 16) around the chosen; a dead chosen
+consumes the request (no automatic re-request; the calling policy should check KingRegistry and
+re-request); fodder suspend ordinary behavior, including cat avoidance; up to two extra allies can
+be absorbed when the partial cone view undercounts the ring. Evidence: local ignored
+matches/simple-formation-20261112/REPORT.md (commands, patches, logs, replays).

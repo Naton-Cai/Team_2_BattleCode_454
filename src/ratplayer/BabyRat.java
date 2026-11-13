@@ -22,8 +22,11 @@ public class BabyRat {
     KingFormation.assign(rc);
     if (role != null) {
       switch (role) {
-        case SPAWNER:
-          KingFormation.run(rc);
+        case CHOSEN:
+          KingFormation.runChosen(rc);
+          return;
+        case FODDER:
+          KingFormation.runFodder(rc);
           return;
       }
     }

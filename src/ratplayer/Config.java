@@ -21,6 +21,28 @@ public final class Config {
   static final int KING_SEARCH_EDGE_MARGIN = 3;
   static final int KING_SEARCH_INWARD_WEIGHT = 3;
 
+  // King formation strategy values (KingFormation), not engine rules.
+  /** Rounds after its birth before a chosen gives up and becomes an ordinary baby. */
+  static final int FORMATION_TIMEOUT_ROUNDS = 300;
+
+  /** Rounds a chosen may spend failing to reach its site before re-selecting another. */
+  static final int FORMATION_TRAVEL_ROUNDS = 20;
+
+  /** Rounds a chosen keeps one site before trying another; fodder follow the new RECRUIT. */
+  static final int FORMATION_SITE_ROUNDS = 60;
+
+  /** Rounds of recruiter silence before fodder resumes ordinary work. */
+  static final int FORMATION_LISTEN_ROUNDS = 3;
+
+  /** Rounds a baby ignores a recruiter whose ring it found full. */
+  static final int FORMATION_IGNORE_ROUNDS = 30;
+
+  /** Ring allies that, with the chosen, meet the engine's seven-rat rule (spec v1.2.6 p.14). */
+  static final int FORMATION_FODDER_NEEDED = 6;
+
+  /** Minimum Chebyshev gap from a chosen site to a king or cat when selecting it. */
+  static final int FORMATION_KING_CLEARANCE = 4;
+
   static final int DEFAULT_KING_HOME_RADIUS = 4;
   static final int DEFAULT_KING_STALL_TURNS = 10;
   static final int DEFAULT_KING_RETRY_TURNS = 10;
@@ -58,7 +80,7 @@ public final class Config {
 
   /**
    * Ordinary baby cap; nonnegative and a multiple of four. Zero stops ordinary births. Explicit
-   * formation recruitment may exceed this cap, while still respecting the cheese reserve.
+   * formation may exceed this cap only for its one chosen birth, respecting the cheese reserve.
    */
   static int MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
 
