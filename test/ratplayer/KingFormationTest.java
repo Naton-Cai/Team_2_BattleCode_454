@@ -34,11 +34,12 @@ public class KingFormationTest {
   private static final MapLocation HERE = new MapLocation(10, 10);
   private static final MapLocation KING = new MapLocation(8, 8);
   private static final int LEADER = 77;
+  private static final int CHOSEN_ID = 500;
 
   private RobotController rc;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     KingFormation.reset();
     Config.reset();
     rc = mock(RobotController.class);
@@ -48,6 +49,8 @@ public class KingFormationTest {
     when(rc.getMapHeight()).thenReturn(30);
     when(rc.readSqueaks(-1)).thenReturn(new Message[0]);
     when(rc.getDirection()).thenReturn(Direction.NORTH);
+    // King side: the newborn on HERE is the chosen whose ID the king starts watching.
+    when(rc.senseRobotAtLocation(HERE)).thenReturn(baby(CHOSEN_ID, UnitType.BABY_RAT));
     round(100);
   }
 
@@ -63,7 +66,7 @@ public class KingFormationTest {
    * <p>Expected: the request stays armed for the next birth instead of being lost silently.
    */
   @Test
-  public void failedBirthSqueakKeepsRequestArmed() {
+  public void failedBirthSqueakKeepsRequestArmed() throws Exception {
     // Arrange
     KingFormation.request();
     when(rc.squeak(anyInt())).thenReturn(false);
@@ -80,7 +83,7 @@ public class KingFormationTest {
 
   /** Scenario: an unrequested birth. Expected: no squeak, so the newborn stays ordinary. */
   @Test
-  public void unrequestedBirthSendsNothing() {
+  public void unrequestedBirthSendsNothing() throws Exception {
     KingFormation.born(rc, HERE);
 
     verify(rc, never()).squeak(anyInt());
@@ -281,6 +284,7 @@ public class KingFormationTest {
     when(rc.getGlobalCheese()).thenReturn(Config.MIN_CHEESE_RESERVE + 100);
     when(rc.canBuildRat(spawn)).thenReturn(true);
     when(rc.squeak(anyInt())).thenReturn(true);
+    when(rc.senseRobotAtLocation(spawn)).thenReturn(baby(CHOSEN_ID, UnitType.BABY_RAT));
 
     // Act/assert: capped without a request.
     assertFalse(RatKing.spawnBabyRat(rc));
@@ -466,6 +470,147 @@ public class KingFormationTest {
     when(rc.readSharedArray(0)).thenReturn(center.x);
     when(rc.readSharedArray(1)).thenReturn(center.y + 64 * (now / 512));
     when(rc.readSharedArray(2)).thenReturn(now % 512 + 1);
+  }
+
+  /**
+   * Scenario: the king saw its chosen last round close to its center (r^2 = 2) and now cannot.
+   *
+   * <p>Expected: the request is re-armed. A live baby moves at most one tile per round, so it
+   * could not have left king vision (r^2 = 25): it died, typically to a cat.
+   */
+  @Test
+  public void kingRearmsWhenANearbyChosenVanishes() throws Exception {
+    // Arrange: seen at round 101 one diagonal step from the king's center.
+    bornChosen();
+    seeChosenAt(101, HERE.translate(1, 1));
+
+    // Act: gone at round 102.
+    when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(false);
+    round(102);
+    KingFormation.watch(rc);
+
+    // Assert
+    assertTrue(KingFormation.requested());
+  }
+
+  /**
+   * Scenario: the chosen was last seen just outside the provable zone (r^2 = 13 > 12), or the
+   * king missed a round of observation, and then it is gone.
+   *
+   * <p>Expected: no re-arm. It may simply have walked out of view; sites sit near the vision edge,
+   * so treating absence as death caused false retries in the engine fixture.
+   */
+  @Test
+  public void farOrStaleSightingIsNotTreatedAsDeath() throws Exception {
+    // Arrange/act: seen at r^2 = 13 (3,2), gone next round.
+    bornChosen();
+    seeChosenAt(101, HERE.translate(3, 2));
+    when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(false);
+    round(102);
+    KingFormation.watch(rc);
+    assertFalse(KingFormation.requested());
+
+    // Arrange/act: seen close at 110, but the next observation is at 112 (a round skipped).
+    seeChosenAt(110, HERE.translate(1, 0));
+    when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(false);
+    round(112);
+    KingFormation.watch(rc);
+
+    // Assert
+    assertFalse(KingFormation.requested());
+  }
+
+  /**
+   * Scenario: every replacement chosen also dies next to the king (a cat-heavy map).
+   *
+   * <p>Expected: at most FORMATION_RETRIES automatic re-requests, so the king does not keep
+   * feeding cap-exempt babies to cats.
+   */
+  @Test
+  public void automaticRetriesAreCappedPerRequest() throws Exception {
+    // Arrange: each chosen is born on HERE (r^2 = 0) and is gone the next round.
+    when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(false);
+    bornChosen();
+    int now = 100;
+
+    // Act: lose the original and each replacement.
+    for (int retry = 0; retry < Config.FORMATION_RETRIES; retry++) {
+      round(++now);
+      KingFormation.watch(rc);
+      assertTrue("Retry " + retry + " re-arms", KingFormation.requested());
+      KingFormation.born(rc, HERE); // The replacement birth consumes the request.
+    }
+    round(++now);
+    KingFormation.watch(rc);
+
+    // Assert
+    assertFalse(KingFormation.requested());
+  }
+
+  /** Scenario: the chosen is seen as a rat king. Expected: watching ends; no later re-arm. */
+  @Test
+  public void promotedChosenEndsTheWatch() throws Exception {
+    // Arrange
+    bornChosen();
+    when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(true);
+    when(rc.senseRobot(CHOSEN_ID)).thenReturn(baby(CHOSEN_ID, UnitType.RAT_KING));
+    round(101);
+    KingFormation.watch(rc);
+
+    // Act: it then leaves view for a long time.
+    when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(false);
+    round(200);
+    KingFormation.watch(rc);
+
+    // Assert
+    assertFalse(KingFormation.requested());
+  }
+
+  /**
+   * Scenario: the chosen stays alive and visible past its own give-up deadline (no fodder).
+   *
+   * <p>Expected: the king stops watching instead of retrying; a slow area is the strategy's call.
+   */
+  @Test
+  public void liveChosenPastItsTimeoutIsNotRetried() throws Exception {
+    // Arrange
+    bornChosen();
+    when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(true);
+    when(rc.senseRobot(CHOSEN_ID)).thenReturn(baby(CHOSEN_ID, UnitType.BABY_RAT));
+    round(101 + Config.FORMATION_TIMEOUT_ROUNDS);
+    KingFormation.watch(rc);
+
+    // Act: the ordinary baby later wanders off.
+    when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(false);
+    round(200 + Config.FORMATION_TIMEOUT_ROUNDS);
+    KingFormation.watch(rc);
+
+    // Assert
+    assertFalse(KingFormation.requested());
+  }
+
+  /** King-side: request and a successful chosen birth at HERE on round 100. */
+  private void bornChosen() throws Exception {
+    when(rc.squeak(anyInt())).thenReturn(true);
+    when(rc.senseRobotAtLocation(HERE)).thenReturn(baby(CHOSEN_ID, UnitType.BABY_RAT));
+    KingFormation.request();
+    KingFormation.born(rc, HERE);
+    assertFalse(KingFormation.requested());
+  }
+
+  /** The king senses its chosen (still a baby) at {@code location} on {@code now}. */
+  private void seeChosenAt(int now, MapLocation location) throws Exception {
+    round(now);
+    when(rc.canSenseRobot(CHOSEN_ID)).thenReturn(true);
+    when(rc.senseRobot(CHOSEN_ID))
+        .thenReturn(
+            new RobotInfo(
+                CHOSEN_ID, Team.A, UnitType.BABY_RAT, 100, location, Direction.NORTH, 0, 0, null));
+    KingFormation.watch(rc);
+  }
+
+  private static RobotInfo baby(int id, UnitType type) {
+    return new RobotInfo(id, Team.A, type, 100, HERE, Direction.NORTH, 0, 0, null);
   }
 
   private void becomeChosen() throws Exception {

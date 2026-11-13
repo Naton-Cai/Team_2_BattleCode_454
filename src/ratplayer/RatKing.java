@@ -45,6 +45,7 @@ public class RatKing {
 
   // handles our Rat King turn logic
   static void run(RobotController rc) throws GameActionException {
+    KingFormation.watch(rc);
     handledCatsThisTurn = false;
     java.util.Arrays.fill(turnMines, 0);
     Trap.writeStartofBackStabbing(rc);

@@ -379,6 +379,11 @@ Replaces the 2026-11-11 formation test names above on this branch; those tests n
 | `chosenReplacesASiteThatBecomesBlocked` | Ring tile turns impassable. | Re-selects (14,13). |
 | `chosenReplacesAnUnreachableSiteAfterTravelBudget` | Chosen never moves. | Site kept at the travel limit; replaced one round later. |
 | `chosenOnSiteMovesOnAfterSiteBudget` | Chosen on its site, no promotion. | Replaced after the site budget. |
+| `kingRearmsWhenANearbyChosenVanishes` | King saw chosen at r^2 = 2 last round; gone now. | Request re-armed. |
+| `farOrStaleSightingIsNotTreatedAsDeath` | Last seen at r^2 = 13; or a skipped observation round. | Not re-armed. |
+| `automaticRetriesAreCappedPerRequest` | Every chosen vanishes next to the king. | Re-armed FORMATION_RETRIES times, then not. |
+| `promotedChosenEndsTheWatch` | Chosen sensed as a rat king, later out of view. | Not re-armed. |
+| `liveChosenPastItsTimeoutIsNotRetried` | Chosen visible past its timeout, then out of view. | Not re-armed. |
 
 ### Engine tests (`ratplayer.KingFormationEngineTest`)
 
@@ -389,5 +394,5 @@ Replaces the 2026-11-11 formation test names above on this branch; those tests n
 | `chosenRecruitsSixExistingBabiesAndPromotes` | Six babies near the chosen's birth tile. | One extra birth; promotion; all six consumed; new king publishes next round. |
 | `excessVolunteersReturnToOrdinaryWork` | Twelve babies. | Promotion; at least four survive with null role after the silence window. |
 | `blockedSiteIsReplacedAndFormationStillPromotes` | Dirt on an empty ring tile after commit. | Promotes at a different site whose footprint excludes the dirt. |
-| `chosenWithoutVolunteersGivesUpAfterTimeout` | No babies. | No extra births; chosen is an ordinary baby after the timeout. |
-
+| `chosenWithoutVolunteersGivesUpAfterTimeout` | No babies. | No extra births (no false retries); chosen is an ordinary baby after the timeout. |
+| `killedChosenIsReplacedAndFormationCompletes` | Chosen destroyed after the king saw it at r^2 = 8. | Replacement chosen born and promotes with the same volunteers. |

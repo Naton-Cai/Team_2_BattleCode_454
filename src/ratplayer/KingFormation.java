@@ -32,8 +32,13 @@ final class KingFormation {
   private static final MapLocation[] hazards = new MapLocation[MAX_HAZARDS];
   private static int hazardCount;
 
-  // King: the next successful birth becomes the chosen.
+  // King: the next successful birth becomes the chosen; then watch it and re-arm if it vanishes.
   private static boolean requested;
+  private static int retriesLeft;
+  private static int watchedId;
+  private static int watchedBirth;
+  private static int lastSeen;
+  private static MapLocation lastSeenAt;
 
   // Baby: birth check runs once; site is the center the chosen occupies or fodder surrounds.
   private static boolean birthChecked;
@@ -51,6 +56,7 @@ final class KingFormation {
   /** Arms this king only. No gameplay policy calls this yet; the team decides when to attempt. */
   static void request() {
     requested = true;
+    retriesLeft = Config.FORMATION_RETRIES;
   }
 
   /** The armed king's next birth may exceed the ordinary baby cap (reserve still applies). */
@@ -59,9 +65,49 @@ final class KingFormation {
   }
 
   /** After a successful build: tell the newborn it is chosen; keep the request if squeak fails. */
-  static void born(RobotController rc, MapLocation location) {
+  static void born(RobotController rc, MapLocation location) throws GameActionException {
     if (requested && rc.squeak(CHOSEN | pack(location))) {
       requested = false;
+      watchedId = rc.senseRobotAtLocation(location).getID();
+      watchedBirth = rc.getRoundNum();
+      lastSeen = watchedBirth;
+      lastSeenAt = location;
+    }
+  }
+
+  /**
+   * King turn: re-arm the request when the chosen provably died, at most {@link
+   * Config#FORMATION_RETRIES} times per request. A baby moves at most one tile per round, so if the
+   * king saw it last round within r^2 = 12 of its center (sqrt 12 + sqrt 2 < 5), a live chosen is
+   * still inside king vision (r^2 = 25, spec v1.2.6 p.14). Farther out absence is ambiguous: sites
+   * sit at the vision edge, so a healthy chosen is often unseen; the chosen's own timeout covers it.
+   */
+  static void watch(RobotController rc) throws GameActionException {
+    if (watchedId == 0) {
+      return;
+    }
+    int now = rc.getRoundNum();
+    if (rc.canSenseRobot(watchedId)) {
+      RobotInfo chosen = rc.senseRobot(watchedId);
+      // Promoted (same ID, now a king): done. Alive past its own give-up deadline: stop watching.
+      if (chosen.getType() == UnitType.RAT_KING
+          || now - watchedBirth > Config.FORMATION_TIMEOUT_ROUNDS) {
+        watchedId = 0;
+      } else {
+        lastSeen = now;
+        lastSeenAt = chosen.getLocation();
+      }
+      return;
+    }
+    if (lastSeen != now - 1
+        || rc.getLocation().distanceSquaredTo(lastSeenAt)
+            > Config.FORMATION_LOST_DISTANCE_SQUARED) {
+      return; // Out of view or never close: unknown, not dead.
+    }
+    watchedId = 0;
+    if (retriesLeft > 0) {
+      retriesLeft--;
+      requested = true;
     }
   }
 
@@ -380,6 +426,11 @@ final class KingFormation {
   static void reset() {
     release();
     requested = false;
+    retriesLeft = 0;
+    watchedId = 0;
+    watchedBirth = 0;
+    lastSeen = 0;
+    lastSeenAt = null;
     birthChecked = false;
     startRound = 0;
     siteRound = 0;

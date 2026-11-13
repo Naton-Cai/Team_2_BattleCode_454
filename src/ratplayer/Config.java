@@ -31,6 +31,15 @@ public final class Config {
   /** Rounds a chosen keeps one site before trying another; fodder follow the new RECRUIT. */
   static final int FORMATION_SITE_ROUNDS = 60;
 
+  /**
+   * A chosen seen this close to its king's center last round and gone now is dead (one tile per
+   * round cannot leave r^2 = 25 vision). Engine-derived bound, not a tuning knob: keep at most 12.
+   */
+  static final int FORMATION_LOST_DISTANCE_SQUARED = 12;
+
+  /** Automatic re-requests per explicit request after the chosen is lost. */
+  static final int FORMATION_RETRIES = 2;
+
   /** Rounds of recruiter silence before fodder resumes ordinary work. */
   static final int FORMATION_LISTEN_ROUNDS = 3;
 

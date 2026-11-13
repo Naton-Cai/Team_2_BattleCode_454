@@ -177,6 +177,42 @@ public class KingFormationEngineTest {
     assertEquals(null, role(chosen));
   }
 
+  /**
+   * Scenario: the chosen is killed shortly after birth (stand-in for a cat crush).
+   *
+   * <p>Expected: the parent king, which saw it last round well inside its vision, re-arms; a
+   * second (cap-exempt) chosen is born within a few rounds and promotes with the same volunteers.
+   */
+  @Test
+  public void killedChosenIsReplacedAndFormationCompletes() throws Exception {
+    // Arrange: the king sees its newborn chosen next to it (r^2 = 8) for one round, then it is
+    // removed, as a cat crush would.
+    int first = requestWith(volunteers(6));
+    round();
+    world.destroyRobot(first);
+
+    // Act: wait for a replacement chosen to be born.
+    int replacement = 0;
+    for (int i = 0; i < 10 && replacement == 0; i++) {
+      round();
+      for (InternalRobot robot : world.getAllRobots(Team.A, 0)) {
+        if (robot.getID() != 1
+            && robot.getID() != first
+            && robot.getID() >= FIRST_VOLUNTEER + 100) {
+          replacement = robot.getID();
+        }
+      }
+    }
+    assertTrue("King must re-arm and birth a replacement chosen", replacement != 0);
+    InternalRobot leader = world.getObjectInfo().getRobotByID(replacement);
+    runUntilKing(leader, 100);
+
+    // Assert
+    assertEquals(debug(), UnitType.RAT_KING, leader.getType());
+    assertEquals(2, world.getTeamInfo().getNumRatKings(Team.A));
+    System.out.println("Replacement chosen promoted at round " + world.getCurrentRound());
+  }
+
   /** Block of volunteers just east of the chosen's expected birth tile (6,6). */
   private static MapLocation[] volunteers(int count) {
     MapLocation[] result = new MapLocation[count];

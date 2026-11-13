@@ -340,3 +340,25 @@ consumes the request (no automatic re-request; the calling policy should check K
 re-request); fodder suspend ordinary behavior, including cat avoidance; up to two extra allies can
 be absorbed when the partial cone view undercounts the ring. Evidence: local ignored
 matches/simple-formation-20261112/REPORT.md (commands, patches, logs, replays).
+
+## Chosen-loss retry by the requesting king (2026-11-12)
+
+Implemented on experiment/simple-king-formation: the king records its chosen's ID at birth and
+re-arms the request (at most Config.FORMATION_RETRIES = 2 per explicit request) when it saw the
+chosen last round within r^2 = 12 of its center and cannot sense it now. A baby moves at most one
+tile per round, so such a chosen cannot have left king vision (r^2 = 25, spec v1.2.6 p.14) alive.
+Watching ends when the chosen is seen as a king or after its own give-up timeout. No squeaks,
+no shared slots; about 30 bytecodes per king turn.
+
+Rejected first draft: "not seen for 15 rounds" caused false retries (three chosens with zero
+volunteers in the engine fixture) because sites sit at the edge of king vision.
+
+Verified: 273 tests passed, two existing manual BFS cases skipped; KingFormation lines 195/216.
+New engine fixture kills the chosen next to the king: replacement born and promoted by round 57.
+Same 40-game batch as the previous entry: 36/40 before and after; 39 games unchanged (no false
+retries); the retry fired once (sittingducks-B), and that replacement survived but never
+assembled. sittingducks-A and tiny-A chosens died near their sites, outside the provable zone,
+so they were not retried. No measured formation gain in this sample. Deaths away from the king
+still rely on the caller re-requesting after FORMATION_TIMEOUT_ROUNDS. Evidence: local
+matches/simple-formation-20261112/retry/.
+
