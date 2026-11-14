@@ -42,7 +42,7 @@ public class RatKingEngineTest {
   }
 
   @Test
-  public void promotedKingPublishesIndependentlyWhileCarrierUsesPrimary() throws Exception {
+  public void promotedKingPublishesIndependentlyWhileCarrierUsesNearest() throws Exception {
     // Both kings act in the first round. The first moves north and the second stays still.
     start(new MapLocation(8, 8), Direction.NORTH, null);
     setTeamCheese(100);
@@ -85,7 +85,40 @@ public class RatKingEngineTest {
   }
 
   @Test
-  public void replacementReclaimsPrimaryIdWithoutCarrierSwitchingToSurvivor() throws Exception {
+  public void carrierDeliversToCloserSecondaryKingWhilePrimaryIsAlive() throws Exception {
+    // Scenario: ID 0 is alive but far; a promoted secondary king is within transfer range.
+    // Expected: the real engine credits the full transfer through the secondary king.
+    MapLocation primaryCenter = new MapLocation(3, 3);
+    MapLocation secondaryCenter = new MapLocation(12, 8);
+    start(primaryCenter, Direction.NORTH, null);
+    setTeamCheese(200);
+    king.setMovementCooldownTurns(1000);
+    InternalRobot secondary = spawnStationaryKing(200, secondaryCenter);
+    round(); // Both kings publish fresh records.
+
+    // Arrange: a carrier above the delivery threshold, frozen in place, facing the secondary.
+    world.spawnRobot(201, UnitType.BABY_RAT, new MapLocation(10, 6), Direction.NORTH, 0, Team.A);
+    InternalRobot carrier = world.getObjectInfo().getRobotByID(201);
+    carrier.addCheese(41);
+    carrier.setMovementCooldownTurns(1000);
+    carrier.setActionCooldownTurns(0);
+    assertTrue(carrier.getController().canTransferCheese(secondaryCenter, 41));
+    int before = world.getTeamInfo().getCheeseTransferred(Team.A);
+
+    // Act: one full instrumented round.
+    round();
+
+    // Assert: both kings were still live, yet the cheese went to the nearer secondary.
+    assertEquals(
+        primaryCenter, KingRegistry.read(carrier.getController(), 0, world.getCurrentRound()));
+    assertEquals(0, carrier.getController().getRawCheese());
+    assertEquals(before + 41, world.getTeamInfo().getCheeseTransferred(Team.A));
+    assertTurnBudget(secondary, 19000);
+    assertTurnBudget(carrier, 16500);
+  }
+
+  @Test
+  public void carrierSwitchesToSurvivorOnceDeadPrimaryExpires() throws Exception {
     MapLocation deadCenter = new MapLocation(9, 8);
     MapLocation survivorCenter = new MapLocation(12, 8);
     start(deadCenter, Direction.NORTH, null);
@@ -94,7 +127,8 @@ public class RatKingEngineTest {
     InternalRobot survivor = spawnStationaryKing(200, survivorCenter);
     round();
 
-    // Even with a reachable survivor, the carrier only delivers to a fresh ID 0.
+    // The primary dies. Its record stays fresh for one grace round and it is nearer the carrier
+    // (distance² 5 vs 8), so the carrier still targets the dead center and cannot transfer.
     world.destroyRobot(1);
     MapLocation firstDeliveryTile = new MapLocation(10, 6);
     world.spawnRobot(201, UnitType.BABY_RAT, firstDeliveryTile, Direction.NORTH, 0, Team.A);
@@ -111,13 +145,18 @@ public class RatKingEngineTest {
     assertEquals(41, carrier.getController().getRawCheese());
     assertEquals(before, world.getTeamInfo().getCheeseTransferred(Team.A));
 
-    // Let the dead king's heartbeat expire before a replacement exists.
+    // Once the dead king's heartbeat expires, the nearest live king is the survivor (ID 1).
+    // The carrier spent the grace round facing the dead king, so it first turns back toward the
+    // survivor (out of its vision cone, so no transfer yet) and delivers on the following round.
     world.runRound();
     assertNull(KingRegistry.readPrimary(carrier.getController()));
+    assertEquals(carrier.getLocation().directionTo(survivorCenter), carrier.getDirection());
     assertEquals(41, carrier.getController().getRawCheese());
-    assertEquals(before, world.getTeamInfo().getCheeseTransferred(Team.A));
+    world.runRound();
+    assertEquals(0, carrier.getController().getRawCheese());
+    assertEquals(before + 41, world.getTeamInfo().getCheeseTransferred(Team.A));
 
-    // The replacement claims ID 0 after expiry. The same carrier will deliver to it.
+    // A replacement then claims the expired ID 0 and becomes the nearest king after a move.
     MapLocation replacementCenter = new MapLocation(8, 8);
     InternalRobot replacement = spawnStationaryKing(202, replacementCenter);
     // The carrier acts before the replacement publishes. Run another round after it registers.

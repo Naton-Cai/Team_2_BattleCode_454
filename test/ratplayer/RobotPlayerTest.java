@@ -341,7 +341,8 @@ public class RobotPlayerTest {
         Arrays.asList("transferCheese:[10, 4]:" + carryingCheese, "moveForward"),
         controller.calls());
     assertEquals(0, controller.getRawCheese());
-    assertEquals(4, controller.sharedArrayReadCount());
+    // Nearest-king scan: 3 reads for live ID 0, 1 stamp read per empty ID 1-4, + start-round slot.
+    assertEquals(8, controller.sharedArrayReadCount());
     assertFalse(controller.calls().toString().contains("pickUpCheese"));
   }
 
@@ -396,7 +397,8 @@ public class RobotPlayerTest {
 
     // Assert: pickup, then a north step. The array is read only after the stash is filled.
     assertEquals(Arrays.asList("pickUpCheese:[1, 0]", "move:NORTH"), controller.calls());
-    assertEquals(4, controller.sharedArrayReadCount());
+    // One nearest-king scan (3 + 4 empty-slot reads) + start-round slot; no duplicate scan.
+    assertEquals(8, controller.sharedArrayReadCount());
     assertEquals(carryingCheese, controller.getRawCheese());
     assertEquals(0, controller.turnCount());
   }
@@ -420,9 +422,9 @@ public class RobotPlayerTest {
     // Act.
     RobotPlayer.playTurn(controller);
 
-    // Assert: one king stamp read and one start-round slot read precede wander.
+    // Assert: one stamp read per registry ID (all five empty) and one start-round slot read.
     assertEquals(Arrays.asList("moveForward"), controller.calls());
-    assertEquals(2, controller.sharedArrayReadCount());
+    assertEquals(6, controller.sharedArrayReadCount());
     assertEquals(carryingCheese, controller.getRawCheese());
     assertEquals(0, controller.turnCount());
   }

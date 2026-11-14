@@ -301,8 +301,8 @@ public class BabyRat {
     }
   }
 
-  // update our RatKing Location
+  // Pick the nearest live king this turn; null (no valid king) falls back to normal movement.
   static void updateRatKingLoc(RobotController rc) throws GameActionException {
-    kingLoc = KingRegistry.readPrimary(rc);
+    kingLoc = KingRegistry.readNearest(rc);
   }
 }
