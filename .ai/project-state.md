@@ -2,8 +2,8 @@
 
 ### Team shared array
 
-The current `ratplayer` layout allocates 52 of the 64 slots. Both unit types can read the array.
-Only Rat Kings can write it. Each slot holds a value from 0 through 1023.
+The current `ratplayer` layout reserves **52 of 64 slots**, leaving **12 free (52–63)**.
+Both unit types can read the array; only Rat Kings can write it. Each slot holds 0–1023.
 
 | Slots | Contents |
 | --- | --- |
@@ -14,7 +14,7 @@ Only Rat Kings can write it. Each slot holds a value from 0 through 1023.
 | 12–14 | Rat King ID 4 |
 | 15–50 | 18 cheese mine records, two slots each |
 | 51 | Backstab start round, with zero meaning unset |
-| 52–63 | Unallocated, 12 slots |
+| 52–63 | Unallocated, 12 slots (king formation uses none; see 2026-11-12 entry) |
 
 ## Dirt collection (baby rats 2026-10-28, kings 2026-10-29)
 

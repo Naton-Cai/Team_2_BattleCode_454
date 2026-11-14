@@ -325,3 +325,74 @@ Same fixture as the backstab-attack tests, except the cat cases use cooperation,
 | --- | --- | --- |
 | `engineStuckKingBitesAdjacentCatAndLeavesBytecodeHeadroom` | King at (8,8) with movement held, cat 2x2 anchored at (9,10), backstab on. | Cat loses 10 HP, king stays put, at least 1,000 headroom under 20,000. Measured: 9,725. |
 
+## Requested formation population-cap exemption (2026-11-11)
+
+KingFormationTest adds requestedFormationBypassesCapForOnlyItsSevenBirths (ordinary capped birth
+refused; chosen plus six above-cap births allowed; eighth refused),
+capExemptionPreservesReserveAtEqualityAndRechecksRisingCosts (one below/equal reserve plus current
+price, both before claiming and during recruitment), and
+waitingRequestCannotBypassCapWhileAnotherKingOwnsTheGroup (no competing above-cap births).
+
+KingFormationEngineTest.requestedFormationExceedsFullPopulationOnlyWhileFundedAndRecruiting seeds
+32 ordinary babies away from the footprint. It verifies the cap before request, one-below/equal
+actual-price reserve boundaries, a funding pause and resume, seven additional members, real
+promotion, surviving original babies, and capped ordinary spawning afterward. Slot canaries and
+complete-turn budget gates remain active. Engine 1.2.6, SpawnerFormationFixture seed 6147, side A;
+observed peaks baby 9,730 / king 9,257, first promoted-king turn by round 14.
+
+./gradlew spotlessApply classes test spotlessCheck: 270 passed, two manual BFS cases skipped.
+A real jail side-B/request-100 match previously assigned zero members due to the cap; the fix
+assigned all seven and promoted at round 241. Full evidence under matches/spawner-cap-20261111/.
+
+## Prefunding experiment reverted (2026-11-11)
+
+Restored the staged-recruitment tests listed in Requested formation population-cap exemption.
+Removed prefunding-only tests and restored first-birth/per-birth reserve equality coverage.
+./gradlew classes test spotlessCheck passed: 270 passed, two existing manual BFS tests skipped.
+Formation tests and production code match the saved staged/cap-exempt baseline exactly.
+The discarded prefunding tests, results, and comparison replays remain archived under
+matches/spawner-prefund-20261111/; they do not describe current behavior.
+
+## Squeak-recruited king formation (2026-11-12, experiment/simple-king-formation)
+
+Replaces the 2026-11-11 formation test names above on this branch; those tests no longer exist.
+
+### Controller tests (`ratplayer.KingFormationTest`)
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `failedBirthSqueakKeepsRequestArmed` | Request armed; squeak returns false, then true. | Still armed after failure; consumed after success. |
+| `unrequestedBirthSendsNothing` | No request. | No squeak. |
+| `newbornOnAddressedTileBecomesChosen` | CHOSEN for own tile, previous round, from a king in build range. | Role CHOSEN. |
+| `chosenSqueakForAnotherTileStaleRoundOrLaterTurnIsIgnored` | Other tile; two-round-old; valid message on a later turn. | Role stays null. |
+| `fodderJoinsThenReleasesAfterSilence` | RECRUIT heard, then silence. | FODDER with site; kept at the listen limit, released one round later. |
+| `fodderOnRingTileHoldsPosition` | Site adjacent. | No move. |
+| `fullRingReleasesFodderAndIgnoresThatRecruiter` | All ring tiles hold allied babies. | Released; same recruiter ignored; another recruiter enlists it. |
+| `chosenGivesUpAfterTimeout` | Chosen, no ring. | Kept at the timeout; released one round later. |
+| `chosenGivesUpWhenEngineKingCapMakesPromotionImpossible` | Two fresh registry kings. | Kept at round 1200; released at 1201. |
+| `chosenGivesUpAtFiveKings` | Five fresh registry kings. | Released. |
+| `requestExemptsExactlyOneBirthFromTheCap` | Cap 0, price at stop price. | Capped; one build with CHOSEN squeak when requested; capped again. |
+| `chosenPromotesWheneverTheEngineAllows` | canBecomeRatKing true. | becomeRatKing, role null, no squeak. |
+| `chosenSelectsNearestOpenSiteAndRecruits` | Open candidates (10,13), (10,14). | Site (10,13); RECRUIT squeaked. |
+| `chosenSkipsSitesTooCloseToAKing` | King at (10,9). | Site (10,14). |
+| `chosenRejectsEdgeSitesAndExploresQuietly` | Only candidate (10,1). | No site, no squeak, cone sweep turn. |
+| `chosenReplacesASiteThatBecomesBlocked` | Ring tile turns impassable. | Re-selects (14,13). |
+| `chosenReplacesAnUnreachableSiteAfterTravelBudget` | Chosen never moves. | Site kept at the travel limit; replaced one round later. |
+| `chosenOnSiteMovesOnAfterSiteBudget` | Chosen on its site, no promotion. | Replaced after the site budget. |
+| `kingRearmsWhenANearbyChosenVanishes` | King saw chosen at r^2 = 2 last round; gone now. | Request re-armed. |
+| `farOrStaleSightingIsNotTreatedAsDeath` | Last seen at r^2 = 13; or a skipped observation round. | Not re-armed. |
+| `automaticRetriesAreCappedPerRequest` | Every chosen vanishes next to the king. | Re-armed FORMATION_RETRIES times, then not. |
+| `promotedChosenEndsTheWatch` | Chosen sensed as a rat king, later out of view. | Not re-armed. |
+| `liveChosenPastItsTimeoutIsNotRetried` | Chosen visible past its timeout, then out of view. | Not re-armed. |
+
+### Engine tests (`ratplayer.KingFormationEngineTest`)
+
+20x20 open fixture, king (4,4), enemy king (17,17), no cats, recruiting king's cap set to 0.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `chosenRecruitsSixExistingBabiesAndPromotes` | Six babies near the chosen's birth tile. | One extra birth; promotion; all six consumed; new king publishes next round. |
+| `excessVolunteersReturnToOrdinaryWork` | Twelve babies. | Promotion; at least four survive with null role after the silence window. |
+| `blockedSiteIsReplacedAndFormationStillPromotes` | Dirt on an empty ring tile after commit. | Promotes at a different site whose footprint excludes the dirt. |
+| `chosenWithoutVolunteersGivesUpAfterTimeout` | No babies. | No extra births (no false retries); chosen is an ordinary baby after the timeout. |
+| `killedChosenIsReplacedAndFormationCompletes` | Chosen destroyed after the king saw it at r^2 = 8. | Replacement chosen born and promotes with the same volunteers. |
