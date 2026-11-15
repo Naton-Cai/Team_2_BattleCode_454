@@ -99,9 +99,34 @@ final class KingRegistry {
     return read(rc, id, round, true);
   }
 
-  /** Cheese carriers follow ID 0 only while its heartbeat is fresh. */
+  /** ID 0's center while its heartbeat is fresh. */
   static MapLocation readPrimary(RobotController rc) throws GameActionException {
     return read(rc, 0, rc.getRoundNum(), true);
+  }
+
+  /**
+   * Cheese carriers deliver to the fresh king center closest to them (straight-line distance, not
+   * route length). Scans every ID so a moved or newly promoted king is reconsidered each turn;
+   * ties keep the lower ID. Returns null when no king has a valid record.
+   */
+  static MapLocation readNearest(RobotController rc) throws GameActionException {
+    MapLocation origin = rc.getLocation();
+    int round = rc.getRoundNum();
+    MapLocation nearest = null;
+    int nearestDistance = Integer.MAX_VALUE;
+    for (int id = 0; id < CAPACITY; id++) {
+      MapLocation center = read(rc, id, round);
+      if (center == null) {
+        continue;
+      }
+      int distance = origin.distanceSquaredTo(center);
+      // Strictly smaller only, so equal distances keep the earlier (lower) ID.
+      if (distance < nearestDistance) {
+        nearest = center;
+        nearestDistance = distance;
+      }
+    }
+    return nearest;
   }
 
   private static MapLocation read(RobotController rc, int id, int round, boolean requireFresh)

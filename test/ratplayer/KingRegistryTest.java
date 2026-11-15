@@ -145,13 +145,151 @@ public class KingRegistryTest {
     second.publish(rc);
     assertNull(KingRegistry.readPrimary(rc));
     assertEquals(survivor, KingRegistry.read(rc, 1, 1025));
-    // Refreshing the baby's cached destination must clear the old location too.
-    BabyRat.kingLoc = primary;
-    BabyRat.updateRatKingLoc(rc);
-    assertNull(BabyRat.kingLoc);
 
     // An interrupted primary record is also unavailable.
     rc.setSharedArrayValue(2, 769);
     assertNull(KingRegistry.readPrimary(rc));
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Nearest-king delivery. The baby stands at rc's location;
+  // each king is published by its own KingRegistry, so IDs follow publication order (0, 1, ...).
+  // ---------------------------------------------------------------------------------------------
+
+  /** Publishes one king per center at the current round; centers[i] receives registry ID i. */
+  private void publishKings(MapLocation... centers) throws Exception {
+    for (MapLocation center : centers) {
+      rc.setLocation(center);
+      new KingRegistry().publish(rc);
+    }
+  }
+
+  @Test
+  public void nearestPicksSecondaryKingCloserThanPrimary() throws Exception {
+    // Arrange: ID 0 is far away, ID 1 is close to the baby.
+    rc.setRoundNum(50);
+    MapLocation primary = new MapLocation(5, 5);
+    MapLocation secondary = new MapLocation(30, 30);
+    publishKings(primary, secondary);
+    rc.setLocation(new MapLocation(28, 30));
+
+    // Act + Assert: the closer secondary wins even though ID 0 is alive.
+    assertEquals(secondary, KingRegistry.readNearest(rc));
+  }
+
+  @Test
+  public void nearestConsidersEveryEntryIncludingTheLast() throws Exception {
+    // Arrange: five live kings along the top edge; the baby sits beside the ID 4 king.
+    rc.setRoundNum(50);
+    publishKings(
+        new MapLocation(5, 50),
+        new MapLocation(15, 50),
+        new MapLocation(25, 50),
+        new MapLocation(35, 50),
+        new MapLocation(45, 50));
+    rc.setLocation(new MapLocation(46, 48));
+
+    // Assert: the scan reaches the final slot, so ID 4 is chosen.
+    assertEquals(new MapLocation(45, 50), KingRegistry.readNearest(rc));
+  }
+
+  @Test
+  public void nearestTieKeepsLowerRegistryId() throws Exception {
+    // Arrange: the baby is exactly halfway between ID 0 and ID 1 (distance² 25 to each).
+    rc.setRoundNum(50);
+    MapLocation lowId = new MapLocation(10, 20);
+    MapLocation highId = new MapLocation(20, 20);
+    publishKings(lowId, highId);
+    rc.setLocation(new MapLocation(15, 20));
+
+    // Assert: deterministic tie-break toward the lower ID.
+    assertEquals(lowId, KingRegistry.readNearest(rc));
+  }
+
+  @Test
+  public void nearestFollowsKingMovementOnTheNextLookup() throws Exception {
+    // Arrange: two kings; ID 0 starts nearer the baby at (20,20).
+    rc.setRoundNum(50);
+    KingRegistry first = new KingRegistry();
+    KingRegistry second = new KingRegistry();
+    rc.setLocation(new MapLocation(22, 20));
+    first.publish(rc);
+    rc.setLocation(new MapLocation(40, 20));
+    second.publish(rc);
+    MapLocation baby = new MapLocation(20, 20);
+    rc.setLocation(baby);
+    assertEquals(new MapLocation(22, 20), KingRegistry.readNearest(rc));
+
+    // Act 1: the same king moves a little but stays nearest -> its new center is used.
+    rc.setRoundNum(51);
+    rc.setLocation(new MapLocation(23, 20));
+    first.publish(rc);
+    rc.setLocation(new MapLocation(40, 20));
+    second.publish(rc);
+    rc.setLocation(baby);
+    assertEquals(new MapLocation(23, 20), KingRegistry.readNearest(rc));
+
+    // Act 2: ID 0 walks away and ID 1 approaches -> the target switches kings.
+    rc.setRoundNum(52);
+    rc.setLocation(new MapLocation(50, 20));
+    first.publish(rc);
+    rc.setLocation(new MapLocation(18, 20));
+    second.publish(rc);
+    rc.setLocation(baby);
+    assertEquals(new MapLocation(18, 20), KingRegistry.readNearest(rc));
+  }
+
+  @Test
+  public void nearestSkipsExpiredPrimaryAndClearsWhenNoKingIsLeft() throws Exception {
+    // Arrange: ID 0 is nearest but only ID 1 keeps publishing.
+    rc.setRoundNum(100);
+    KingRegistry survivor = new KingRegistry();
+    MapLocation primary = new MapLocation(10, 10);
+    MapLocation survivorCenter = new MapLocation(40, 40);
+    publishKings(primary);
+    rc.setLocation(survivorCenter);
+    survivor.publish(rc);
+    rc.setLocation(new MapLocation(11, 10));
+
+    // Round 101: the previous-round heartbeat grace still keeps ID 0 eligible.
+    rc.setRoundNum(101);
+    assertEquals(primary, KingRegistry.readNearest(rc));
+
+    // Round 102: ID 0 has expired; the far but live survivor becomes the delivery target.
+    rc.setRoundNum(102);
+    rc.setLocation(survivorCenter);
+    survivor.publish(rc);
+    rc.setLocation(new MapLocation(11, 10));
+    BabyRat.updateRatKingLoc(rc);
+    assertEquals(survivorCenter, BabyRat.kingLoc);
+
+    // Round 104: the survivor has expired too. The baby's cached target must clear, not linger.
+    rc.setRoundNum(104);
+    BabyRat.updateRatKingLoc(rc);
+    assertNull(BabyRat.kingLoc);
+  }
+
+  @Test
+  public void nearestIgnoresPendingFutureAndOffMapRecords() throws Exception {
+    // Arrange: three tempting records right next to the baby, all invalid, plus one valid king far
+    // away in ID 3. Records are written directly as (x, packedY, stamp) triples.
+    rc.setRoundNum(50);
+    rc.setSharedArrayValue(0, 21); // ID 0: pending claim (stamp > 512) -> never readable.
+    rc.setSharedArrayValue(1, 20);
+    rc.setSharedArrayValue(2, 600);
+    rc.setSharedArrayValue(3, 21); // ID 1: committed in round 60 -> future-dated, rejected.
+    rc.setSharedArrayValue(4, 20);
+    rc.setSharedArrayValue(5, 61);
+    rc.setSharedArrayValue(6, 63); // ID 2: x = 63 is off this 60-wide map, rejected.
+    rc.setSharedArrayValue(7, 20);
+    rc.setSharedArrayValue(8, 51);
+    MapLocation valid = new MapLocation(50, 50);
+    rc.setSharedArrayValue(9, valid.x); // ID 3: committed in round 50 -> valid.
+    rc.setSharedArrayValue(10, valid.y);
+    rc.setSharedArrayValue(11, 51);
+    rc.setLocation(new MapLocation(20, 20));
+
+    // Assert: only the valid, far record is returned.
+    assertEquals(valid, KingRegistry.readNearest(rc));
   }
 }
