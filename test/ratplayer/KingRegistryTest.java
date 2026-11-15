@@ -152,7 +152,7 @@ public class KingRegistryTest {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Nearest-king delivery (feature-nearest-king-delivery.md). The baby stands at rc's location;
+  // Nearest-king delivery. The baby stands at rc's location;
   // each king is published by its own KingRegistry, so IDs follow publication order (0, 1, ...).
   // ---------------------------------------------------------------------------------------------
 
