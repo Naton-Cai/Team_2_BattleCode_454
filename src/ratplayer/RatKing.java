@@ -82,6 +82,15 @@ public class RatKing {
     if (!fled && !attacked && !spawnBabyRat(rc)) {
       Dirt.digAroundKing(rc);
     }
+    if (rc.getRoundNum() > Config.KING_SPAWN_ROUND) {
+      int kingLimit = GameConstants.MAX_NUMBER_OF_RAT_KINGS;
+      if (rc.getRoundNum() > GameConstants.RAT_KING_CUTOFF_ROUND) {
+        kingLimit = GameConstants.MAX_NUMBER_OF_RAT_KINGS_AFTER_CUTOFF;
+      }
+      int targetKings =
+          Math.min(kingLimit, rc.getGlobalCheese() / Config.ALLOCATED_CHEESE_PER_KING);
+      assessForKingSpawn(rc, targetKings);
+    }
   }
 
   /**
@@ -570,6 +579,24 @@ public class RatKing {
   /** Request one chosen birth; it recruits six existing babies by squeak. Not yet called. */
   public static void requestKingFormation() {
     KingFormation.request();
+  }
+
+  /** Compare the target king count with the fresh shared-array records to dermine how many kings to spawn. */
+  static void assessForKingSpawn(RobotController rc, int targetKings) throws GameActionException {
+    int currentKings = 0;
+    int round = rc.getRoundNum();
+    // Count only active records so expired king slots do not block a replacement.
+    for (int id = 0; id < KingRegistry.CAPACITY; id++) {
+      if (KingRegistry.read(rc, id, round) != null) {
+        currentKings++;
+      }
+    }
+    // Request at most one chosen birth per Turn interval until the target is reached.
+    if (currentKings < targetKings
+        && !KingFormation.requested()
+        && rc.getRoundNum() % Config.KING_SPAWN_RATE == 0) {
+      requestKingFormation();
+    }
   }
 
   // Ordinary births obey the population cap; requested formation births still obey the reserve.
