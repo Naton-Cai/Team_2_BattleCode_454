@@ -34,6 +34,7 @@ public class RatKing {
   private static int followHitDistance;
   private static boolean escaping;
   private static boolean handledCatsThisTurn;
+  private static int targetKings = 0;
 
   /**
    * The 16 tiles around a 3x3 king, clockwise from north. Each has Chebyshev distance 2 from the
@@ -82,13 +83,14 @@ public class RatKing {
     if (!fled && !attacked && !spawnBabyRat(rc)) {
       Dirt.digAroundKing(rc);
     }
-    if (rc.getRoundNum() > Config.KING_SPAWN_ROUND) {
+    if (rc.getRoundNum() == Config.KING_SPAWN_ROUND) {
       int kingLimit = GameConstants.MAX_NUMBER_OF_RAT_KINGS;
       if (rc.getRoundNum() > GameConstants.RAT_KING_CUTOFF_ROUND) {
         kingLimit = GameConstants.MAX_NUMBER_OF_RAT_KINGS_AFTER_CUTOFF;
       }
-      int targetKings =
-          Math.min(kingLimit, rc.getGlobalCheese() / Config.ALLOCATED_CHEESE_PER_KING);
+      targetKings = Math.min(kingLimit, rc.getGlobalCheese() / Config.ALLOCATED_CHEESE_PER_KING);
+    }
+    if (rc.getRoundNum() >= Config.KING_SPAWN_ROUND) {
       assessForKingSpawn(rc, targetKings);
     }
   }
