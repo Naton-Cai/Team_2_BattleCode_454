@@ -88,7 +88,7 @@ public class BabyRat {
    */
   static boolean attack(RobotController rc) throws GameActionException {
     boolean backstabbing = rc.getBackstabbingTeam() != null;
-    if (rc.getRoundNum() == Config.BACKSTAB_ROUND) {
+    if (rc.getRoundNum() >= Config.BACKSTAB_ROUND) {
       backstabbing = true;
     }
     // a baby rat can attack the 3 tiles in front of it without having to turn so we should check
