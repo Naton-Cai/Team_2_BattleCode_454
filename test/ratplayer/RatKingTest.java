@@ -343,25 +343,20 @@ public class RatKingTest {
   }
 
   @Test
-  public void escapePausesStallAndRetryAndDoesNotForceNormalMovement() throws Exception {
-    CheeseMines.publish(rc, new MapLocation(40, 40));
-    for (int turn = 0; turn < 9; turn++) {
-      RobotPlayer.playTurn(rc);
-    }
+  public void escapeReleasesHomeAndReclaimResetsTravelProgress() throws Exception {
+    MapLocation old = new MapLocation(40, 40);
+    CheeseMines.publish(rc, old);
+    for (int turn = 0; turn < 9; turn++) RobotPlayer.playTurn(rc);
     rc.setNearbyRobots(new RobotInfo[] {cat(10, 15)});
     for (int turn = 0; turn < 3; turn++) {
       RobotPlayer.playTurn(rc);
-      assertEquals(9, RatKing.stalledTurns);
+      assertNull(RatKing.home);
     }
+    // The remembered location must be reclaimed; restarting travel clears the old stall count.
     rc.setNearbyRobots(new RobotInfo[0]);
     RobotPlayer.playTurn(rc);
-    assertEquals(10, RatKing.retryTurnsLeft);
-    rc.setNearbyRobots(new RobotInfo[] {cat(10, 15)});
-    RobotPlayer.playTurn(rc);
-    assertEquals(10, RatKing.retryTurnsLeft);
-    rc.setNearbyRobots(new RobotInfo[0]);
-    RobotPlayer.playTurn(rc);
-    assertEquals(9, RatKing.retryTurnsLeft);
+    assertEquals(old, RatKing.home);
+    assertEquals(1, RatKing.stalledTurns);
   }
 
   @Test
@@ -374,7 +369,7 @@ public class RatKingTest {
     rc.setNearbyRobots(new RobotInfo[] {cat(10, 16)});
     rc.setNearbyMapInfos(new MapInfo[] {mine(5, 10), mine(15, 10)});
     RobotPlayer.playTurn(rc);
-    assertEquals(new MapLocation(10, 14), RatKing.home);
+    assertNull(RatKing.home); // Released while fleeing; remembered separately.
     // Simulate displacement during a prolonged escape. The best candidate changes with position.
     rc.setLocation(new MapLocation(16, 10));
     rc.setMovementReady(false);
@@ -430,7 +425,7 @@ public class RatKingTest {
     RobotPlayer.playTurn(rc);
     assertEquals(new MapLocation(10, 9), rc.getLocation());
     assertPosition(10, 9);
-    assertEquals(new MapLocation(14, 10), RatKing.home);
+    assertNull(RatKing.home); // Escape releases even before choosing a replacement.
     rc.setMovementReady(false);
     rc.setNearbyRobots(new RobotInfo[0]);
     RobotPlayer.playTurn(rc);
@@ -668,6 +663,118 @@ public class RatKingTest {
     assertEquals(x, rc.readSharedArray(0));
     assertEquals(y, rc.readSharedArray(1));
     assertEquals(1, rc.readSharedArray(2));
+  }
+
+  @Test
+  public void oldMineOccupiedDuringEscapeIsNotReclaimed() throws Exception {
+    // Scenario: we flee from our home (14,10); meanwhile another king settles beside it. When the
+    // escape ends we must not return there, and a free mine found later becomes our home.
+    rc.setNearbyMapInfos(new MapInfo[] {mine(14, 10)});
+    RobotPlayer.playTurn(rc);
+    rc.setNearbyRobots(new RobotInfo[] {cat(10, 16)});
+    RobotPlayer.playTurn(rc);
+    assertNull(RatKing.home);
+    otherKingAt(14, 11);
+    // Act: the cat leaves and the escape completes.
+    rc.setNearbyRobots(new RobotInfo[0]);
+    RobotPlayer.playTurn(rc);
+    // Assert: the occupied old home is skipped, so we are homeless.
+    assertNull(RatKing.home);
+    // A farther free mine is eligible when the remembered home is unavailable.
+    CheeseMines.publish(rc, new MapLocation(30, 30));
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(30, 30), RatKing.home);
+  }
+
+  @Test
+  public void occupiedNearestMineDoesNotHideFartherLocalCandidate() throws Exception {
+    // Another king at (11,13) is within radius 4 of mine (11,10) (d²=9) but not of (14,10)
+    // (d²=18). The nearer mine is filtered out before ranking, so the farther one wins.
+    otherKingAt(11, 13);
+    rc.setNearbyMapInfos(new MapInfo[] {mine(11, 10), mine(14, 10)});
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(14, 10), RatKing.home);
+  }
+
+  @Test
+  public void travelingKingYieldsHomeWhenAnotherKingSettlesFirst() throws Exception {
+    // Scenario: we are traveling to a distant mine (30,10); another king reaches it first.
+    CheeseMines.publish(rc, new MapLocation(30, 10));
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(30, 10), RatKing.home);
+    otherKingAt(30, 12);
+    // Act/assert: before moving we see the settled king and drop the home, and we do not
+    // re-adopt it on later turns while that king stays.
+    RobotPlayer.playTurn(rc);
+    assertNull(RatKing.home);
+    RobotPlayer.playTurn(rc);
+    assertNull(RatKing.home);
+  }
+
+  @Test
+  public void settledKingKeepsHomeWhenAnotherKingComesNear() throws Exception {
+    // Scenario: we already rest at (14,10) (d²=16, inside radius 4). Another king walks up next to
+    // the mine. Only traveling kings yield, so we keep our home; this prevents mutual eviction.
+    rc.setNearbyMapInfos(new MapInfo[] {mine(14, 10)});
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(14, 10), RatKing.home);
+    otherKingAt(15, 10);
+    RobotPlayer.playTurn(rc);
+    assertEquals(new MapLocation(14, 10), RatKing.home);
+  }
+
+  @Test
+  public void retryRespectsOccupantUntilItsHeartbeatExpires() throws Exception {
+    // Scenario: our only mine is unreachable (the fake allows no steps), so the stall policy
+    // abandons it. Another king then settles there. The timed retry must not adopt it while that
+    // king is alive, but once its heartbeat goes stale the mine is free again.
+    MapLocation stuck = new MapLocation(40, 40);
+    CheeseMines.publish(rc, stuck);
+    // Act 1: ten stalled ready turns trigger deferral.
+    for (int turn = 0; turn < 10; turn++) RobotPlayer.playTurn(rc);
+    assertNull(RatKing.home);
+    assertEquals(stuck, RatKing.deferredHome);
+    // Arrange 2: a second king (independent registry state, shared array) settles at the mine.
+    otherKingAt(40, 41);
+    // Act 2: run past the ten-turn retry interval plus a few homeless turns.
+    for (int turn = 0; turn < 13; turn++) RobotPlayer.playTurn(rc);
+    // Assert 2: the retry did not take the occupied mine.
+    assertNull(RatKing.home);
+    // Act 3: two rounds pass without the other king publishing, so its record is stale.
+    rc.setRoundNum(rc.getRoundNum() + 2);
+    RobotPlayer.playTurn(rc);
+    // Assert 3: the mine is free again and we adopt it.
+    assertEquals(stuck, RatKing.home);
+  }
+
+  @Test
+  public void closerEscapeMineOccupiedByAnotherKingFallsBackToOldHome() throws Exception {
+    // Scenario: during an escape we spot (10,12), which is closer than our old home (14,10), but
+    // another king settles there before the escape ends. We skip it and return to the old home.
+    MapLocation old = new MapLocation(14, 10);
+    rc.setNearbyMapInfos(new MapInfo[] {mine(14, 10)});
+    RobotPlayer.playTurn(rc);
+    assertEquals(old, RatKing.home);
+    // Act 1: a cat starts the escape while the closer mine is in view.
+    rc.setNearbyRobots(new RobotInfo[] {cat(10, 16)});
+    rc.setNearbyMapInfos(new MapInfo[] {mine(10, 12)});
+    RobotPlayer.playTurn(rc);
+    // Arrange: another king settles at the closer mine (d²=1), but not near the old one (d²=25).
+    otherKingAt(10, 13);
+    // Act 2: the cat leaves, so the escape completes.
+    rc.setNearbyRobots(new RobotInfo[0]);
+    rc.setNearbyMapInfos(new MapInfo[0]);
+    RobotPlayer.playTurn(rc);
+    // Assert: the old home is chosen again.
+    assertEquals(old, RatKing.home);
+  }
+
+  /** Publishes a second, independent king's center into the same shared array. */
+  private void otherKingAt(int x, int y) throws GameActionException {
+    MapLocation self = rc.getLocation();
+    rc.setLocation(new MapLocation(x, y));
+    new KingRegistry().publish(rc);
+    rc.setLocation(self);
   }
 
   private long writes() {

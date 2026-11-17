@@ -33,6 +33,7 @@ public class RatKing {
   private static Direction followHeading;
   private static int followHitDistance;
   private static boolean escaping;
+  private static MapLocation escapeHome;
   private static boolean handledCatsThisTurn;
   private static int targetKings = 0;
 
@@ -50,11 +51,12 @@ public class RatKing {
     handledCatsThisTurn = false;
     java.util.Arrays.fill(turnMines, 0);
     Trap.writeStartofBackStabbing(rc);
-    identifyCheeseMines(rc);
     // Refresh the heartbeat even when stationary so another king cannot reclaim this ID.
     if (!locationPublished || kingRegistry.lastRound() != rc.getRoundNum()) {
       updateLoc(rc);
     }
+    validateHome(rc);
+    identifyCheeseMines(rc);
     // Snapshot before cat flee or home travel changes readiness; a successful step is preferred.
     boolean cannotFlee = cannotFlee(rc);
     boolean fled = respondToCats(rc);
@@ -131,6 +133,7 @@ public class RatKing {
     if (!locationPublished) {
       updateLoc(rc);
     }
+    beginEscape(rc);
     Cats.placeDirtTowardCat(rc, cat.getLocation());
     fleeFromCat(rc, cat.getLocation());
     return true;
@@ -153,6 +156,7 @@ public class RatKing {
     if (!locationPublished) {
       updateLoc(rc);
     }
+    beginEscape(rc);
     Cats.placeDirtTowardCat(rc, cat.getLocation());
     fleeFromCat(rc, cat.getLocation());
     return true;
@@ -267,11 +271,10 @@ public class RatKing {
   // Pre-move sensing also runs while movement is cooling down.
   static void identifyCheeseMines(RobotController rc) throws GameActionException {
     // Read earlier committed records before this turn publishes simultaneous local discoveries.
-    if (home == null && deferredHome == null) {
+    if (!escaping && home == null && deferredHome == null) {
       for (int i = 0; i < Config.MAX_CHEESE_MINES; i++) {
         MapLocation mine = CheeseMines.read(rc, i);
-        if (mine != null) {
-          adoptHome(rc, mine);
+        if (mine != null && adoptHome(rc, mine)) {
           break;
         }
       }
@@ -288,19 +291,17 @@ public class RatKing {
       }
       MapLocation mine = info.getMapLocation();
       long bit = 1L << mine.x;
-      if ((seenMines[mine.y] & bit) == 0) {
-        seenMines[mine.y] |= bit;
-        turnMines[mine.y] |= bit;
-        if (handledCatsThisTurn) {
-          escapeMines[mine.y] |= bit;
-        }
+      seenMines[mine.y] |= bit;
+      turnMines[mine.y] |= bit;
+      if (escaping) {
+        escapeMines[mine.y] |= bit;
       }
       CheeseMines.publish(rc, mine);
-      if (!mine.equals(deferredHome) && nearer(current, mine, first)) {
+      if (!mine.equals(deferredHome) && nearer(current, mine, first) && !occupied(rc, mine)) {
         first = mine;
       }
     }
-    if (home == null && deferredHome == null && first != null) {
+    if (!escaping && home == null && deferredHome == null && first != null) {
       adoptHome(rc, first);
     }
   }
@@ -317,38 +318,94 @@ public class RatKing {
                 || (candidate.x == selected.x && candidate.y < selected.y)));
   }
 
-  private static void adoptHome(RobotController rc, MapLocation mine) {
+  private static boolean adoptHome(RobotController rc, MapLocation mine)
+      throws GameActionException {
+    if (occupied(rc, mine)) {
+      return false;
+    }
     home = mine;
     deferredHome = null;
     retryTurnsLeft = 0;
     stalledTurns = 0;
     bestHomeDistance = rc.getLocation().distanceSquaredTo(mine);
     followHeading = null;
+    return true;
   }
 
-  private static void finishEscape(RobotController rc) {
+  /**
+   * True when another allied king's fresh center is within the home radius of {@code mine}. The
+   * registry is the only map-wide view of other kings, so occupancy is proximity, not reservation.
+   */
+  static boolean occupied(RobotController rc, MapLocation mine) throws GameActionException {
+    long radiusSquared = (long) Config.KING_HOME_RADIUS * Config.KING_HOME_RADIUS;
+    int round = rc.getRoundNum();
+    for (int id = 0; id < KingRegistry.CAPACITY; id++) {
+      if (id == kingRegistry.id()) {
+        continue;
+      }
+      MapLocation center = KingRegistry.read(rc, id, round);
+      if (center != null && center.distanceSquaredTo(mine) <= radiusSquared) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // A settled king keeps its home; only a traveling king yields, so two kings never evict each
+  // other. Kings act sequentially, so the second arrival always sees the first one's center.
+  private static void validateHome(RobotController rc) throws GameActionException {
+    if (home != null
+        && rc.getLocation().distanceSquaredTo(home)
+            > (long) Config.KING_HOME_RADIUS * Config.KING_HOME_RADIUS
+        && occupied(rc, home)) {
+      home = null;
+      deferredHome = null;
+      followHeading = null;
+      stalledTurns = 0;
+    }
+  }
+
+  private static void beginEscape(RobotController rc) {
+    if (!escaping) {
+      escapeHome = home != null ? home : deferredHome;
+      escaping = true;
+    }
+    home = null;
+    deferredHome = null;
+  }
+
+  private static void finishEscape(RobotController rc) throws GameActionException {
     MapLocation current = rc.getLocation();
-    MapLocation previous = home != null ? home : deferredHome;
-    MapLocation candidate = nearestLocalMine(current, escapeMines, null);
-    java.util.Arrays.fill(escapeMines, 0);
-    if (previous != null
-        && candidate != null
-        && current.distanceSquaredTo(candidate) < current.distanceSquaredTo(previous)) {
+    MapLocation candidate = nearestLocalMine(rc, escapeMines, null);
+    if (candidate != null
+        && (escapeHome == null
+            || current.distanceSquaredTo(candidate) < current.distanceSquaredTo(escapeHome))) {
       adoptHome(rc, candidate);
     }
-    // Escape movement can invalidate the old wall-follow heading even when home stays unchanged.
+    if (home == null && escapeHome != null) {
+      adoptHome(rc, escapeHome);
+    }
+    if (home == null) {
+      MapLocation alternative = alternativeHome(rc, null);
+      if (alternative != null) {
+        adoptHome(rc, alternative);
+      }
+    }
+    java.util.Arrays.fill(escapeMines, 0);
+    escapeHome = null;
     followHeading = null;
     escaping = false;
   }
 
   private static MapLocation nearestLocalMine(
-      MapLocation current, long[] mines, MapLocation excluded) {
+      RobotController rc, long[] mines, MapLocation excluded) throws GameActionException {
+    MapLocation current = rc.getLocation();
     MapLocation nearest = null;
     for (int y = 0; y < mines.length; y++) {
       long row = mines[y];
       while (row != 0) {
         MapLocation mine = new MapLocation(Long.numberOfTrailingZeros(row), y);
-        if (!mine.equals(excluded) && nearer(current, mine, nearest)) {
+        if (!mine.equals(excluded) && nearer(current, mine, nearest) && !occupied(rc, mine)) {
           nearest = mine;
         }
         row &= row - 1;
@@ -373,16 +430,12 @@ public class RatKing {
     if (!locationPublished) {
       updateLoc(rc);
     }
+    validateHome(rc);
     // Cooldown and low optional-work budget are not evidence of an obstacle.
     if (!rc.isMovementReady() || Clock.getBytecodeNum() >= NAVIGATION_BYTECODE_CUTOFF) {
       return;
     }
-    if (home == null && deferredHome != null) {
-      MapLocation alternative = alternativeHome(rc, deferredHome);
-      if (alternative != null) {
-        adoptHome(rc, alternative);
-      }
-    }
+    retryAlternative(rc);
     if (home == null) {
       exploreWhileHomeless(rc);
       return;
@@ -410,6 +463,15 @@ public class RatKing {
       stalledTurns = 0;
     } else if (++stalledTurns >= Config.KING_STALL_TURNS) {
       deferHome(rc);
+    }
+  }
+
+  private static void retryAlternative(RobotController rc) throws GameActionException {
+    if (home == null && deferredHome != null) {
+      MapLocation alternative = alternativeHome(rc, deferredHome);
+      if (alternative != null) {
+        adoptHome(rc, alternative);
+      }
     }
   }
 
@@ -501,10 +563,13 @@ public class RatKing {
 
   private static MapLocation alternativeHome(RobotController rc, MapLocation previous)
       throws GameActionException {
-    MapLocation alternative = nearestLocalMine(rc.getLocation(), seenMines, previous);
+    MapLocation alternative = nearestLocalMine(rc, seenMines, previous);
     for (int i = 0; i < Config.MAX_CHEESE_MINES; i++) {
       MapLocation mine = CheeseMines.read(rc, i);
-      if (mine != null && !mine.equals(previous) && nearer(rc.getLocation(), mine, alternative)) {
+      if (mine != null
+          && !mine.equals(previous)
+          && nearer(rc.getLocation(), mine, alternative)
+          && !occupied(rc, mine)) {
         alternative = mine;
       }
     }
@@ -515,7 +580,9 @@ public class RatKing {
   private static void exploreWhileHomeless(RobotController rc) throws GameActionException {
     explore(rc);
     if (deferredHome != null && --retryTurnsLeft == 0) {
-      adoptHome(rc, deferredHome);
+      MapLocation retry = deferredHome;
+      deferredHome = null;
+      adoptHome(rc, retry);
     }
   }
 
@@ -597,6 +664,7 @@ public class RatKing {
     bestHomeDistance = Integer.MAX_VALUE;
     followHeading = null;
     escaping = false;
+    escapeHome = null;
     handledCatsThisTurn = false;
     java.util.Arrays.fill(seenMines, 0);
     java.util.Arrays.fill(turnMines, 0);

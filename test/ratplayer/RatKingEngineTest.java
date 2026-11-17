@@ -33,6 +33,7 @@ public class RatKingEngineTest {
   private ByteArrayOutputStream output;
   private InternalRobot king;
   private int peakBytecodes;
+  private int fixtureSize = 20;
 
   @After
   public void stopSandbox() {
@@ -612,6 +613,174 @@ public class RatKingEngineTest {
     assertEquals(1, world.getTeamInfo().getNumBabyRats(Team.A));
   }
 
+  @Test
+  public void fiveKingsOneMineHaveOneOwnerAndFourExplorers() throws Exception {
+    MapLocation mine = new MapLocation(1, 1);
+    start(new MapLocation(3, 3), Direction.NORTH, null, mine, new MapLocation(18, 18));
+    // Real mines must be symmetrically paired. Keep the counterpart outside this fixture arena.
+    for (int edge = 0; edge < 20; edge++) {
+      world.getGameMap().getWallArray()[15 + edge * 20] = true;
+      world.getGameMap().getWallArray()[edge + 15 * 20] = true;
+    }
+    setTeamCheese(500);
+    MapLocation[] starts = {
+      new MapLocation(3, 8), new MapLocation(8, 3), new MapLocation(13, 3), new MapLocation(3, 13)
+    };
+    for (int i = 0; i < starts.length; i++) {
+      world.spawnRobot(200 + i, UnitType.RAT_KING, starts[i], Direction.NORTH, 0, Team.A);
+    }
+    CheeseMines.publish(king.getController(), mine);
+    for (int turn = 0; turn < 20; turn++) {
+      round();
+      if (turn == 7) {
+        // Before the 10-turn stall fallback, surplus kings have explored away from the occupied
+        // corner mine instead of homing toward it.
+        int startDistance = 0;
+        int nowDistance = 0;
+        for (int i = 0; i < starts.length; i++) {
+          startDistance += starts[i].distanceSquaredTo(mine);
+          nowDistance +=
+              world.getObjectInfo().getRobotByID(200 + i).getLocation().distanceSquaredTo(mine);
+        }
+        assertTrue(nowDistance + " vs " + startDistance, nowDistance > startDistance);
+      }
+      for (int i = 0; i < starts.length; i++) {
+        InternalRobot extra = world.getObjectInfo().getRobotByID(200 + i);
+        assertNotNull(extra);
+        assertTrue(extra.getBytecodesUsed() < 19000);
+      }
+    }
+    for (int i = 0; i < starts.length; i++) {
+      assertFalse(
+          "Surplus king should explore",
+          starts[i].equals(world.getObjectInfo().getRobotByID(200 + i).getLocation()));
+    }
+    // Only the first king rests at the mine; the four surplus kings never settled there.
+    assertEquals(1, kingsAt(mine, 1, 200, 201, 202, 203));
+  }
+
+  @Test
+  public void competingKingsChooseDistinctMinesInBothStartingOrders() throws Exception {
+    for (boolean reverse : new boolean[] {false, true}) {
+      MapLocation a = new MapLocation(6, 8);
+      MapLocation b = new MapLocation(13, 11);
+      start(reverse ? new MapLocation(13, 3) : new MapLocation(6, 3), Direction.NORTH, null, a, b);
+      setTeamCheese(500);
+      world.spawnRobot(
+          200,
+          UnitType.RAT_KING,
+          reverse ? new MapLocation(6, 3) : new MapLocation(13, 3),
+          Direction.NORTH,
+          0,
+          Team.A);
+      CheeseMines.publish(king.getController(), a);
+      CheeseMines.publish(king.getController(), b);
+      // Both kings may start toward the first registry mine; the later arrival must retarget.
+      for (int turn = 0; turn < 30; turn++) {
+        round();
+        assertTrue(world.getObjectInfo().getRobotByID(200).getBytecodesUsed() < 19000);
+      }
+      assertEquals("reverse=" + reverse, 1, kingsAt(a, 1, 200));
+      assertEquals("reverse=" + reverse, 1, kingsAt(b, 1, 200));
+      stopSandbox();
+    }
+  }
+
+  @Test
+  public void ownerDeathLetsExploringKingReuseMine() throws Exception {
+    MapLocation mine = new MapLocation(8, 8);
+    start(new MapLocation(8, 4), Direction.NORTH, null, mine);
+    setTeamCheese(500);
+    world.spawnRobot(200, UnitType.RAT_KING, new MapLocation(3, 8), Direction.EAST, 0, Team.A);
+    CheeseMines.publish(king.getController(), mine);
+    // The first king starts settled at the mine (d²=16); the second explores (it may pass by).
+    round();
+    // Remove the first owner, keeping the second alive to avoid ending the match. Its heartbeat
+    // goes stale after two rounds, and then the survivor may adopt and reach the mine.
+    world.destroyRobot(1);
+    for (int turn = 0; turn < 15; turn++) world.runRound();
+    InternalRobot survivor = world.getObjectInfo().getRobotByID(200);
+    assertNotNull(survivor);
+    // Settled means inside the radius and no longer moving (an explorer would keep going).
+    MapLocation rest = survivor.getLocation();
+    assertEquals(1, kingsAt(mine, 200));
+    for (int turn = 0; turn < 3; turn++) world.runRound();
+    assertEquals(rest, survivor.getLocation());
+    assertFalse(output.toString(StandardCharsets.UTF_8).contains("Exception"));
+    assertTrue(survivor.getBytecodesUsed() < 19000);
+  }
+
+  @Test
+  public void fullMineRegistryWithFiveKingsLeavesTurnHeadroom() throws Exception {
+    fixtureSize = 60;
+    MapLocation[] mines = new MapLocation[18];
+    for (int i = 0; i < 9; i++) {
+      mines[2 * i] = new MapLocation(5 + 10 * (i % 3), 5 + 10 * (i / 3));
+      mines[2 * i + 1] = new MapLocation(59 - mines[2 * i].x, 59 - mines[2 * i].y);
+    }
+    start(new MapLocation(8, 8), Direction.NORTH, null, mines);
+    setTeamCheese(1500); // Exercise ordinary spawning alongside full claim/discovery scans.
+    for (MapLocation mine : mines) CheeseMines.publish(king.getController(), mine);
+    for (int i = 0; i < 4; i++) {
+      world.spawnRobot(
+          200 + i, UnitType.RAT_KING, new MapLocation(15 + 10 * i, 8), Direction.NORTH, 0, Team.A);
+    }
+    int peak = 0;
+    for (int turn = 0; turn < 8; turn++) {
+      round();
+      peak = Math.max(peak, king.getBytecodesUsed());
+      for (int i = 0; i < 4; i++) {
+        int used = world.getObjectInfo().getRobotByID(200 + i).getBytecodesUsed();
+        assertTrue("Full registry turn: " + used, used > 0 && used < 19000);
+        peak = Math.max(peak, used);
+      }
+    }
+    System.out.println("Full mine registry / five kings peak=" + peak);
+    for (MapLocation mine : mines) {
+      assertTrue("Shared home " + mine, kingsAt(mine, 1, 200, 201, 202, 203) <= 1);
+    }
+  }
+
+  @Test
+  public void newlyPromotedKingCannotTakeExistingHome() throws Exception {
+    MapLocation mine = new MapLocation(8, 8);
+    start(new MapLocation(8, 8), Direction.NORTH, null, mine, new MapLocation(11, 11));
+    setTeamCheese(500);
+    round();
+    MapLocation center = new MapLocation(13, 8);
+    world.spawnRobot(200, UnitType.BABY_RAT, center, Direction.EAST, 0, Team.A);
+    int id = 210;
+    for (Direction direction : RobotPlayer.directions) {
+      world.spawnRobot(id++, UnitType.BABY_RAT, center.add(direction), Direction.EAST, 0, Team.A);
+    }
+    InternalRobot promoted = world.getObjectInfo().getRobotByID(200);
+    promoted.setActionCooldownTurns(0);
+    assertTrue(promoted.getController().canBecomeRatKing());
+    promoted.getController().becomeRatKing();
+    for (int turn = 0; turn < 5; turn++) {
+      round();
+      assertTrue(promoted.getBytecodesUsed() > 0 && promoted.getBytecodesUsed() < 19000);
+    }
+    // The promoted king rests at the free mine (11,11), never at the first king's (8,8).
+    assertEquals(new MapLocation(8, 8), king.getLocation());
+    assertEquals(0, kingsAt(mine, 200));
+    assertEquals(1, kingsAt(new MapLocation(11, 11), 200));
+  }
+
+  /** Counts the given allied kings whose center is within the home radius of {@code mine}. */
+  private int kingsAt(MapLocation mine, int... ids) {
+    int count = 0;
+    for (int id : ids) {
+      InternalRobot robot = world.getObjectInfo().getRobotByID(id);
+      if (robot != null
+          && robot.getLocation().distanceSquaredTo(mine)
+              <= Config.KING_HOME_RADIUS * Config.KING_HOME_RADIUS) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   private void seedBabies(int count) {
     for (int i = 0; i < count; i++) {
       int x = 1 + i % 18;
@@ -635,6 +804,7 @@ public class RatKingEngineTest {
 
   private void start(
       MapLocation location, Direction facing, MapLocation wall, MapLocation... mines) {
+    int size = fixtureSize;
     String classes =
         RobotPlayer.class.getProtectionDomain().getCodeSource().getLocation().getPath();
     output = new ByteArrayOutputStream();
@@ -648,15 +818,23 @@ public class RatKingEngineTest {
     RobotInfo[] bodies = {
       new RobotInfo(1, Team.A, UnitType.RAT_KING, 500, location, facing, 0, 0, null),
       new RobotInfo(
-          2, Team.B, UnitType.RAT_KING, 500, new MapLocation(17, 17), Direction.SOUTH, 0, 0, null)
+          2,
+          Team.B,
+          UnitType.RAT_KING,
+          500,
+          new MapLocation(size - 3, size - 3),
+          Direction.SOUTH,
+          0,
+          0,
+          null)
     };
     LiveMap map =
-        new LiveMap(20, 20, new MapLocation(0, 0), 6147, 100, "RatKingMovementFixture", bodies);
+        new LiveMap(size, size, new MapLocation(0, 0), 6147, 100, "RatKingMovementFixture", bodies);
     for (MapLocation mine : mines) {
-      map.getCheeseMineArray()[mine.x + mine.y * 20] = true;
+      map.getCheeseMineArray()[mine.x + mine.y * size] = true;
     }
     if (wall != null) {
-      map.getWallArray()[wall.x + wall.y * 20] = true;
+      map.getWallArray()[wall.x + wall.y * size] = true;
     }
     GameInfo game =
         new GameInfo(
