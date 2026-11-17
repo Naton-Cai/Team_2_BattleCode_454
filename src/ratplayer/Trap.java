@@ -10,6 +10,17 @@ import battlecode.common.UnitType;
 final class Trap {
   // First slot after the king and mine records; zero means backstabbing has not started.
   static final int BACKSTABSLOT = 51;
+
+  // Shared values stop at 1023 but rounds reach 2000, so store the round in two-round units.
+  // Odd rounds decode exactly; even rounds decode one round early. Zero still means unset.
+  static int encodeRound(int round) {
+    return (round + 1) / 2;
+  }
+
+  static int decodeRound(int value) {
+    return value == 0 ? 0 : 2 * value - 1;
+  }
+
   public static int startofBackStabbing = 0;
 
   /**
@@ -112,10 +123,10 @@ final class Trap {
       // array hasn't been writen to so update it with the new value
       if (readRoundValue == 0) {
         int round = rc.getRoundNum();
-        rc.writeSharedArray(BACKSTABSLOT, round);
+        rc.writeSharedArray(BACKSTABSLOT, encodeRound(round));
         startofBackStabbing = round;
       } else {
-        startofBackStabbing = readRoundValue;
+        startofBackStabbing = decodeRound(readRoundValue);
       }
     }
   }
@@ -123,7 +134,7 @@ final class Trap {
   // update the internal startofBackStabbing round from the array if it hasn't before
   static void updateStartofBackStabbing(RobotController rc) throws GameActionException {
     if (startofBackStabbing == 0 && !rc.isCooperation()) {
-      startofBackStabbing = rc.readSharedArray(BACKSTABSLOT);
+      startofBackStabbing = decodeRound(rc.readSharedArray(BACKSTABSLOT));
     }
   }
 }

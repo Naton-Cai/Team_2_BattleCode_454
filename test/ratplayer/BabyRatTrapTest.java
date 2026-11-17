@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import battlecode.common.Direction;
+import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotInfo;
 import battlecode.common.Team;
@@ -81,7 +82,7 @@ public class BabyRatTrapTest {
 
     controller.setCooperation(false);
     controller.setBackstabbingTeam(Team.B);
-    controller.setSharedArrayValue(Trap.BACKSTABSLOT, 7);
+    controller.setSharedArrayValue(Trap.BACKSTABSLOT, Trap.encodeRound(7));
     BabyRat.run(controller);
     assertEquals(7, Trap.startofBackStabbing);
   }
@@ -95,8 +96,31 @@ public class BabyRatTrapTest {
 
     Trap.writeStartofBackStabbing(controller);
 
+    // The writer keeps the exact round locally; the slot holds it in two-round units.
     assertEquals(24, Trap.startofBackStabbing);
-    assertEquals("writeSharedArray:" + Trap.BACKSTABSLOT + ":24", controller.calls().get(0));
+    assertEquals("writeSharedArray:" + Trap.BACKSTABSLOT + ":12", controller.calls().get(0));
+  }
+
+  @Test
+  public void lateBackstabRoundFitsSharedSlotAndDecodesWithinOneRound() throws Exception {
+    // Regression: backstab at round 1981 used to write 1981 into a 0..1023 slot. The engine threw
+    // every king turn, freezing all kings until round 2000. The fake does not enforce the limit,
+    // so assert the written value directly. Boundary rounds cover 1, the old limit, and game end.
+    for (int round : new int[] {1, 2, 1023, 1024, 1981, 1999, 2000}) {
+      TestRobotController controller = readyController();
+      controller.setRoundNum(round);
+      controller.setCooperation(false);
+
+      Trap.writeStartofBackStabbing(controller);
+
+      int stored = controller.readSharedArray(Trap.BACKSTABSLOT);
+      assertTrue("round " + round, stored >= 1 && stored <= GameConstants.COMM_ARRAY_MAX_VALUE);
+      // A baby reading the slot recovers the start round exactly or one round early.
+      Trap.startofBackStabbing = 0;
+      Trap.updateStartofBackStabbing(controller);
+      assertTrue("round " + round, round - Trap.startofBackStabbing <= 1);
+      assertTrue("round " + round, Trap.startofBackStabbing <= round);
+    }
   }
 
   @Test
@@ -105,7 +129,7 @@ public class BabyRatTrapTest {
     TestRobotController controller = readyController();
     controller.setCooperation(false);
     controller.setSharedArrayValue(45, 33);
-    controller.setSharedArrayValue(51, 7);
+    controller.setSharedArrayValue(51, Trap.encodeRound(7));
 
     Trap.writeStartofBackStabbing(controller);
 

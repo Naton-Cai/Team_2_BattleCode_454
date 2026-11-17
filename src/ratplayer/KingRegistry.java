@@ -27,6 +27,10 @@ final class KingRegistry {
     return 3 * id;
   }
 
+  int id() {
+    return id;
+  }
+
   boolean publish(RobotController rc) throws GameActionException {
     int round = rc.getRoundNum();
     if (id >= 0) {
