@@ -83,6 +83,11 @@ public class RatKing {
     if (!fled && !attacked && !spawnBabyRat(rc)) {
       Dirt.digAroundKing(rc);
     }
+    updateKingSpawn(rc);
+  }
+
+  /** Fix the king target once at the spawn round, then keep requesting until it is met. */
+  private static void updateKingSpawn(RobotController rc) throws GameActionException {
     if (rc.getRoundNum() == Config.KING_SPAWN_ROUND) {
       int kingLimit = GameConstants.MAX_NUMBER_OF_RAT_KINGS;
       if (rc.getRoundNum() > GameConstants.RAT_KING_CUTOFF_ROUND) {
@@ -352,14 +357,19 @@ public class RatKing {
     return nearest;
   }
 
-  // Normal movement targets mines only; loose cheese never redirects the king.
-  static void move(RobotController rc) throws GameActionException {
+  // Config fields are mutable (tests, tuning), so validate on each call rather than once.
+  private static void validateNavigationConfig() {
     if (Config.KING_HOME_RADIUS < 0
         || Config.KING_STALL_TURNS <= 0
         || Config.KING_RETRY_TURNS <= 0) {
       throw new IllegalArgumentException(
           "King radius must be nonnegative and navigation delays positive");
     }
+  }
+
+  // Normal movement targets mines only; loose cheese never redirects the king.
+  static void move(RobotController rc) throws GameActionException {
+    validateNavigationConfig();
     if (!locationPublished) {
       updateLoc(rc);
     }
@@ -374,10 +384,7 @@ public class RatKing {
       }
     }
     if (home == null) {
-      explore(rc);
-      if (deferredHome != null && --retryTurnsLeft == 0) {
-        adoptHome(rc, deferredHome);
-      }
+      exploreWhileHomeless(rc);
       return;
     }
     MapLocation current = rc.getLocation();
@@ -394,18 +401,8 @@ public class RatKing {
       stalledTurns = 0;
     }
     Direction step = homeStep(rc, current, distance);
-    if (step != null) {
-      if (step != rc.getDirection()) {
-        if (rc.canTurn(step)) {
-          rc.turn(step);
-        }
-      } else if (rc.canMoveForward()) {
-        rc.moveForward();
-        if (followHeading != null) {
-          followHeading = step;
-        }
-        updateLoc(rc);
-      }
+    if (step != null && turnOrStep(rc, step) && followHeading != null) {
+      followHeading = step;
     }
     int after = rc.getLocation().distanceSquaredTo(home);
     if (after < bestHomeDistance) {
@@ -431,22 +428,7 @@ public class RatKing {
         return desired;
       }
       // Occupancy alone causes a bounded wait; do not enter terrain following for another robot.
-      MapLocation destination = current.add(desired);
-      boolean terrainBlocked = false;
-      for (int dx = -1; dx <= 1 && !terrainBlocked; dx++) {
-        for (int dy = -1; dy <= 1; dy++) {
-          MapLocation tile = destination.translate(dx, dy);
-          if (tile.x < 0
-              || tile.y < 0
-              || tile.x >= rc.getMapWidth()
-              || tile.y >= rc.getMapHeight()
-              || (rc.canSenseLocation(tile) && !rc.sensePassability(tile))) {
-            terrainBlocked = true;
-            break;
-          }
-        }
-      }
-      if (!terrainBlocked) {
+      if (!terrainBlockedAround(rc, current.add(desired))) {
         return null;
       }
       followHitDistance = distance;
@@ -461,6 +443,46 @@ public class RatKing {
       probe = probe.rotateLeft();
     }
     return null;
+  }
+
+  /**
+   * True when the 3x3 footprint centered on {@code destination} leaves the map or overlaps a sensed
+   * wall. Fake TestRobotController answers onTheMap with a fixed flag, so bounds stay explicit.
+   */
+  static boolean terrainBlockedAround(RobotController rc, MapLocation destination)
+      throws GameActionException {
+    for (int dx = -1; dx <= 1; dx++) {
+      for (int dy = -1; dy <= 1; dy++) {
+        MapLocation tile = destination.translate(dx, dy);
+        if (tile.x < 0
+            || tile.y < 0
+            || tile.x >= rc.getMapWidth()
+            || tile.y >= rc.getMapHeight()
+            || (rc.canSenseLocation(tile) && !rc.sensePassability(tile))) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Turn toward {@code direction}, or step forward when already facing it. Returns true only when
+   * the king moved; the new center is published immediately.
+   */
+  static boolean turnOrStep(RobotController rc, Direction direction) throws GameActionException {
+    if (direction != rc.getDirection()) {
+      if (rc.canTurn(direction)) {
+        rc.turn(direction);
+      }
+      return false;
+    }
+    if (!rc.canMoveForward()) {
+      return false;
+    }
+    rc.moveForward();
+    updateLoc(rc);
+    return true;
   }
 
   private static void deferHome(RobotController rc) throws GameActionException {
@@ -489,6 +511,22 @@ public class RatKing {
     return alternative;
   }
 
+  /** Explore without a home; a deferred home is re-adopted once its retry interval elapses. */
+  private static void exploreWhileHomeless(RobotController rc) throws GameActionException {
+    explore(rc);
+    if (deferredHome != null && --retryTurnsLeft == 0) {
+      adoptHome(rc, deferredHome);
+    }
+  }
+
+  /** True when {@code loc} is within the search edge margin of any map border. */
+  static boolean nearSearchEdge(MapLocation loc, int width, int height) {
+    return loc.x <= Config.KING_SEARCH_EDGE_MARGIN
+        || loc.y <= Config.KING_SEARCH_EDGE_MARGIN
+        || width - 1 - loc.x <= Config.KING_SEARCH_EDGE_MARGIN
+        || height - 1 - loc.y <= Config.KING_SEARCH_EDGE_MARGIN;
+  }
+
   private static void explore(RobotController rc) throws GameActionException {
     Direction facing = rc.getDirection();
     MapLocation current = rc.getLocation();
@@ -496,12 +534,7 @@ public class RatKing {
     int height = rc.getMapHeight();
     // Keep the original uniform fallback for an already selected home's retry interval.
     boolean initialSearch = deferredHome == null;
-    boolean nearEdge =
-        initialSearch
-            && (current.x <= Config.KING_SEARCH_EDGE_MARGIN
-                || current.y <= Config.KING_SEARCH_EDGE_MARGIN
-                || width - 1 - current.x <= Config.KING_SEARCH_EDGE_MARGIN
-                || height - 1 - current.y <= Config.KING_SEARCH_EDGE_MARGIN);
+    boolean nearEdge = initialSearch && nearSearchEdge(current, width, height);
     // Doubled coordinates represent the exact center of even-sized maps without floats/objects.
     int centerDx = 2 * current.x - (width - 1);
     int centerDy = 2 * current.y - (height - 1);
@@ -536,15 +569,7 @@ public class RatKing {
     for (int i = 0; i < openCount; i++) {
       choice -= openWeights[i];
       if (choice < 0) {
-        Direction direction = openDirections[i];
-        if (direction == facing) {
-          if (rc.canMoveForward()) {
-            rc.moveForward();
-            updateLoc(rc);
-          }
-        } else if (rc.canTurn(direction)) {
-          rc.turn(direction);
-        }
+        turnOrStep(rc, openDirections[i]);
         return;
       }
     }
