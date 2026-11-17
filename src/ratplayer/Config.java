@@ -16,6 +16,10 @@ public final class Config {
   static final int DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG = 800;
   static final int DEFAULT_BABY_CAT_FLEE_HEALTH = 20;
   static final int DEFAULT_KING_CAT_FLEE_HEALTH = 600;
+  static final int KING_SPAWN_ROUND = 1100;
+  static final int KING_SPAWN_RATE = 15;
+  static final int BACKSTAB_ROUND = 1980;
+  static final int ALLOCATED_CHEESE_PER_KING = 900;
 
   // Initial-search choices, not engine rules. Home travel and fleeing use their own policies.
   static final int KING_SEARCH_EDGE_MARGIN = 3;
