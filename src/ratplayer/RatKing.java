@@ -86,10 +86,6 @@ public class RatKing {
       Dirt.digAroundKing(rc);
     }
     updateKingSpawn(rc);
-    // TEMP: no-op to push CCN over 15 and test the lizard CI warning. Remove before merge.
-    if (rc.getRoundNum() < 0 && rc.getID() < 0) {
-      return;
-    }
   }
 
   /** Fix the king target once at the spawn round, then keep requesting until it is met. */
