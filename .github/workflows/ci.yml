@@ -105,7 +105,6 @@ jobs:
           python3 - <<'PY'
           import json
           import os
-          import textwrap
           from pathlib import Path
 
           log = Path("match-run.log").read_text(errors="replace") if Path("match-run.log").exists() else ""
@@ -128,22 +127,25 @@ jobs:
               else []
           )
           replay_list = "\n".join(f"- `{name}`" for name in replays) or "_No .bc26 files found._"
-          body = textwrap.dedent(
-              f"""\
-              <!-- ci-match-report -->
-              ## CI match (ratplayer vs ratplayer2)
-
-              aggression=`{os.environ.get("AGGRESSION") or "unknown"}`
-
-              ```
-              {excerpt}
-              ```
-
-              **Replays**
-              {replay_list}
-
-              [Workflow run (download **match-replays**)]({os.environ["RUN_URL"]})
-              """
+          run_url = os.environ["RUN_URL"]
+          aggression = os.environ.get("AGGRESSION") or "unknown"
+          body = "\n".join(
+              [
+                  "<!-- ci-match-report -->",
+                  "## CI match (ratplayer vs ratplayer2)",
+                  "",
+                  f"aggression=`{aggression}`",
+                  "",
+                  "```",
+                  excerpt,
+                  "```",
+                  "",
+                  "**Replays**",
+                  replay_list,
+                  "",
+                  f"Download match-replays: {run_url}",
+                  "",
+              ]
           )
           Path("match-comment.md").write_text(body, encoding="utf-8")
           Path("match-comment.json").write_text(json.dumps({"body": body}), encoding="utf-8")
