@@ -2,6 +2,9 @@ name: Aggression self-play
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/self-play-aggression
 
 permissions:
   contents: read
