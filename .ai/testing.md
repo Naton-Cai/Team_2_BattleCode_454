@@ -110,7 +110,7 @@ scripts/sweep-aggression.sh
 scripts/sweep-aggression.sh --full-pool
 ```
 
-On GitHub, run **Aggression self-play** from Actions (`workflow_dispatch`). That job has a 90-minute timeout and does not use the 45-minute `verify` job. Download `aggression-self-play` for `summary.txt`.
+On GitHub, `workflow_dispatch` is only listed after this YAML is on `main`. Until then, a push to `feature/self-play-aggression` starts the 3-map sweep. Download the `aggression-self-play` artifact for `summary.txt`. The job has a 90-minute timeout and does not use the 45-minute `verify` job.
 
 For a feature, select or construct a valid map and setup that actually reaches the required state. Record the map file/checksum, bot setup, round, robot ID, and observed outcome. Do not claim a blocked-footprint scenario passed just because a random match finished. If no reproducible fixture reaches a scenario, mark it **not run** and document the missing fixture. A minimal fixture and replay review are sufficient initially; no advanced match runner is required. [P2-P3]
 
