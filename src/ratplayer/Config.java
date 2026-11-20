@@ -14,6 +14,12 @@ public final class Config {
   /** Valid Range ≥ 0 and a multiple of 4. Zero stops ordinary births. */
   static final int DEFAULT_MAX_BABY_RATS = 32;
 
+  /** Aggression 0: today's ordinary baby cap. */
+  static final int DEFENSIVE_MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
+
+  /** Aggression 1: no ordinary cap; spawn still respects MIN_CHEESE_RESERVE. */
+  static final int OFFENSIVE_MAX_BABY_RATS = Integer.MAX_VALUE - (Integer.MAX_VALUE % 4);
+
   /** Valid Range ≥ 0. */
   static final int DEFAULT_MIN_CHEESE_RESERVE = 200;
 

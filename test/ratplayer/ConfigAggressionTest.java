@@ -7,9 +7,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Combat knobs lerp from defensive (0) to offensive (1). Geometry and economy configs stay on
- * their DEFAULT_* values. Overlay {@code AGGRESSION} is compiled at {@code -1}, so {@link
- * Config#reset()} keeps the current mix unless a test calls {@link Aggression#apply(float)}.
+ * Combat knobs lerp from defensive (0) to offensive (1). Overlay {@code AGGRESSION} is compiled
+ * at {@code -1}, so {@link Config#reset()} keeps the current mix unless a test calls {@link
+ * Aggression#apply(float)}.
  */
 public class ConfigAggressionTest {
 
@@ -35,6 +35,7 @@ public class ConfigAggressionTest {
     assertEquals(Config.DEFENSIVE_BACKSTAB_ROUND, Config.BACKSTAB_ROUND);
     assertEquals(Config.DEFENSIVE_BABY_CAT_FLEE_HEALTH, Config.BABY_CAT_FLEE_HEALTH);
     assertEquals(Config.DEFENSIVE_KING_CAT_FLEE_HEALTH, Config.KING_CAT_FLEE_HEALTH);
+    assertEquals(Config.DEFENSIVE_MAX_BABY_RATS, Config.MAX_BABY_RATS);
   }
 
   /**
@@ -49,12 +50,14 @@ public class ConfigAggressionTest {
     assertEquals(Config.OFFENSIVE_BACKSTAB_ROUND, Config.BACKSTAB_ROUND);
     assertEquals(Config.OFFENSIVE_BABY_CAT_FLEE_HEALTH, Config.BABY_CAT_FLEE_HEALTH);
     assertEquals(Config.OFFENSIVE_KING_CAT_FLEE_HEALTH, Config.KING_CAT_FLEE_HEALTH);
+    assertEquals(Config.OFFENSIVE_MAX_BABY_RATS, Config.MAX_BABY_RATS);
   }
 
   /**
    * Aggression 0.5 is the midpoint of the combat endpoints, not today's mixed DEFAULT_* values.
    *
-   * <p>Arrange: defaults after reset. Act: apply 0.5. Assert: backstab 1550, baby 50, king 300.
+   * <p>Arrange: defaults after reset. Act: apply 0.5. Assert: backstab 1550, baby 50, king 300,
+   * max babies 48.
    */
   @Test
   public void aggressionHalfUsesMidpoints() {
@@ -63,6 +66,7 @@ public class ConfigAggressionTest {
     assertEquals(1550, Config.BACKSTAB_ROUND);
     assertEquals(50, Config.BABY_CAT_FLEE_HEALTH);
     assertEquals(300, Config.KING_CAT_FLEE_HEALTH);
+    assertEquals(48, Config.MAX_BABY_RATS);
   }
 
   /**
@@ -80,5 +84,6 @@ public class ConfigAggressionTest {
     assertEquals(Config.DEFAULT_BACKSTAB_ROUND, Config.BACKSTAB_ROUND);
     assertEquals(Config.DEFAULT_BABY_CAT_FLEE_HEALTH, Config.BABY_CAT_FLEE_HEALTH);
     assertEquals(Config.DEFAULT_KING_CAT_FLEE_HEALTH, Config.KING_CAT_FLEE_HEALTH);
+    assertEquals(Config.DEFAULT_MAX_BABY_RATS, Config.MAX_BABY_RATS);
   }
 }

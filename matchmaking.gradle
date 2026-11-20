@@ -118,6 +118,13 @@ def effectiveConfigValues = { File cfg, float aggression ->
         resolved.DEFENSIVE_KING_CAT_FLEE_HEALTH as int,
         resolved.OFFENSIVE_KING_CAT_FLEE_HEALTH as int,
         a)
+    int defensiveCap = resolved.DEFENSIVE_MAX_BABY_RATS as int
+    if (a >= 1f) {
+      resolved.MAX_BABY_RATS = Integer.MAX_VALUE - (Integer.MAX_VALUE % 4)
+    } else {
+      int cap = Math.round(defensiveCap + defensiveCap * a)
+      resolved.MAX_BABY_RATS = Math.round(cap / 4f) * 4
+    }
   }
   return resolved
 }
@@ -138,12 +145,12 @@ def logEffectiveConfig = { float aggression, File cfg ->
   effectiveConfigPrinted[0] = true
   def values = effectiveConfigValues(cfg, aggression)
   logger.quiet("ratplayer2 effective Config (aggression=${aggression}):")
-  ['BACKSTAB_ROUND', 'BABY_CAT_FLEE_HEALTH', 'KING_CAT_FLEE_HEALTH'].each { name ->
+  ['BACKSTAB_ROUND', 'BABY_CAT_FLEE_HEALTH', 'KING_CAT_FLEE_HEALTH', 'MAX_BABY_RATS'].each { name ->
     logger.quiet(String.format('  %-32s %s', name, values[name]))
   }
 }
 
-def teamConfigFile = { file("src/${project.property('teamB')}/Config.java") }
+def teamConfigFile = { file('src/ratplayer/Config.java') }
 def teamAggressionFile = { file("src/${project.property('teamB')}/Aggression.java") }
 
 def resolveMaps = {
