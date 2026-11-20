@@ -16,7 +16,7 @@ Store this file at `.ai/testing.md`. Run commands from the repository root. Foll
 | Upstream Java | Source/target 21; build rejects a Gradle JVM older than 21 | Inspected `build.gradle`. |
 | Upstream wrapper | Gradle 8.10 | Inspected wrapper configuration. |
 | Upstream Java tests | JUnit 4.13.2; sources under `test/` | Inspected dependency and source-set configuration. |
-| Existing test | `examplefuncsplayer.RobotPlayerTest.testSanity` | Checks arithmetic only; no movement coverage. |
+| Existing tests | `ratplayer.RobotPlayerTest` and other classes under `test/ratplayer/` | Feature tests for the live bot. Snapshot packages such as `ratplayer_sprint2` are not in JaCoCo. |
 | JaCoCo | 0.8.12 in root `jacoco.gradle` | Measures and enforces minimum code coverage |
 | Formatter | Spotless 8.10.4 with google-java-format 1.36.1 in root `spotless.gradle` | `./gradlew spotlessCheck` fails when Java files that differ from `origin/main` do not match the formatter. |
 | Engine reference tables | Not verified against 1.2.6 | See engine-reference provenance record. |
@@ -61,11 +61,11 @@ Use these commands after confirming the local scaffold configuration matches the
 | `./gradlew classes` | Compile production classes and process resources. |
 | `./gradlew spotlessCheck` | Fail if Java files that differ from `origin/main` do not match google-java-format 1.36.1. Does not rewrite files, compile, or run tests. |
 | `./gradlew spotlessApply` | Rewrite those files to match the formatter, including expanding wildcard imports. |
-| `./gradlew test --tests 'examplefuncsplayer.RobotPlayerTest'` | Run the existing starter test class. |
+| `./gradlew test --tests 'ratplayer.RobotPlayerTest'` | Run a focused live-bot test class. |
 | `./gradlew test` | Run the configured Java unit-test suite. Also writes the JaCoCo report and fails when line coverage is below threshold. |
 | `./gradlew check` | Run configured verification tasks, including `spotlessCheck` and the coverage gate through `test`; not a substitute for a match. |
 | `./gradlew build` | Run the normal build lifecycle, including tests, unless skipped/reused; this scaffold also downloads/unpacks the client. |
-| `./gradlew verify -Pteam=examplefuncsplayer` | Invoke the engine verifier; the scaffold makes this depend on `build`. |
+| `./gradlew verify -Pteam=ratplayer_sprint2` | Invoke the engine verifier; the scaffold makes this depend on `build`. Default `-Pteam` is `ratplayer_sprint2`. |
 | `./gradlew jacocoTestReport` | Write the HTML/XML line-coverage report. `test` already runs this afterward. |
 | `./gradlew jacocoTestCoverageVerification` | Fail when the JaCoCo LINE covered ratio is below threshold. |
 
@@ -90,15 +90,15 @@ The match runner executes bots in the game engine. The client displays a replay;
 ./gradlew listMaps
 ```
 
-After confirming `examplefuncsplayer` and `DefaultSmall` are available, this is a Java-only smoke-run example:
+After confirming `ratplayer_sprint2` and `DefaultSmall` are available, this is a Java-only smoke-run example:
 
 ```bash
 mkdir -p matches
 ./gradlew classes
-./gradlew runLocal -PteamA=examplefuncsplayer -PteamB=examplefuncsplayer -PlanguageA=java -PlanguageB=java -Pmaps=DefaultSmall -PwaitForClient=false -PalternateOrder=false -PvalidateMaps=true -PoutputVerbose=true -Pdebug=false -PenableProfiler=false -PshowIndicators=true -Preplay=matches/smoke-001.bc26
+./gradlew runLocal -PteamA=ratplayer -PteamB=ratplayer_sprint2 -PlanguageA=java -PlanguageB=java -Pmaps=DefaultSmall -PwaitForClient=false -PalternateOrder=false -PvalidateMaps=true -PoutputVerbose=true -Pdebug=false -PenableProfiler=false -PshowIndicators=true -Preplay=matches/smoke-001.bc26
 ```
 
-Choose a new replay filename for every retained run; the default name can be reused across runs. Use the team's candidate and opponent package names for feature evaluation. A self-match is a smoke check, not a strategy comparison. Inspect the runner's completion/result, bot errors, and the saved replay before recording success. [S1, P2]
+The default replay name is `matches/{timestamp}-{git}-{teamA}-vs-{teamB}-on-{maps}.bc26`, so reruns do not overwrite. Pass `-Preplay=` to pick a name. `comparePlayers` writes a new `matches/{timestamp}-{git}/` directory per run. Use the team's candidate and opponent package names for feature evaluation. A self-match is a smoke check, not a strategy comparison. Inspect the runner's completion/result, bot errors, and the saved replay before recording success. [S1, P2]
 
 For a feature, select or construct a valid map and setup that actually reaches the required state. Record the map file/checksum, bot setup, round, robot ID, and observed outcome. Do not claim a blocked-footprint scenario passed just because a random match finished. If no reproducible fixture reaches a scenario, mark it **not run** and document the missing fixture. A minimal fixture and replay review are sufficient initially; no advanced match runner is required. [P2-P3]
 
@@ -157,7 +157,7 @@ Before using this guide as a merge checklist:
 
 1. Compare local `build.gradle`, wrapper properties, and `gradle.properties` with the researched scaffold. Record intentional differences and actual Java/Gradle versions.
 2. Confirm the resolved engine dependency is 1.2.6; retain client 1.0.7. Complete the package/method-cost provenance check separately.
-3. Run the starter JUnit class and confirm its report lists a test. Then implement meaningful tests for the active feature; the arithmetic test is only a discovery check.
+3. Run `./gradlew test --tests 'ratplayer.RobotPlayerTest'` and confirm its report lists a test. Then implement meaningful tests for the active feature.
 4. Run `verify` for the actual bot package and a Java-only smoke match; retain their results. Create fixtures required for the task contract's remaining scenarios.
 5. Have a teammate review the relevant replay/trace and acceptance results. Unexecuted required checks remain **not run**; record pre-existing failures separately.
 6. Run `./gradlew spotlessCheck` (or rely on CI / `./gradlew check`) for google-java-format. Use `.ai/style/java.md` for naming, Javadoc, sandbox legality, and other rules the formatter does not check.

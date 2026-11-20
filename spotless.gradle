@@ -5,8 +5,6 @@ spotless {
   // ratchetFrom 'origin/main'
   java {
     target 'src/**/*.java', 'test/**/*.java'
-    // Skip matching files.
-    // targetExclude 'src/examplefuncsplayer/**/*.java'
     // Allow // spotless:off / on regions in source.
     // toggleOffOn()
     googleJavaFormat('1.36.1').formatJavadoc(false)

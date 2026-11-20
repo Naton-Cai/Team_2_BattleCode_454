@@ -1,6 +1,6 @@
 # Battlecode 2026 Scaffold - Java
 
-This is the Battlecode 2026 Java scaffold, containing an `examplefuncsplayer`. Read https://play.battlecode.org/bc26/quick_start !
+This is the Battlecode 2026 Java scaffold. The live bot is `ratplayer`; `ratplayer_sprint2` is a snapshot used as the default opponent. Read https://play.battlecode.org/bc26/quick_start !
 
 
 ### Project Structure
@@ -28,8 +28,8 @@ This is the Battlecode 2026 Java scaffold, containing an `examplefuncsplayer`. R
 
 ### How to get started
 
-You are free to directly edit `examplefuncsplayer`.
-However, we recommend you make a new bot by copying `examplefuncsplayer` to a new package under the `src` folder.
+You are free to directly edit `ratplayer`.
+To snapshot a bot for comparisons, copy it to a new package under the `src` folder (`./gradlew copyPlayer`).
 
 ### Useful Commands
 

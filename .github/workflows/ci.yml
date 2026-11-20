@@ -68,11 +68,11 @@ jobs:
       - name: Build
         run: ./gradlew build -x test --console=plain
 
-      # Runs every JUnit class under test/, including examplefuncsplayer and ratplayer.
+      # Runs every JUnit class under test/, including ratplayer.
       - name: Test
         run: ./gradlew test --console=plain
 
-      # Headless match: ratplayer (teamA) vs examplefuncsplayer (teamB) on maps from gradle.properties.
+      # Headless match: ratplayer (teamA) vs ratplayer_sprint2 (teamB) on maps from gradle.properties.
       - name: Run match
         run: ./gradlew run --console=plain
 

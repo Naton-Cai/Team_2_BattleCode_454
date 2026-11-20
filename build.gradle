@@ -282,7 +282,7 @@ task verify(type: JavaExec) {
   mainClass = 'battlecode.instrumenter.Verifier'
   classpath = sourceSets.main.runtimeClasspath
   args = [
-    project.findProperty("team") ?: "examplefuncsplayer",
+    project.findProperty("team") ?: "ratplayer_sprint2",
     project.findProperty("url") ?: sourceSets.main.output.classesDirs.getAsPath(),
   ]
 }
@@ -307,7 +307,18 @@ def truncateString(String input, int maxLength) {
 }
 
 def defaultClassLocation = sourceSets.main.output.classesDirs.getAsPath()
-def defaultReplayName = truncateString(project.property('teamA') + '-vs-' + project.property('teamB') + '-on-' + project.property('maps'), 80)
+def matchStamp = new Date().format('yyyyMMdd-HHmmss')
+def matchGit = 'nogit'
+try {
+  def git = ['git', 'rev-parse', '--short', 'HEAD'].execute()
+  git.waitFor()
+  if (git.exitValue() == 0) {
+    matchGit = git.text.trim()
+  }
+} catch (Exception ignored) {
+}
+def defaultReplayName = matchStamp + '-' + matchGit + '-' +
+    truncateString(project.property('teamA') + '-vs-' + project.property('teamB') + '-on-' + project.property('maps'), 80)
 def defaultReplayFile = 'matches/' + defaultReplayName + '.bc26'
 
 task runJavaLocal(type: JavaExec) {
@@ -423,6 +434,41 @@ task listMaps {
         }
       }
     }
+  }
+}
+
+def copySourceName = project.findProperty('copySource') ?: 'ratplayer'
+def copyDestName = project.findProperty('copyDest') ?: 'ratplayer2'
+def compareTeamA = project.findProperty('compareA') ?: 'ratplayer'
+def compareTeamB = project.findProperty('compareB') ?: 'ratplayer2'
+def compareMaps = project.findProperty('compareMaps') ?:
+    'DefaultSmall,DefaultMedium,tiny,corridorofdoomanddespair,jail,cheeseguardians'
+
+task copyPlayerSnapshot(type: Exec) {
+  description 'Copies a player package; used by copyPlayer.'
+  commandLine 'bash', "${projectDir}/scripts/copy-player.sh",
+      copySourceName.toString(), copyDestName.toString()
+  environment 'SKIP_GRADLE', '1'
+}
+
+task copyPlayer {
+  description 'Snapshot src/<copySource> to src/<copyDest> (defaults ratplayer -> ratplayer2) and compile.'
+  group 'battlecode'
+  dependsOn copyPlayerSnapshot, classes
+}
+classes.mustRunAfter copyPlayerSnapshot
+
+task comparePlayers(type: Exec) {
+  description 'Play compareA vs compareB on compareMaps, both sides, and print a win tally.'
+  group 'battlecode'
+  dependsOn classes
+  commandLine 'bash', "${projectDir}/scripts/compare-players.sh",
+      compareTeamA.toString(), compareTeamB.toString(), compareMaps.toString()
+  environment 'SKIP_GRADLE', '1'
+  environment 'JAVA_CMD', "${System.getProperty('java.home')}/bin/java"
+  doFirst {
+    environment 'COMPARE_CP', sourceSets.main.runtimeClasspath.asPath
+    environment 'COMPARE_CLASSES', sourceSets.main.java.destinationDirectory.get().asFile.absolutePath
   }
 }
 
