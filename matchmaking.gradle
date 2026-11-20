@@ -257,3 +257,27 @@ task comparePlayers(type: Exec) {
     environment 'COMPARE_CLASSES', sourceSets.main.java.destinationDirectory.get().asFile.absolutePath
   }
 }
+
+def sweepMapsArg = {
+  def maps = project.findProperty('compareMaps')
+  if (maps == null || maps.toString().trim().isEmpty()) {
+    return []
+  }
+  String trimmed = maps.toString().trim()
+  if (trimmed == 'full') {
+    return ['--full-pool']
+  }
+  return [trimmed]
+}
+
+task sweepAggression(type: Exec) {
+  description 'True self-play AGGRESSION matrix: ratplayer1 vs ratplayer2 unique pairs. Default 3 maps; -PcompareMaps=full for the full pool. Does not write Config.'
+  group 'battlecode'
+  commandLine(['bash', "${projectDir}/scripts/sweep-aggression.sh"] + sweepMapsArg())
+  doFirst {
+    def aggs = project.findProperty('aggressions')
+    if (aggs != null && !aggs.toString().trim().isEmpty()) {
+      environment 'AGGRESSIONS', aggs.toString().trim()
+    }
+  }
+}

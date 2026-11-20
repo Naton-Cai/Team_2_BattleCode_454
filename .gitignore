@@ -206,4 +206,5 @@ feature.md
 .idea
 
 # Generated player snapshots from scripts/copy-player.sh
+src/ratplayer1/
 src/ratplayer2/
