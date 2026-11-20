@@ -11,28 +11,96 @@ package ratplayer;
 public final class Config {
   private Config() {}
 
+  /** Valid Range ≥ 0 and a multiple of 4. Zero stops ordinary births. */
   static final int DEFAULT_MAX_BABY_RATS = 32;
+
+  /** Aggression 0: today's ordinary baby cap. */
+  static final int DEFENSIVE_MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
+
+  /** Aggression 1: no ordinary cap; spawn still respects MIN_CHEESE_RESERVE. */
+  static final int OFFENSIVE_MAX_BABY_RATS = Integer.MAX_VALUE - (Integer.MAX_VALUE % 4);
+
+  /** Valid Range ≥ 0. */
   static final int DEFAULT_MIN_CHEESE_RESERVE = 200;
+
+  /** Valid Range ≥ 0. */
   static final int DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG = 800;
+
+  /**
+   * Valid Range {@link #OFFENSIVE_BABY_CAT_FLEE_HEALTH}–{@link #DEFENSIVE_BABY_CAT_FLEE_HEALTH}
+   * (baby max HP). {@link #OFFENSIVE_BABY_CAT_FLEE_HEALTH} never flees on HP; {@link
+   * #DEFENSIVE_BABY_CAT_FLEE_HEALTH} always flees if that strategy is on.
+   */
   static final int DEFAULT_BABY_CAT_FLEE_HEALTH = 20;
+
+  /**
+   * Valid Range {@link #OFFENSIVE_KING_CAT_FLEE_HEALTH}–{@link #DEFENSIVE_KING_CAT_FLEE_HEALTH}
+   * (king max HP). {@link #OFFENSIVE_KING_CAT_FLEE_HEALTH} never flees on HP; {@link
+   * #DEFENSIVE_KING_CAT_FLEE_HEALTH} always flees if that strategy is on.
+   */
   static final int DEFAULT_KING_CAT_FLEE_HEALTH = 600;
+
+  /** Aggression 0: flee at max baby HP. */
+  static final int DEFENSIVE_BABY_CAT_FLEE_HEALTH = 100;
+
+  /** Aggression 1: never flee on HP. */
+  static final int OFFENSIVE_BABY_CAT_FLEE_HEALTH = 0;
+
+  /** Aggression 0: flee at max king HP. */
+  static final int DEFENSIVE_KING_CAT_FLEE_HEALTH = 600;
+
+  /** Aggression 1: never flee on HP. */
+  static final int OFFENSIVE_KING_CAT_FLEE_HEALTH = 0;
+
+  /** Valid Range 1–{@link #DEFENSIVE_BACKSTAB_ROUND} (game length). */
   static final int KING_SPAWN_ROUND = 1100;
+
+  /** Valid Range ≥ 1; used as {@code round % rate}. */
   static final int KING_SPAWN_RATE = 15;
-  static final int BACKSTAB_ROUND = 1980;
+
+  /** Valid Range 1–{@link #DEFENSIVE_BACKSTAB_ROUND} (game length). */
+  static final int DEFAULT_BACKSTAB_ROUND = 1980;
+
+  /** Aggression 0: do not schedule a team backstab. */
+  static final int DEFENSIVE_BACKSTAB_ROUND = 2000;
+
+  /** Aggression 1: backstab once extra kings can start. */
+  static final int OFFENSIVE_BACKSTAB_ROUND = KING_SPAWN_ROUND;
+
+  /** Round when this team initiates a backstab. */
+  static int BACKSTAB_ROUND = DEFAULT_BACKSTAB_ROUND;
+
+  /** Valid Range ≥ 1; used as {@code globalCheese / allocated}. */
   static final int ALLOCATED_CHEESE_PER_KING = 900;
 
   // Initial-search choices, not engine rules. Home travel and fleeing use their own policies.
+  /** Valid Range ≥ 0. Large values treat most of the map as edge. */
   static final int KING_SEARCH_EDGE_MARGIN = 3;
+
+  /** Any int; typically ≥ 1. 0 prefers inward tiles; negative inverts the bias. */
   static final int KING_SEARCH_INWARD_WEIGHT = 3;
 
   // ---- King formation (see KingFormation) ----
   // Strategy values are first guesses, not tuned. Tests may override them; reset() restores them.
+  /** Valid Range ≥ 0. */
   static final int DEFAULT_FORMATION_TIMEOUT_ROUNDS = 300;
+
+  /** Valid Range ≥ 0; keep ≤ {@link #DEFAULT_FORMATION_SITE_ROUNDS}. */
   static final int DEFAULT_FORMATION_TRAVEL_ROUNDS = 20;
+
+  /** Valid Range ≥ 0. */
   static final int DEFAULT_FORMATION_SITE_ROUNDS = 60;
+
+  /** Valid Range ≥ 0. */
   static final int DEFAULT_FORMATION_LISTEN_ROUNDS = 3;
+
+  /** Valid Range ≥ 0. */
   static final int DEFAULT_FORMATION_IGNORE_ROUNDS = 30;
+
+  /** Valid Range ≥ 0. */
   static final int DEFAULT_FORMATION_KING_CLEARANCE = 4;
+
+  /** Valid Range ≥ 0. Zero disables automatic retries. */
   static final int DEFAULT_FORMATION_RETRIES = 2;
 
   /** How many rounds the chosen keeps trying before it gives up and becomes a normal baby. */
@@ -60,7 +128,10 @@ public final class Config {
   static int FORMATION_RETRIES = DEFAULT_FORMATION_RETRIES;
 
   // Fixed by engine rules; do not tune.
-  /** Babies needed around the chosen: the engine wants 7 rats in the 3x3 (spec v1.2.6 p.14). */
+  /**
+   * Babies needed around the chosen: the engine wants 7 rats in the 3x3 (spec v1.2.6 p.14). Fixed
+   * at 6; do not tune.
+   */
   static final int FORMATION_FODDER_NEEDED = 6;
 
   /**
@@ -70,8 +141,16 @@ public final class Config {
    */
   static final int FORMATION_LOST_DISTANCE_SQUARED = 12;
 
+  /**
+   * Valid Range ≥ 0. Values 0–5 stay inside king vision (r² 25); 6+ can home to mines the king
+   * cannot see.
+   */
   static final int DEFAULT_KING_HOME_RADIUS = 4;
+
+  /** Valid Range ≥ 1. */
   static final int DEFAULT_KING_STALL_TURNS = 10;
+
+  /** Valid Range ≥ 1. */
   static final int DEFAULT_KING_RETRY_TURNS = 10;
 
   /** Center-to-mine radius at which normal king movement holds position. */
@@ -106,20 +185,18 @@ public final class Config {
   }
 
   /**
-   * Ordinary baby cap; nonnegative and a multiple of four. Zero stops ordinary births. Explicit
-   * formation may exceed this cap only for its one chosen birth, respecting the cheese reserve.
+   * Ordinary baby cap. Explicit formation may exceed this cap only for its one chosen birth,
+   * respecting the cheese reserve.
    */
   static int MAX_BABY_RATS = DEFAULT_MAX_BABY_RATS;
 
-  /** Retained mine cap, 0–18. Change for the whole team between matches, not during a game. */
+  /** Retained mine cap. Change for the whole team between matches, not during a game. */
   static int MAX_CHEESE_MINES = CheeseMines.MAX_CAPACITY;
 
   /** Minimum global cheese left after paying for a spawn, before round-end upkeep. */
   static int MIN_CHEESE_RESERVE = DEFAULT_MIN_CHEESE_RESERVE;
 
-  /**
-   * Lowest global cheese allowed after paying for a dig. Independent of the spawn reserve.
-   */
+  /** Lowest global cheese allowed after paying for a dig. Independent of the spawn reserve. */
   static int MIN_CHEESE_RESERVE_FOR_DIG = DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG;
 
   /** Default baby-rat action order: attack, then dig. */
@@ -175,20 +252,19 @@ public final class Config {
 
   /**
    * A baby using {@link CatResponseStrategy#BLOCK_AND_FLEE_WHEN_LOW_HEALTH} with health at or below
-   * this value, and a visible cat, blocks and flees. Starting value is one cat scratch.
+   * this value, and a visible cat, blocks and flees.
    */
   static int BABY_CAT_FLEE_HEALTH = DEFAULT_BABY_CAT_FLEE_HEALTH;
 
   /**
    * A king using {@link CatResponseStrategy#BLOCK_AND_FLEE_WHEN_LOW_HEALTH} with health at or below
-   * this value, and a visible cat, blocks and flees. Starting value is full king HP so a visible
-   * cat always tries dirt and flee before a last-resort bite.
+   * this value, and a visible cat, blocks and flees.
    */
   static int KING_CAT_FLEE_HEALTH = DEFAULT_KING_CAT_FLEE_HEALTH;
 
   /**
-   * Return to the king once raw cheese is above this value. 0 means any cheese. Later this can
-   * become a function of stash size or distance to the king.
+   * Return to the king once raw cheese is above this value. Valid ≥ 0. 0 means any cheese. Later
+   * this can become a function of stash size or distance to the king.
    */
   static final int RAW_CHEESE_MINIMUM = 40;
 
@@ -211,6 +287,7 @@ public final class Config {
     KING_CAT_RESPONSE_STRATEGY = DEFAULT_KING_CAT_RESPONSE_STRATEGY;
     BABY_CAT_FLEE_HEALTH = DEFAULT_BABY_CAT_FLEE_HEALTH;
     KING_CAT_FLEE_HEALTH = DEFAULT_KING_CAT_FLEE_HEALTH;
+    BACKSTAB_ROUND = DEFAULT_BACKSTAB_ROUND;
     FORMATION_TIMEOUT_ROUNDS = DEFAULT_FORMATION_TIMEOUT_ROUNDS;
     FORMATION_TRAVEL_ROUNDS = DEFAULT_FORMATION_TRAVEL_ROUNDS;
     FORMATION_SITE_ROUNDS = DEFAULT_FORMATION_SITE_ROUNDS;

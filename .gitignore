@@ -204,3 +204,6 @@ output.md
 feature.md
 **/evidence
 .idea
+
+# Generated player snapshots from scripts/copy-player.sh
+src/ratplayer2/

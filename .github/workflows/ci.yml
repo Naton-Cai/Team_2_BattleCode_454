@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   actions: write
+  pull-requests: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -68,13 +69,96 @@ jobs:
       - name: Build
         run: ./gradlew build -x test --console=plain
 
-      # Runs every JUnit class under test/, including examplefuncsplayer and ratplayer.
+      # Runs every JUnit class under test/, including ratplayer.
       - name: Test
         run: ./gradlew test --console=plain
 
-      # Headless match: ratplayer (teamA) vs examplefuncsplayer (teamB) on maps from gradle.properties.
-      - name: Run match
-        run: ./gradlew run --console=plain
+      # Headless match: ratplayer vs a fresh ratplayer2 snapshot with a random aggression in [0, 1].
+      - name: Snapshot ratplayer2 and run match
+        id: match
+        run: |
+          set -o pipefail
+          ./gradlew copyPlayer --console=plain
+          AGGRESSION=$(python3 -c 'import random; print(f"{random.uniform(0, 1):.2f}")')
+          echo "aggression=${AGGRESSION}"
+          echo "aggression=${AGGRESSION}" >> "$GITHUB_OUTPUT"
+          ./gradlew run -Paggression="${AGGRESSION}" --console=plain | tee match-run.log
+
+      - name: Upload match replays
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: match-replays
+          if-no-files-found: warn
+          path: |
+            matches/**/*.bc26
+            match-run.log
+
+      - name: Comment match report on PR
+        if: github.event_name == 'pull_request' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AGGRESSION: ${{ steps.match.outputs.aggression }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          log = Path("match-run.log").read_text(errors="replace") if Path("match-run.log").exists() else ""
+          keep = []
+          in_cfg = False
+          for line in log.splitlines():
+              if "effective Config" in line:
+                  in_cfg = True
+              if in_cfg:
+                  keep.append(line)
+                  if line.startswith("Maps:"):
+                      in_cfg = False
+                  continue
+              if "[server]" in line and any(s in line for s in ("vs.", "wins", "Reason")):
+                  keep.append(line)
+          excerpt = "\n".join(keep).strip() or log[-4000:]
+          replays = (
+              sorted(p.name for p in Path("matches").glob("**/*.bc26"))
+              if Path("matches").exists()
+              else []
+          )
+          replay_list = "\n".join(f"- `{name}`" for name in replays) or "_No .bc26 files found._"
+          run_url = os.environ["RUN_URL"]
+          aggression = os.environ.get("AGGRESSION") or "unknown"
+          body = "\n".join(
+              [
+                  "<!-- ci-match-report -->",
+                  "## CI match (ratplayer vs ratplayer2)",
+                  "",
+                  f"aggression=`{aggression}`",
+                  "",
+                  "```",
+                  excerpt,
+                  "```",
+                  "",
+                  "**Replays**",
+                  replay_list,
+                  "",
+                  f"Download match-replays: {run_url}",
+                  "",
+              ]
+          )
+          Path("match-comment.md").write_text(body, encoding="utf-8")
+          Path("match-comment.json").write_text(json.dumps({"body": body}), encoding="utf-8")
+          PY
+          CID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" \
+            --jq '.[] | select(.user.login=="github-actions[bot]" and (.body | contains("ci-match-report"))) | .id' \
+            | tail -n 1)
+          if [ -n "$CID" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/${CID}" \
+              --input match-comment.json
+          else
+            gh pr comment "$PR" --body-file match-comment.md
+          fi
 
       # JUnit HTML/XML and the JaCoCo HTML/XML report. Download from the workflow run's Artifacts list on the PR.
       - name: Upload test and coverage reports
