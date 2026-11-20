@@ -15,6 +15,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  complexity:
+    name: Lizard complexity warnings
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install lizard==1.26.1
+      - name: Warn on Java functions with CCN > 15
+        shell: python
+        run: |
+          from pathlib import Path
+          import lizard
+
+          for path in sorted(Path("src/ratplayer").rglob("*.java")):
+              for function in lizard.analyze_file(str(path)).function_list:
+                  ccn = function.cyclomatic_complexity
+                  if ccn > 15:
+                      # Escape GitHub workflow command data and file properties.
+                      file = path.as_posix().replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+                      file = file.replace(":", "%3A").replace(",", "%2C")
+                      name = function.name.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+                      print(f"::warning file={file},line={function.start_line}::{name} has CCN {ccn} (threshold 15)")
+
   verify:
     name: Build, test, and run
     runs-on: ubuntu-latest
