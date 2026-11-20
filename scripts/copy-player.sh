@@ -32,6 +32,33 @@ find "$DEST_DIR" -name '*.java' -print0 | while IFS= read -r -d '' file; do
   perl -pi -e "s/\\b${SOURCE}\\b/${DEST}/g" "$file"
 done
 
+OVERLAY_SRC="scripts/player-overlays/ratplayer/Aggression.java"
+DEST_CONFIG="${DEST_DIR}/Config.java"
+if [[ -f "$OVERLAY_SRC" && -f "$DEST_CONFIG" ]] \
+    && grep -q 'DEFENSIVE_BACKSTAB_ROUND' "$DEST_CONFIG" \
+    && grep -q 'OFFENSIVE_BABY_CAT_FLEE_HEALTH' "$DEST_CONFIG"; then
+  cp "$OVERLAY_SRC" "${DEST_DIR}/Aggression.java"
+  perl -pi -e "s/\\bratplayer\\b/${DEST}/g" "${DEST_DIR}/Aggression.java"
+  python3 - "$DEST_CONFIG" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+if "Aggression.apply()" in text:
+    sys.exit(0)
+hook = """
+  static {
+    Aggression.apply();
+  }
+"""
+idx = text.rfind("}")
+if idx < 0:
+    sys.exit("dest Config.java has no closing brace")
+path.write_text(text[:idx] + hook + text[idx:])
+PY
+fi
+
 # JaCoCo only measures src/ratplayer. Generated snapshots do not need an exclude.
 if [[ "${SKIP_GRADLE:-}" != "1" ]]; then
   ./gradlew classes

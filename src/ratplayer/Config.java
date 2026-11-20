@@ -20,20 +20,49 @@ public final class Config {
   /** Valid Range ≥ 0. */
   static final int DEFAULT_MIN_CHEESE_RESERVE_FOR_DIG = 800;
 
-  /** Valid Range 0–100 (baby max HP). 0 never flees on HP; 100 always flees if that strategy is on. */
+  /**
+   * Valid Range {@link #OFFENSIVE_BABY_CAT_FLEE_HEALTH}–{@link #DEFENSIVE_BABY_CAT_FLEE_HEALTH}
+   * (baby max HP). {@link #OFFENSIVE_BABY_CAT_FLEE_HEALTH} never flees on HP; {@link
+   * #DEFENSIVE_BABY_CAT_FLEE_HEALTH} always flees if that strategy is on.
+   */
   static final int DEFAULT_BABY_CAT_FLEE_HEALTH = 20;
 
-  /** Valid Range 0–600 (king max HP). 0 never flees on HP; 600 always flees if that strategy is on. */
+  /**
+   * Valid Range {@link #OFFENSIVE_KING_CAT_FLEE_HEALTH}–{@link #DEFENSIVE_KING_CAT_FLEE_HEALTH}
+   * (king max HP). {@link #OFFENSIVE_KING_CAT_FLEE_HEALTH} never flees on HP; {@link
+   * #DEFENSIVE_KING_CAT_FLEE_HEALTH} always flees if that strategy is on.
+   */
   static final int DEFAULT_KING_CAT_FLEE_HEALTH = 600;
 
-  /** Valid Range 1–2000 (game length). */
+  /** Aggression 0: flee at max baby HP. */
+  static final int DEFENSIVE_BABY_CAT_FLEE_HEALTH = 100;
+
+  /** Aggression 1: never flee on HP. */
+  static final int OFFENSIVE_BABY_CAT_FLEE_HEALTH = 0;
+
+  /** Aggression 0: flee at max king HP. */
+  static final int DEFENSIVE_KING_CAT_FLEE_HEALTH = 600;
+
+  /** Aggression 1: never flee on HP. */
+  static final int OFFENSIVE_KING_CAT_FLEE_HEALTH = 0;
+
+  /** Valid Range 1–{@link #DEFENSIVE_BACKSTAB_ROUND} (game length). */
   static final int KING_SPAWN_ROUND = 1100;
 
   /** Valid Range ≥ 1; used as {@code round % rate}. */
   static final int KING_SPAWN_RATE = 15;
 
-  /** Valid Range 1–2000 (game length). */
-  static final int BACKSTAB_ROUND = 1980;
+  /** Valid Range 1–{@link #DEFENSIVE_BACKSTAB_ROUND} (game length). */
+  static final int DEFAULT_BACKSTAB_ROUND = 1980;
+
+  /** Aggression 0: do not schedule a team backstab. */
+  static final int DEFENSIVE_BACKSTAB_ROUND = 2000;
+
+  /** Aggression 1: backstab once extra kings can start. */
+  static final int OFFENSIVE_BACKSTAB_ROUND = KING_SPAWN_ROUND;
+
+  /** Round when this team initiates a backstab. */
+  static int BACKSTAB_ROUND = DEFAULT_BACKSTAB_ROUND;
 
   /** Valid Range ≥ 1; used as {@code globalCheese / allocated}. */
   static final int ALLOCATED_CHEESE_PER_KING = 900;
@@ -252,6 +281,7 @@ public final class Config {
     KING_CAT_RESPONSE_STRATEGY = DEFAULT_KING_CAT_RESPONSE_STRATEGY;
     BABY_CAT_FLEE_HEALTH = DEFAULT_BABY_CAT_FLEE_HEALTH;
     KING_CAT_FLEE_HEALTH = DEFAULT_KING_CAT_FLEE_HEALTH;
+    BACKSTAB_ROUND = DEFAULT_BACKSTAB_ROUND;
     FORMATION_TIMEOUT_ROUNDS = DEFAULT_FORMATION_TIMEOUT_ROUNDS;
     FORMATION_TRAVEL_ROUNDS = DEFAULT_FORMATION_TRAVEL_ROUNDS;
     FORMATION_SITE_ROUNDS = DEFAULT_FORMATION_SITE_ROUNDS;

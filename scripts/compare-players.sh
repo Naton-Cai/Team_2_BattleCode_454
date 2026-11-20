@@ -7,7 +7,52 @@ cd "$(dirname "$0")/.."
 
 TEAM_A=${1:-ratplayer}
 TEAM_B=${2:-ratplayer2}
-MAPS=${3:-DefaultSmall,DefaultMedium,tiny,corridorofdoomanddespair,jail,cheeseguardians}
+MAP_POOL=(
+  5t4rv4t10n_1337
+  arrows
+  averyfineline
+  averystrangespace
+  canyoudig
+  cheesebottles
+  cheesefarm
+  cheeseguardians
+  closeup
+  corridorofdoomanddespair
+  DefaultLarge
+  DefaultMedium
+  DefaultSmall
+  dirtfulcat
+  dirtpassageway
+  EscapeTheNight
+  evileye
+  hatefullattice
+  jail
+  keepout
+  knifefight
+  Meow
+  mercifullattice
+  minimaze
+  Nofreecheese
+  peaceinourtime
+  pipes
+  popthecork
+  rift
+  safelycontained
+  sittingducks
+  starvation
+  streetsofnewyork
+  TheHeist
+  thunderdome
+  tiny
+  toomuchcheese
+  trapped
+  uneruesansfin
+  wallsofparadis
+  whatsthecatdoin
+  whereisthecheese
+  ZeroDay
+)
+MAPS=${3:-$(IFS=,; echo "${MAP_POOL[*]}")}
 
 STAMP=$(date +%Y%m%d-%H%M%S)
 GIT=$(git rev-parse --short HEAD 2>/dev/null || echo nogit)
