@@ -299,110 +299,7 @@ task downloadPyPackage(type: Exec) {
         '--force-reinstall', (project.findProperty("forceReinstallPy") ?: "false").toString()
 }
 
-def truncateString(String input, int maxLength) {
-  if (input.length() > maxLength) {
-    return input.substring(0, maxLength)
-  }
-  return input
-}
-
 def defaultClassLocation = sourceSets.main.output.classesDirs.getAsPath()
-def matchStamp = new Date().format('yyyyMMdd-HHmmss')
-def matchGit = 'nogit'
-try {
-  def git = ['git', 'rev-parse', '--short', 'HEAD'].execute()
-  git.waitFor()
-  if (git.exitValue() == 0) {
-    matchGit = git.text.trim()
-  }
-} catch (Exception ignored) {
-}
-def compareMapPool = [
-    '5t4rv4t10n_1337',
-    'arrows',
-    'averyfineline',
-    'averystrangespace',
-    'canyoudig',
-    'cheesebottles',
-    'cheesefarm',
-    'cheeseguardians',
-    'closeup',
-    'corridorofdoomanddespair',
-    'DefaultLarge',
-    'DefaultMedium',
-    'DefaultSmall',
-    'dirtfulcat',
-    'dirtpassageway',
-    'EscapeTheNight',
-    'evileye',
-    'hatefullattice',
-    'jail',
-    'keepout',
-    'knifefight',
-    'Meow',
-    'mercifullattice',
-    'minimaze',
-    'Nofreecheese',
-    'peaceinourtime',
-    'pipes',
-    'popthecork',
-    'rift',
-    'safelycontained',
-    'sittingducks',
-    'starvation',
-    'streetsofnewyork',
-    'TheHeist',
-    'thunderdome',
-    'tiny',
-    'toomuchcheese',
-    'trapped',
-    'uneruesansfin',
-    'wallsofparadis',
-    'whatsthecatdoin',
-    'whereisthecheese',
-    'ZeroDay',
-]
-def resolveMaps = {
-  def mapsProperty = project.findProperty('maps')
-  if (mapsProperty != null && !mapsProperty.toString().trim().isEmpty()) {
-    return mapsProperty.toString().trim()
-  }
-  def unique = new ArrayList(compareMapPool.unique(false))
-  Collections.shuffle(unique)
-  int n = Math.min(3, unique.size())
-  return unique.subList(0, n).join(',')
-}
-
-task setSnapshotAggression {
-  description 'If -Paggression is set, writes it into src/<teamB>/Aggression.java. Otherwise leaves that file unchanged.'
-  group 'battlecode'
-  onlyIf {
-    def value = project.findProperty('aggression')
-    value != null && !value.toString().trim().isEmpty()
-  }
-  def destFile = { file("src/${project.property('teamB')}/Aggression.java") }
-  doLast {
-    File dest = destFile()
-    if (!dest.isFile()) {
-      throw new GradleException(
-          "Missing ${dest}. Run ./gradlew copyPlayer first, then retry with -Paggression.")
-    }
-    String raw = project.property('aggression').toString().trim()
-    if (!(raw ==~ /-?\d+(\.\d+)?[fF]?/)) {
-      throw new GradleException("aggression must be a float, got '${raw}'")
-    }
-    String literal = raw.endsWith('f') || raw.endsWith('F') ? raw : raw + 'f'
-    String text = dest.getText('UTF-8')
-    String assignment = "static final float AGGRESSION = ${literal};"
-    if (!(text =~ /static final float AGGRESSION = [^;]+;/)) {
-      throw new GradleException("Could not find AGGRESSION assignment in ${dest}")
-    }
-    String updated = text.replaceFirst(/static final float AGGRESSION = [^;]+;/, assignment)
-    dest.write(updated, 'UTF-8')
-    logger.quiet("Set ${dest} AGGRESSION = ${literal}")
-  }
-}
-compileJava.mustRunAfter setSnapshotAggression
 
 task runJavaLocal(type: JavaExec) {
   mainClass = 'battlecode.server.Main'
@@ -433,20 +330,7 @@ task runJavaLocal(type: JavaExec) {
     '-Dbc.server.validate-maps=' + project.property('validateMaps'),
     '-Dbc.server.alternate-order=' + project.property('alternateOrder'),
   ]
-  doFirst {
-    def maps = resolveMaps()
-    logger.quiet("Maps: ${maps}")
-    jvmArgs '-Dbc.game.maps=' + maps
-    def replay = project.findProperty('replay')
-    if (replay == null) {
-      replay = 'matches/' + matchStamp + '-' + matchGit + '-' +
-          truncateString(project.property('teamA') + '-vs-' + project.property('teamB') + '-on-' + maps, 80) +
-          '.bc26'
-    }
-    jvmArgs '-Dbc.server.save-file=' + replay
-  }
 }
-runJavaLocal.dependsOn setSnapshotAggression
 
 task runJava(dependsOn: runJavaLocal) {}
 
@@ -531,41 +415,7 @@ task listMaps {
   }
 }
 
-def copySourceName = project.findProperty('copySource') ?: 'ratplayer'
-def copyDestName = project.findProperty('copyDest') ?: 'ratplayer2'
-def compareTeamA = project.findProperty('compareA') ?: 'ratplayer'
-def compareTeamB = project.findProperty('compareB') ?: 'ratplayer2'
-def compareMaps = project.findProperty('compareMaps') ?: compareMapPool.join(',')
-
-task copyPlayerSnapshot(type: Exec) {
-  description 'Copies a player package; used by copyPlayer.'
-  commandLine 'bash', "${projectDir}/scripts/copy-player.sh",
-      copySourceName.toString(), copyDestName.toString()
-  environment 'SKIP_GRADLE', '1'
-}
-
-task copyPlayer {
-  description 'Snapshot src/<copySource> to src/<copyDest> (defaults ratplayer -> ratplayer2) and compile.'
-  group 'battlecode'
-  dependsOn copyPlayerSnapshot, classes
-}
-classes.mustRunAfter copyPlayerSnapshot
-setSnapshotAggression.mustRunAfter copyPlayerSnapshot
-
-task comparePlayers(type: Exec) {
-  description 'Play compareA vs compareB on compareMaps, both sides, and print a win tally.'
-  group 'battlecode'
-  dependsOn classes
-  commandLine 'bash', "${projectDir}/scripts/compare-players.sh",
-      compareTeamA.toString(), compareTeamB.toString(), compareMaps.toString()
-  environment 'SKIP_GRADLE', '1'
-  environment 'JAVA_CMD', "${System.getProperty('java.home')}/bin/java"
-  doFirst {
-    environment 'COMPARE_CP', sourceSets.main.runtimeClasspath.asPath
-    environment 'COMPARE_CLASSES', sourceSets.main.java.destinationDirectory.get().asFile.absolutePath
-  }
-}
-
+apply from: 'matchmaking.gradle'
 
 //////// Submitting ////////
 
