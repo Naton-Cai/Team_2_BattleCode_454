@@ -34,15 +34,19 @@ mkdir -p matches/pairs work
 
 if command -v module >/dev/null 2>&1; then
   module purge 2>/dev/null || true
-  module load jdk/21 2>/dev/null || module load java/21 2>/dev/null || module load Java/21 2>/dev/null || true
+  module load openjdk/21.0.0_35-none-none
 fi
 
 if ! command -v java >/dev/null 2>&1; then
-  echo "java not on PATH. Load a JDK 21 module or set JAVA_HOME." >&2
+  echo "java not on PATH after module load openjdk/21.0.0_35-none-none." >&2
   exit 1
 fi
 
 java -version
+java -version 2>&1 | grep -q '"21' || {
+  echo "Need Java 21; this JVM is not 21." >&2
+  exit 1
+}
 
 JOBDIR="$SUBMIT/work/$SLURM_ARRAY_TASK_ID"
 rm -rf "$JOBDIR"

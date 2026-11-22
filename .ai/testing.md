@@ -112,6 +112,32 @@ scripts/sweep-aggression.sh --full-pool
 
 On GitHub, `workflow_dispatch` is only listed after this YAML is on `main`. Until then, a push to `feature/self-play-aggression` starts the 3-map sweep. Download the `aggression-self-play` artifact for `summary.txt`. The job has a 90-minute timeout and does not use the 45-minute `verify` job.
 
+The 43-map confirm is a Coeus **Slurm array**: 15 pairings in parallel, about **one pairing (~30–90 min)** of wall time if they all start together. Connect the PSU VPN, then SSH (login node only):
+
+```bash
+ssh -i ~/.ssh/id_ed25519_psu jorgep@login1.coeus.rc.pdx.edu
+```
+
+Put this branch on the cluster (clone with agent-forwarded school GitHub key, or rsync/scp from the laptop):
+
+```bash
+git clone git@github.com:Naton-Cai/Team_2_BattleCode_454.git
+cd Team_2_BattleCode_454
+git checkout feature/self-play-aggression
+mkdir -p matches/pairs
+ARRAY_ID=$(sbatch --parsable scripts/coeus-sweep-full.sbatch)
+sbatch --dependency=afterok:${ARRAY_ID} scripts/coeus-sweep-merge.sbatch
+squeue -u $USER
+```
+
+Disconnect. Each array task loads Coeus module `openjdk/21.0.0_35-none-none`, copies the tree into `work/<id>`, runs one `PAIR_INDEX` on the full map pool, and writes `matches/pairs/a=*-vs-*.log`. The merge job writes `matches/pairs/summary.txt`. Copy that back later:
+
+```bash
+scp jorgep@login1.coeus.rc.pdx.edu:~/Team_2_BattleCode_454/matches/pairs/summary.txt .
+```
+
+Do not use `tmux`/`nohup` on the login node for this run.
+
 For a feature, select or construct a valid map and setup that actually reaches the required state. Record the map file/checksum, bot setup, round, robot ID, and observed outcome. Do not claim a blocked-footprint scenario passed just because a random match finished. If no reproducible fixture reaches a scenario, mark it **not run** and document the missing fixture. A minimal fixture and replay review are sufficient initially; no advanced match runner is required. [P2-P3]
 
 Preserve logs when collecting evidence. For Bash/WSL, `set -o pipefail` before piping a command through `tee` preserves a failing process status. Record the command's exit status as well as the log. A nonzero result, timeout, or missing replay requires investigation; do not silently count it as a pass or a loss in a strategy sample.
