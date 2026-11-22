@@ -12,7 +12,8 @@
 #SBATCH --time=01:30:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=8G
+# 8G was cgroup-killed (exit 137) mid-pool after a 2000-round game.
+#SBATCH --mem=16G
 #SBATCH --output=matches/coeus-%A_%a.out
 #SBATCH --error=matches/coeus-%A_%a.err
 
@@ -64,6 +65,8 @@ cd "$JOBDIR"
 export PAIR_INDEX="$SLURM_ARRAY_TASK_ID"
 export GRADLE_USER_HOME="$JOBDIR/.gradle-home"
 export GRADLE_OPTS="${GRADLE_OPTS:-} -Dorg.gradle.daemon=false -Dorg.gradle.vfs.watch=false"
+# Cap heap so Java does not size itself against the whole node and trip Slurm's cgroup.
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Xmx12g"
 printf '\norg.gradle.vfs.watch=false\norg.gradle.daemon=false\n' >> gradle.properties
 bash scripts/sweep-aggression.sh --full-pool
 

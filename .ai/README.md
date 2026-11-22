@@ -33,6 +33,7 @@ These are the intended locations. This index does not establish that every docum
 | [API source references](skills/battlecode-2026/references/common/) | Local `battlecode.common` Java sources with API signatures and Javadoc. | Checking API methods, parameters, constants, and documented preconditions. |
 | `.ai/style/java.md` | Agreed Java conventions and examples. | Editing Java. |
 | `.ai/testing.md` | Verified environment, build, test, and match instructions. | Planning or running validation. |
+| `.ai/coeus-sweep.md` | SSH, GitHub agent forwarding, Slurm array submit, and status checks for the 43-map aggression sweep. | Running or rerunning the Coeus sweep. |
 | `.ai/test-cases.md` | Named feature test cases: class, setup, and expected outcome. | Adding or reviewing tests for a feature. |
 | `.ai/project-state.md` | Confirmed decisions, unfinished work, and unresolved questions. | Resuming work or checking decision status. |
 
