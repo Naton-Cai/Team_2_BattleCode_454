@@ -62,6 +62,9 @@ rsync -a \
 
 cd "$JOBDIR"
 export PAIR_INDEX="$SLURM_ARRAY_TASK_ID"
+export GRADLE_USER_HOME="$JOBDIR/.gradle-home"
+export GRADLE_OPTS="${GRADLE_OPTS:-} -Dorg.gradle.daemon=false -Dorg.gradle.vfs.watch=false"
+printf '\norg.gradle.vfs.watch=false\norg.gradle.daemon=false\n' >> gradle.properties
 bash scripts/sweep-aggression.sh --full-pool
 
 cp matches/sweep-*/a=*-vs-*.log "$SUBMIT/matches/pairs/"
