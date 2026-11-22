@@ -208,3 +208,6 @@ feature.md
 # Generated player snapshots from scripts/copy-player.sh
 src/ratplayer1/
 src/ratplayer2/
+
+# Isolated Coeus array worktrees
+work/
