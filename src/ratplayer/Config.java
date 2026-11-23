@@ -64,8 +64,8 @@ public final class Config {
   /** Aggression 0: do not schedule a team backstab. */
   static final int DEFENSIVE_BACKSTAB_ROUND = 2000;
 
-  /** Aggression 1: backstab once extra kings can start. */
-  static final int OFFENSIVE_BACKSTAB_ROUND = KING_SPAWN_ROUND;
+  /** Aggression 1: schedule a team backstab from round 1 (valid-range minimum). */
+  static final int OFFENSIVE_BACKSTAB_ROUND = 1;
 
   /** Round when this team initiates a backstab. */
   static int BACKSTAB_ROUND = DEFAULT_BACKSTAB_ROUND;

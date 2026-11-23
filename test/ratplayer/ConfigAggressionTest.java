@@ -39,7 +39,7 @@ public class ConfigAggressionTest {
   }
 
   /**
-   * Aggression 1 is fully offensive: backstab at king-spawn, never flee on HP.
+   * Aggression 1 is fully offensive: backstab from round 1, never flee on HP.
    *
    * <p>Arrange: defaults after reset. Act: apply 1. Assert: offensive endpoints.
    */
@@ -56,14 +56,14 @@ public class ConfigAggressionTest {
   /**
    * Aggression 0.5 is the midpoint of the combat endpoints, not today's mixed DEFAULT_* values.
    *
-   * <p>Arrange: defaults after reset. Act: apply 0.5. Assert: backstab 1550, baby 50, king 300,
+   * <p>Arrange: defaults after reset. Act: apply 0.5. Assert: backstab 1001, baby 50, king 300,
    * max babies 48.
    */
   @Test
   public void aggressionHalfUsesMidpoints() {
     Aggression.apply(0.5f);
 
-    assertEquals(1550, Config.BACKSTAB_ROUND);
+    assertEquals(1001, Config.BACKSTAB_ROUND);
     assertEquals(50, Config.BABY_CAT_FLEE_HEALTH);
     assertEquals(300, Config.KING_CAT_FLEE_HEALTH);
     assertEquals(48, Config.MAX_BABY_RATS);
