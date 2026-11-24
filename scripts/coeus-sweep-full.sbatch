@@ -1,6 +1,6 @@
 #!/bin/bash
 # 43-map AGGRESSION self-play on Coeus: one unique pair per array task.
-# Isolated work/ copies so 15 Gradle runs do not share build/.
+# Isolated work/ copies so 21 Gradle runs do not share build/.
 # Submit from the repo root:
 #   mkdir -p matches/pairs
 #   ARRAY_ID=$(sbatch --parsable scripts/coeus-sweep-full.sbatch)
@@ -8,7 +8,7 @@
 # Does not write winners into Config.
 #
 #SBATCH --job-name=bc26-sweep
-#SBATCH --array=0-14
+#SBATCH --array=0-20
 #SBATCH --time=01:30:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # True self-play on the AGGRESSION lerp: ratplayer1(a) vs ratplayer2(a').
-# Copies live ratplayer to both snapshots, then unique pairs i<=j (15 on the
-# default grid). comparePlayers already plays both sides, so (a, a') is not
-# rerun as (a', a). Does not write winners into Config.
+# Copies live ratplayer to both snapshots, then unique pairs i<=j (21 on the
+# default grid, including -1 = live DEFAULT mix). comparePlayers already plays
+# both sides, so (a, a') is not rerun as (a', a). Does not write winners into Config.
 #
 # Usage:
 #   scripts/sweep-aggression.sh
@@ -10,11 +10,11 @@
 #   scripts/sweep-aggression.sh --full-pool
 #
 # Optional env:
-#   AGGRESSIONS=0,0.25,0.5,0.75,1
+#   AGGRESSIONS=-1,0,0.25,0.5,0.75,1
 #   COPY_SOURCE=ratplayer TEAM_A=ratplayer1 TEAM_B=ratplayer2
-#   PAIR_INDEX=0   # one unique pair (0-14 on the default grid); skip the matrix
+#   PAIR_INDEX=0   # one unique pair (0-20 on the default grid); skip the matrix
 #
-# First pass (default): DefaultSmall,DefaultMedium,tiny  (~15x3x2 games)
+# First pass (default): DefaultSmall,DefaultMedium,tiny  (~21x3x2 games)
 # Full-pool confirm (same maps as comparePlayers):
 #   scripts/sweep-aggression.sh --full-pool
 #   ./gradlew sweepAggression -PcompareMaps=full
@@ -24,7 +24,7 @@ cd "$(dirname "$0")/.."
 COPY_SOURCE=${COPY_SOURCE:-ratplayer}
 TEAM_A=${TEAM_A:-ratplayer1}
 TEAM_B=${TEAM_B:-ratplayer2}
-AGGRESSIONS=${AGGRESSIONS:-0,0.25,0.5,0.75,1}
+AGGRESSIONS=${AGGRESSIONS:--1,0,0.25,0.5,0.75,1}
 DEFAULT_MAPS="DefaultSmall,DefaultMedium,tiny"
 
 MAPS="$DEFAULT_MAPS"

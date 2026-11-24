@@ -100,7 +100,7 @@ mkdir -p matches
 
 The default replay name is `matches/{timestamp}-{git}-{teamA}-vs-{teamB}-on-{maps}.bc26`, so reruns do not overwrite. Pass `-Preplay=` to pick a name. `comparePlayers` writes a new `matches/{timestamp}-{git}/` directory per run. Use the team's candidate and opponent package names for feature evaluation. A self-match is a smoke check, not a strategy comparison. Inspect the runner's completion/result, bot errors, and the saved replay before recording success. [S1, P2]
 
-`sweepAggression` copies live `ratplayer` to `ratplayer1` and `ratplayer2`, then plays unique `AGGRESSION` pairs `i<=j` on `{0, 0.25, 0.5, 0.75, 1}` (15 pairings). First pass uses `DefaultSmall,DefaultMedium,tiny`. It prints a win matrix plus knobs and does not write winners into `Config`.
+`sweepAggression` copies live `ratplayer` to `ratplayer1` and `ratplayer2`, then plays unique `AGGRESSION` pairs `i<=j` on `{-1, 0, 0.25, 0.5, 0.75, 1}` (21 pairings). `-1` keeps the live `DEFAULT_*` mix; `0`–`1` are the combat lerp. First pass uses `DefaultSmall,DefaultMedium,tiny`. It prints a win matrix plus knobs and does not write winners into `Config`.
 
 ```bash
 ./gradlew sweepAggression
@@ -112,7 +112,7 @@ scripts/sweep-aggression.sh --full-pool
 
 On GitHub, `workflow_dispatch` is only listed after this YAML is on `main`. Until then, a push to `feature/self-play-aggression` starts the 3-map sweep. Download the `aggression-self-play` artifact for `summary.txt`. The job has a 90-minute timeout and does not use the 45-minute `verify` job.
 
-The 43-map confirm is a Coeus **Slurm array**: 15 pairings in parallel, about **one pairing (~30–90 min)** of wall time if they all start together. Login, GitHub agent forwarding, resubmit, status checks, and the WebSocket `BindException` warning are in `.ai/coeus-sweep.md`.
+The 43-map confirm is a Coeus **Slurm array**: 21 pairings in parallel, about **one pairing (~30–90 min)** of wall time if they all start together. Login, GitHub agent forwarding, resubmit, status checks, and the WebSocket `BindException` warning are in `.ai/coeus-sweep.md`.
 
 For a feature, select or construct a valid map and setup that actually reaches the required state. Record the map file/checksum, bot setup, round, robot ID, and observed outcome. Do not claim a blocked-footprint scenario passed just because a random match finished. If no reproducible fixture reaches a scenario, mark it **not run** and document the missing fixture. A minimal fixture and replay review are sufficient initially; no advanced match runner is required. [P2-P3]
 
