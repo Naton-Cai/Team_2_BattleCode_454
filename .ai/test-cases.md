@@ -43,6 +43,40 @@ The two visible BFS tests are `@Ignore`d because cheese chase uses greedy. To ru
 Mock comparisons of greedy, DistBug, and visible BFS stepping are in `GreedyPathTest`, `DistBugPathTest`, and `VisibleBfsPathTest`, still documented in `.ai/project-state.md`.
 
 
+## Baby Rat enemy-king hunt
+
+Status: **implemented and run** (2026-11-24). Engine bytecode evidence is **run**. Match evidence is **not run**.
+
+In backstab, when `Config.BABY_HUNT_IN_BACKSTAB` is true (the default), an empty-handed ordinary baby uses DistBug toward a visible enemy king (vision cone, r² ≤ 20) unless already in bite range (Chebyshev ≤ 2 from a size-3 center). DistBug seeks with greedy and follows a sensed wall on the heading. Cheese chase and wander lose to that hunt. A stash above `RAW_CHEESE_MINIMUM` still walks to our king. Cat flee still owns movement. Enemy babies are never a movement goal. Attack order is unchanged. `BABY_HUNT_IN_BACKSTAB` false keeps cheese chase and wander.
+
+### Controller tests
+
+These tests are in `ratplayer.BabyRatHuntTest`. They call `RobotPlayer.playTurn` with a `TestRobotController`. Setup and teardown call `Config.reset()`, `KingFormation.reset()`, and clear baby/trap statics. Unless a test says otherwise, the rat is at (5,5) facing north, has 0 raw cheese, is in backstab, and trap/dig stay refused.
+
+These tests check which calls happen. They do not show what the engine allows.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `huntsVisibleEnemyKingInsteadOfWandering` | Team B king at (5,9), greedy and forward allowed. | One `move:NORTH`, no `moveForward`. |
+| `doesNotHuntVisibleEnemyBaby` | Team B baby at (5,9), forward allowed. | Wander `moveForward`, no greedy `move:`. |
+| `doesNotHuntEnemyKingDuringCooperation` | Cooperation, Team B king at (5,9), forward allowed. | Wander `moveForward`. |
+| `huntsEnemyKingInsteadOfChasingVisibleCheese` | King at (5,9), cheese at (9,5), pickup refused. | `move:NORTH`, not `move:EAST`. |
+| `huntConfigOffChasesCheeseInsteadOfKing` | `BABY_HUNT_IN_BACKSTAB = false`, king at (5,9), cheese at (9,5), pickup refused. | `move:EAST`, not north. |
+| `deliversCheeseInsteadOfHunting` | Raw cheese 41, allied king published at (10,4), enemy king at (5,9). | `move:EAST` toward our king, not north. |
+| `huntsNearestEnemyKingBySquaredDistance` | Farther king (7,9) listed first, closer king (5,9) second. | `move:NORTH`, not northeast. |
+| `staysPutWhenAlreadyInKingBiteRange` | Enemy king at (5,7), forward allowed. | No move and no turn. |
+| `visibleCatFleeSkipsHunt` | Cat at (5,9) in all-robot scan, enemy king in opponent scan, dirt legal. | `move:SOUTH`, no north hunt step. |
+| `stillBitesAdjacentEnemyBabyDuringBackstab` | Team B baby on the forward tile, bite legal, no enemy king. | One zero-cheese bite, then wander forward. |
+
+### Engine tests
+
+These tests are in `ratplayer.BabyRatHuntEngineTest`. They run the real sandboxed bot loop through `PlayerControlProvider` and read `InternalRobot.getBytecodesUsed()` after each turn. The sandbox loads compiled `Config` values. The fixture is a 20x20 map with a north-facing allied baby at (8,8) and a Team B king at (8,12). The game is put in backstab mode. The baby limit is 17,500; each observed turn must keep 1,000 headroom.
+
+| Test | Setup | Expected outcome |
+| --- | --- | --- |
+| `engineHuntsVisibleEnemyKingThenBitesWithBytecodeHeadroom` | Compiled DistBug hunt. Enemy king movement held. | Path (8,9) then (8,10); third turn bites for 10 HP and stays at (8,10); each turn under 16,500. Measured peak: 3,443. |
+
+
 ## Baby Rat dirt collection
 
 ### Controller tests
