@@ -221,6 +221,20 @@ public final class Config {
   static PathingStrategy BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
 
   /**
+   * How an empty-handed rat in backstab steps toward a visible enemy king. DistBug seeks with
+   * greedy and follows a sensed wall, dirt, or map edge on the heading.
+   */
+  static PathingStrategy BABY_PATH_TO_ENEMY_KING_STRATEGY = PathingStrategy.DIST_BUG;
+
+  static final boolean DEFAULT_BABY_HUNT_IN_BACKSTAB = true;
+
+  /**
+   * When true, empty-handed babies in backstab hunt a visible enemy king instead of chasing cheese
+   * or wandering. Carrying above {@link #RAW_CHEESE_MINIMUM} still walks to our king.
+   */
+  static boolean BABY_HUNT_IN_BACKSTAB = DEFAULT_BABY_HUNT_IN_BACKSTAB;
+
+  /**
    * Which visible pile to chase.
    */
   static CheeseTargetStrategy BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
@@ -282,6 +296,8 @@ public final class Config {
     BABY_ACTION_ORDER = DEFAULT_BABY_ACTION_ORDER;
     BABY_PATH_TO_KING_STRATEGY = PathingStrategy.DIST_BUG;
     BABY_PATH_TO_CHEESE_STRATEGY = PathingStrategy.GREEDY;
+    BABY_PATH_TO_ENEMY_KING_STRATEGY = PathingStrategy.DIST_BUG;
+    BABY_HUNT_IN_BACKSTAB = DEFAULT_BABY_HUNT_IN_BACKSTAB;
     BABY_CHEESE_TARGET_STRATEGY = CheeseTargetStrategy.NEAREST_VISIBLE;
     BABY_CAT_RESPONSE_STRATEGY = DEFAULT_BABY_CAT_RESPONSE_STRATEGY;
     KING_CAT_RESPONSE_STRATEGY = DEFAULT_KING_CAT_RESPONSE_STRATEGY;

@@ -6,6 +6,7 @@ import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import battlecode.common.Team;
 import battlecode.common.UnitType;
 import ratplayer.navigation.Navigation;
 
@@ -87,10 +88,7 @@ public class BabyRat {
    * @return true if a bite was issued
    */
   static boolean attack(RobotController rc) throws GameActionException {
-    boolean backstabbing = rc.getBackstabbingTeam() != null;
-    if (rc.getRoundNum() >= Config.BACKSTAB_ROUND) {
-      backstabbing = true;
-    }
+    boolean backstabbing = backstabbing(rc);
     // a baby rat can attack the 3 tiles in front of it without having to turn so we should check
     // all 3 tiles for valid targets.
     Direction direction = rc.getDirection();
@@ -234,11 +232,64 @@ public class BabyRat {
         Navigation.stepToward(rc, kingLoc, Config.BABY_PATH_TO_KING_STRATEGY);
         return;
       }
-    } else if (cheeseTile != null && !pickedUpCheese) {
+    }
+    if (Config.BABY_HUNT_IN_BACKSTAB && backstabbing(rc)) {
+      MapLocation enemyKing = nearestVisibleEnemyKing(rc);
+      if (enemyKing != null) {
+        if (!inKingBiteRange(rc.getLocation(), enemyKing)) {
+          Navigation.stepToward(rc, enemyKing, Config.BABY_PATH_TO_ENEMY_KING_STRATEGY);
+        }
+        return;
+      }
+    }
+    if (cheeseTile != null && !pickedUpCheese) {
       Navigation.stepToward(rc, cheeseTile, Config.BABY_PATH_TO_CHEESE_STRATEGY);
       return;
     }
     wander(rc);
+  }
+
+  /**
+   * Cooperation has ended, or this team's scheduled backstab round has arrived. Shared by bite
+   * targeting and enemy-king hunt.
+   */
+  static boolean backstabbing(RobotController rc) {
+    return rc.getBackstabbingTeam() != null || rc.getRoundNum() >= Config.BACKSTAB_ROUND;
+  }
+
+  /**
+   * Nearest opposing king in this turn's vision cone. Equal squared distances keep the earlier
+   * sense result.
+   */
+  static MapLocation nearestVisibleEnemyKing(RobotController rc) throws GameActionException {
+    Team opponent = rc.getTeam().opponent();
+    RobotInfo[] nearby = rc.senseNearbyRobots(-1, opponent);
+    MapLocation origin = rc.getLocation();
+    MapLocation nearest = null;
+    int bestDistance = Integer.MAX_VALUE;
+    for (int i = 0; i < nearby.length; i++) {
+      if (nearby[i].getType() != UnitType.RAT_KING) {
+        continue;
+      }
+      int distance = origin.distanceSquaredTo(nearby[i].getLocation());
+      if (nearest == null || distance < bestDistance) {
+        nearest = nearby[i].getLocation();
+        bestDistance = distance;
+      }
+    }
+    return nearest;
+  }
+
+  /**
+   * True when a baby standing at {@code from} is already adjacent to a size-3 king's footprint.
+   * Kings occupy Chebyshev ≤ 1 from center, so Chebyshev ≤ 2 is bite range (spec v1.2.6 p.10).
+   */
+  static boolean inKingBiteRange(MapLocation from, MapLocation kingCenter) {
+    int dx = Math.abs(from.x - kingCenter.x);
+    int dy = Math.abs(from.y - kingCenter.y);
+    int chebyshev = Math.max(dx, dy);
+    int kingRadius = (UnitType.RAT_KING.size - 1) / 2;
+    return chebyshev <= 1 + kingRadius;
   }
 
   /**

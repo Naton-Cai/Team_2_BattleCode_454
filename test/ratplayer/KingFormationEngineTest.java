@@ -35,6 +35,11 @@ import org.junit.Test;
  * recruiting king's baby cap is set to zero, so the only birth the request may cause is the chosen
  * itself. Every round asserts no logged exception and bytecode use below the per-unit limits with
  * headroom (baby 17,500 / king 20,000, spec v1.2.6 p.18).
+ *
+ * <p>The fixture is in backstab so missing cats do not end the game. Ordinary volunteers would hunt
+ * the Team B king and can kill it, so after their first turn each volunteer sandbox has {@code
+ * BABY_HUNT_IN_BACKSTAB} turned off. Chosen/fodder already skip hunt. Hunt coverage stays in {@link
+ * BabyRatHuntEngineTest}.
  */
 public class KingFormationEngineTest {
   private static final int FIRST_VOLUNTEER = 300;
@@ -231,6 +236,9 @@ public class KingFormationEngineTest {
     }
     cheese(100);
     round(); // Volunteers take an ordinary turn before any request exists.
+    for (int i = 0; i < babies.length; i++) {
+      disableHunt(FIRST_VOLUNTEER + i);
+    }
     Field cap = robotClass(1, "ratplayer.Config").getDeclaredField("MAX_BABY_RATS");
     cap.setAccessible(true);
     cap.setInt(null, 0);
@@ -247,6 +255,13 @@ public class KingFormationEngineTest {
     assertTrue("Exactly one chosen must be born", chosen != 0);
     assertEquals(babies.length + 1, world.getTeamInfo().getNumBabyRats(Team.A));
     return chosen;
+  }
+
+  /** Host-only: this robot's {@link Config} copy must not hunt the fixture's Team B king. */
+  private void disableHunt(int id) throws Exception {
+    Field hunt = robotClass(id, "ratplayer.Config").getDeclaredField("BABY_HUNT_IN_BACKSTAB");
+    hunt.setAccessible(true);
+    hunt.setBoolean(null, false);
   }
 
   private int runUntilKing(InternalRobot leader, int limit) {
