@@ -53,6 +53,123 @@ def norm_a(raw):
     return format(float(a), "g")
 
 
+def load_config_constants(config_path):
+    """Read DEFAULT_/DEFENSIVE_/OFFENSIVE_ endpoints from Config.java."""
+    text = config_path.read_text(errors="replace")
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+    text = re.sub(r"//.*", " ", text)
+    raw = {}
+    for m in re.finditer(
+        r"static final int (\w+) = ([^;]+);",
+        text,
+    ):
+        raw[m.group(1)] = re.sub(r"\s+", "", m.group(2))
+    bools = {}
+    for m in re.finditer(
+        r"static final boolean (\w+) = (true|false);",
+        text,
+    ):
+        bools[m.group(1)] = m.group(2)
+
+    def resolve_int(expr, seen=None):
+        seen = set() if seen is None else seen
+        expr = expr.strip()
+        if re.fullmatch(r"-?\d+", expr):
+            return int(expr)
+        if "Integer.MAX_VALUE" in expr:
+            return 2147483647 - (2147483647 % 4)
+        if expr in raw and expr not in seen:
+            seen.add(expr)
+            return resolve_int(raw[expr], seen)
+        raise ValueError(f"unresolved Config int: {expr}")
+
+    needed = (
+        "DEFAULT_BACKSTAB_ROUND",
+        "DEFAULT_BABY_CAT_FLEE_HEALTH",
+        "DEFAULT_KING_CAT_FLEE_HEALTH",
+        "DEFAULT_MAX_BABY_RATS",
+        "DEFENSIVE_BACKSTAB_ROUND",
+        "OFFENSIVE_BACKSTAB_ROUND",
+        "DEFENSIVE_BABY_CAT_FLEE_HEALTH",
+        "OFFENSIVE_BABY_CAT_FLEE_HEALTH",
+        "DEFENSIVE_KING_CAT_FLEE_HEALTH",
+        "OFFENSIVE_KING_CAT_FLEE_HEALTH",
+        "DEFENSIVE_MAX_BABY_RATS",
+        "OFFENSIVE_MAX_BABY_RATS",
+    )
+    out = {name: resolve_int(raw[name]) for name in needed}
+    out["DEFAULT_BABY_HUNT_IN_BACKSTAB"] = bools.get(
+        "DEFAULT_BABY_HUNT_IN_BACKSTAB", "true"
+    )
+    return out
+
+
+def lerp_combat(defensive, offensive, a):
+    return int(round(defensive + a * (offensive - defensive)))
+
+
+def baby_cap(defensive, offensive, a):
+    if a >= 1.0:
+        return offensive
+    cap = int(round(defensive + defensive * a))
+    return int(round(cap / 4.0)) * 4
+
+
+def knobs_from_config(a_label, cfg):
+    """Same mapping as Aggression.apply. Negative a keeps DEFAULT_* mix."""
+    a = float(norm_a(a_label))
+    if a < 0:
+        return {
+            "BACKSTAB_ROUND": str(cfg["DEFAULT_BACKSTAB_ROUND"]),
+            "BABY_CAT_FLEE_HEALTH": str(cfg["DEFAULT_BABY_CAT_FLEE_HEALTH"]),
+            "KING_CAT_FLEE_HEALTH": str(cfg["DEFAULT_KING_CAT_FLEE_HEALTH"]),
+            "MAX_BABY_RATS": str(cfg["DEFAULT_MAX_BABY_RATS"]),
+            "BABY_HUNT_IN_BACKSTAB": cfg["DEFAULT_BABY_HUNT_IN_BACKSTAB"],
+        }
+    clamped = 0.0 if a < 0 else (1.0 if a > 1 else a)
+    return {
+        "BACKSTAB_ROUND": str(
+            lerp_combat(
+                cfg["DEFENSIVE_BACKSTAB_ROUND"],
+                cfg["OFFENSIVE_BACKSTAB_ROUND"],
+                clamped,
+            )
+        ),
+        "BABY_CAT_FLEE_HEALTH": str(
+            lerp_combat(
+                cfg["DEFENSIVE_BABY_CAT_FLEE_HEALTH"],
+                cfg["OFFENSIVE_BABY_CAT_FLEE_HEALTH"],
+                clamped,
+            )
+        ),
+        "KING_CAT_FLEE_HEALTH": str(
+            lerp_combat(
+                cfg["DEFENSIVE_KING_CAT_FLEE_HEALTH"],
+                cfg["OFFENSIVE_KING_CAT_FLEE_HEALTH"],
+                clamped,
+            )
+        ),
+        "MAX_BABY_RATS": str(
+            baby_cap(
+                cfg["DEFENSIVE_MAX_BABY_RATS"],
+                cfg["OFFENSIVE_MAX_BABY_RATS"],
+                clamped,
+            )
+        ),
+        "BABY_HUNT_IN_BACKSTAB": "true" if clamped >= 0.5 else "false",
+    }
+
+
+def fill_missing_knobs(knobs_by_a, grid_labels, config_path):
+    if not config_path.is_file():
+        return
+    cfg = load_config_constants(config_path)
+    for a in grid_labels:
+        key = norm_a(a)
+        if key not in knobs_by_a:
+            knobs_by_a[key] = knobs_from_config(a, cfg)
+
+
 def parse_knobs(text, knobs_by_a):
     for m in re.finditer(
         r"effective Config \(aggression=([^)]+)\):(.*?)(?=\n\[|\n== |\n> Task |\Z)",
@@ -106,6 +223,11 @@ def main(argv):
             results[(a1, a2)] = (wins[named_a], wins[named_b], games)
 
     grid_labels.sort(key=float)
+    fill_missing_knobs(
+        knobs_by_a,
+        grid_labels,
+        Path(__file__).resolve().parent.parent / "src/ratplayer/Config.java",
+    )
     n = len(grid_labels)
     cells = [[None] * n for _ in range(n)]
     for i, a1 in enumerate(grid_labels):
