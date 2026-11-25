@@ -30,7 +30,7 @@ sourceSets {
     scala.destinationDirectory.set(file("$buildDir/classes"))
   }
   test {
-    java.srcDirs = ["test"]
+    java.srcDirs = ["test", "scripts/player-overlays"]
     java.includes = ["**/*.java"]
     java.destinationDirectory.set(file("$buildDir/tests"))
     scala.srcDirs = ["test"]
@@ -282,7 +282,7 @@ task verify(type: JavaExec) {
   mainClass = 'battlecode.instrumenter.Verifier'
   classpath = sourceSets.main.runtimeClasspath
   args = [
-    project.findProperty("team") ?: "examplefuncsplayer",
+    project.findProperty("team") ?: "ratplayer_sprint2",
     project.findProperty("url") ?: sourceSets.main.output.classesDirs.getAsPath(),
   ]
 }
@@ -299,16 +299,7 @@ task downloadPyPackage(type: Exec) {
         '--force-reinstall', (project.findProperty("forceReinstallPy") ?: "false").toString()
 }
 
-def truncateString(String input, int maxLength) {
-  if (input.length() > maxLength) {
-    return input.substring(0, maxLength)
-  }
-  return input
-}
-
 def defaultClassLocation = sourceSets.main.output.classesDirs.getAsPath()
-def defaultReplayName = truncateString(project.property('teamA') + '-vs-' + project.property('teamB') + '-on-' + project.property('maps'), 80)
-def defaultReplayFile = 'matches/' + defaultReplayName + '.bc26'
 
 task runJavaLocal(type: JavaExec) {
   mainClass = 'battlecode.server.Main'
@@ -336,10 +327,8 @@ task runJavaLocal(type: JavaExec) {
     '-Dbc.game.team-b.url=' + (project.findProperty('classLocationB') ?: defaultClassLocation),
     '-Dbc.game.team-a.package=' + (project.findProperty('packageNameA') ?: project.property('teamA')),
     '-Dbc.game.team-b.package=' + (project.findProperty('packageNameB') ?: project.property('teamB')),
-    '-Dbc.game.maps=' + project.property('maps'),
     '-Dbc.server.validate-maps=' + project.property('validateMaps'),
     '-Dbc.server.alternate-order=' + project.property('alternateOrder'),
-    '-Dbc.server.save-file=' + (project.findProperty('replay') ?: defaultReplayFile),
   ]
 }
 
@@ -426,6 +415,7 @@ task listMaps {
   }
 }
 
+apply from: 'matchmaking.gradle'
 
 //////// Submitting ////////
 

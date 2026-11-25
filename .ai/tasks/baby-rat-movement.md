@@ -1,6 +1,6 @@
 # Baby Rat Movement
 
-These requirements describe what `ratplayer` does. `examplefuncsplayer` is outside this behavior and keeps its current wander.
+These requirements describe what `ratplayer` does. `ratplayer_sprint2` is outside this behavior and keeps its current wander.
 
 A baby rat whose raw cheese is at or below `Config.RAW_CHEESE_MINIMUM` (currently 0) takes the closest cheese it can currently see, or steps toward it. A baby rat whose raw cheese is above that minimum ignores further piles and carries that cheese to the allied king. The king publishes its center so a baby rat can read that location from anywhere.
 

@@ -1,12 +1,10 @@
-// Spotless 8.10.4 + google-java-format 1.36.1. Java under src/ and test/ only.
+// Spotless 8.10.4 + google-java-format 1.36.1. Java under src/, test/, and player overlays.
 
 spotless {
   // Only check Java files that differ from main.
   // ratchetFrom 'origin/main'
   java {
-    target 'src/**/*.java', 'test/**/*.java'
-    // Skip matching files.
-    // targetExclude 'src/examplefuncsplayer/**/*.java'
+    target 'src/**/*.java', 'test/**/*.java', 'scripts/player-overlays/**/*.java'
     // Allow // spotless:off / on regions in source.
     // toggleOffOn()
     googleJavaFormat('1.36.1').formatJavadoc(false)
