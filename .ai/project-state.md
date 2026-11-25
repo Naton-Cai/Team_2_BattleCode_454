@@ -92,6 +92,22 @@ dirt, a placeable cat trap, and turn-boundary recovery. `RatKingAttackEngineTest
 1.2.6: cat anchored at (9,10) lost 10 HP, king stayed at (8,8), measured 9,725 bytecodes (1,000
 headroom under 20,000). Match evidence is **not run**.
 
+## Baby Rat enemy-king hunt (implemented 2026-11-24)
+
+Requirements are the hunt-visible-enemy-kings task. In backstab, an empty-handed ordinary baby
+uses DistBug toward the nearest opposing king in its vision cone unless Chebyshev distance to that
+center is already ≤ 2. DistBug seeks with greedy and follows a sensed wall on the heading. Carrying
+above `RAW_CHEESE_MINIMUM` still walks to our king. Cheese chase and wander lose to the hunt. Cat
+flee still owns movement. Enemy babies are never a movement goal. Attack, traps, and formation
+roles are unchanged. `Config.BABY_HUNT_IN_BACKSTAB` defaults true; false keeps cheese chase and
+wander. `Config.BABY_PATH_TO_ENEMY_KING_STRATEGY` starts at DistBug.
+
+`BabyRatHuntTest` covers hunt vs wander, enemy babies, cooperation, cheese chase, hunt-off cheese
+chase, cheese delivery, nearest-king choice, bite-range stop, cat flee, and the existing in-cone
+baby bite.
+`BabyRatHuntEngineTest` ran in engine 1.2.6: path (8,9) then (8,10), king lost 10 HP, measured
+3,443 bytecodes with DistBug (1,000 headroom under 17,500). Match evidence is **not run**.
+
 ## Baby Rat attacks (implemented 2026-10-18)
 
 `BabyRat.run` picks up cheese, checks sensed nearby robots for a legal bite, then moves. It always

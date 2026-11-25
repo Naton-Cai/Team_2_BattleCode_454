@@ -85,7 +85,7 @@ jobs:
           ./gradlew run -Paggression="${AGGRESSION}" --console=plain | tee match-run.log
 
       - name: Upload match replays
-        if: always()
+        if: always() && steps.match.outcome != 'skipped'
         uses: actions/upload-artifact@v7
         with:
           name: match-replays
@@ -95,7 +95,7 @@ jobs:
             match-run.log
 
       - name: Comment match report on PR
-        if: github.event_name == 'pull_request' && always()
+        if: github.event_name == 'pull_request' && always() && steps.match.outcome != 'skipped'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AGGRESSION: ${{ steps.match.outputs.aggression }}
