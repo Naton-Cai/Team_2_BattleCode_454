@@ -36,6 +36,7 @@ public class ConfigAggressionTest {
     assertEquals(Config.DEFENSIVE_BABY_CAT_FLEE_HEALTH, Config.BABY_CAT_FLEE_HEALTH);
     assertEquals(Config.DEFENSIVE_KING_CAT_FLEE_HEALTH, Config.KING_CAT_FLEE_HEALTH);
     assertEquals(Config.DEFENSIVE_MAX_BABY_RATS, Config.MAX_BABY_RATS);
+    assertEquals(false, Config.BABY_HUNT_IN_BACKSTAB);
   }
 
   /**
@@ -51,13 +52,14 @@ public class ConfigAggressionTest {
     assertEquals(Config.OFFENSIVE_BABY_CAT_FLEE_HEALTH, Config.BABY_CAT_FLEE_HEALTH);
     assertEquals(Config.OFFENSIVE_KING_CAT_FLEE_HEALTH, Config.KING_CAT_FLEE_HEALTH);
     assertEquals(Config.OFFENSIVE_MAX_BABY_RATS, Config.MAX_BABY_RATS);
+    assertEquals(true, Config.BABY_HUNT_IN_BACKSTAB);
   }
 
   /**
    * Aggression 0.5 is the midpoint of the combat endpoints, not today's mixed DEFAULT_* values.
    *
    * <p>Arrange: defaults after reset. Act: apply 0.5. Assert: backstab 1001, baby 50, king 300,
-   * max babies 48.
+   * max babies 48, hunt on.
    */
   @Test
   public void aggressionHalfUsesMidpoints() {
@@ -67,6 +69,19 @@ public class ConfigAggressionTest {
     assertEquals(50, Config.BABY_CAT_FLEE_HEALTH);
     assertEquals(300, Config.KING_CAT_FLEE_HEALTH);
     assertEquals(48, Config.MAX_BABY_RATS);
+    assertEquals(true, Config.BABY_HUNT_IN_BACKSTAB);
+  }
+
+  /**
+   * Hunt is off below 0.5 on the combat lerp, including the 0.25 grid point.
+   *
+   * <p>Arrange: defaults after reset. Act: apply 0.25. Assert: hunt false.
+   */
+  @Test
+  public void aggressionBelowHalfTurnsHuntOff() {
+    Aggression.apply(0.25f);
+
+    assertEquals(false, Config.BABY_HUNT_IN_BACKSTAB);
   }
 
   /**
@@ -85,5 +100,6 @@ public class ConfigAggressionTest {
     assertEquals(Config.DEFAULT_BABY_CAT_FLEE_HEALTH, Config.BABY_CAT_FLEE_HEALTH);
     assertEquals(Config.DEFAULT_KING_CAT_FLEE_HEALTH, Config.KING_CAT_FLEE_HEALTH);
     assertEquals(Config.DEFAULT_MAX_BABY_RATS, Config.MAX_BABY_RATS);
+    assertEquals(Config.DEFAULT_BABY_HUNT_IN_BACKSTAB, Config.BABY_HUNT_IN_BACKSTAB);
   }
 }

@@ -1,10 +1,8 @@
 #!/bin/bash
 # 43-map AGGRESSION self-play on Coeus: one unique pair per array task.
 # Isolated work/ copies so 21 Gradle runs do not share build/.
-# Submit from the repo root:
-#   mkdir -p matches/pairs
-#   ARRAY_ID=$(sbatch --parsable scripts/coeus-sweep-full.sbatch)
-#   sbatch --dependency=afterok:${ARRAY_ID} scripts/coeus-sweep-merge.sbatch
+# Submit from the repo root on Coeus:
+#   scripts/coeus-submit-sweep.sh
 # Does not write winners into Config.
 #
 #SBATCH --job-name=bc26-sweep
@@ -70,4 +68,18 @@ export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Xmx12g"
 printf '\norg.gradle.vfs.watch=false\norg.gradle.daemon=false\n' >> gradle.properties
 bash scripts/sweep-aggression.sh --full-pool
 
-cp matches/sweep-*/a=*-vs-*.log "$SUBMIT/matches/pairs/"
+submit_pairs="$SUBMIT/matches/pairs"
+mkdir -p "$submit_pairs"
+shopt -s nullglob
+logs=(matches/sweep-*/a=*-vs-*.log)
+if ((${#logs[@]} == 0)); then
+  echo "No pair logs in $JOBDIR" >&2
+  exit 1
+fi
+for log in "${logs[@]}"; do
+  cp "$log" "$submit_pairs/"
+  pair=$(basename "$log" .log)
+  for replay in matches/[0-9]*-*/*.bc26; do
+    cp "$replay" "$submit_pairs/${pair}-$(basename "$replay")"
+  done
+done

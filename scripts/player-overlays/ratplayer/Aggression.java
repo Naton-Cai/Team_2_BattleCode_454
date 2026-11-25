@@ -10,7 +10,8 @@ final class Aggression {
   /**
    * 0 defensive, 1 offensive. Negative keeps the DEFAULT_* mix ({@link
    * Config#DEFAULT_BACKSTAB_ROUND}, {@link Config#DEFAULT_BABY_CAT_FLEE_HEALTH}, {@link
-   * Config#DEFAULT_KING_CAT_FLEE_HEALTH}, {@link Config#DEFAULT_MAX_BABY_RATS}).
+   * Config#DEFAULT_KING_CAT_FLEE_HEALTH}, {@link Config#DEFAULT_MAX_BABY_RATS}, {@link
+   * Config#DEFAULT_BABY_HUNT_IN_BACKSTAB}).
    */
   static final float AGGRESSION = -1f;
 
@@ -33,6 +34,7 @@ final class Aggression {
         lerpCombat(
             Config.DEFENSIVE_KING_CAT_FLEE_HEALTH, Config.OFFENSIVE_KING_CAT_FLEE_HEALTH, clamped);
     Config.MAX_BABY_RATS = babyCap(clamped);
+    Config.BABY_HUNT_IN_BACKSTAB = clamped >= 0.5f;
   }
 
   private static int lerpCombat(int defensive, int offensive, float a) {

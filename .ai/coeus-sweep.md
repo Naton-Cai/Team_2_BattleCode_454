@@ -66,29 +66,12 @@ git pull
 Fast-forwards to whatever is on `origin/feature/self-play-aggression`. Needed after you commit/push sbatch or sweep-script fixes from the laptop. If this fails with `Permission denied`, log out and come back with `ssh-add` + `ssh -A`.
 
 ```bash
-scancel -u $USER
+scripts/coeus-submit-sweep.sh
 ```
 
-Cancels every Slurm job under your account (running array tasks and a pending merge). Skip this if you intend to leave a live sweep alone. Run it before a resubmit so you do not stack a second 21-task array on the old one.
+Cancels your Slurm jobs, deletes and recreates `matches/pairs`, submits the 21-task array (`#SBATCH --array=0-20`), and queues merge with `afterok` on that array id. Prints `ARRAY_ID=` (example: `6558251`) then `squeue`. Each array task loads Java 21 (`openjdk/21.0.0_35-none-none`), rsyncs the tree into `work/<task>`, isolates `GRADLE_USER_HOME`, disables the Gradle daemon and file watching, and runs one `PAIR_INDEX` on the full 43-map pool. The grid is `{-1, 0, 0.25, 0.5, 0.75, 1}`; `-1` is the live DEFAULT mix. Merge writes `matches/pairs/summary.txt`. If any array task fails, merge is not satisfied (`DependencyNeverSatisfied`) and you run this script again after the array is fixed.
 
-```bash
-mkdir -p matches/pairs
-```
-
-Creates the directory array tasks copy pair logs into. Harmless if it already exists.
-
-```bash
-ARRAY_ID=$(sbatch --parsable scripts/coeus-sweep-full.sbatch)
-echo "$ARRAY_ID"
-```
-
-Submits the 21-task array (`#SBATCH --array=0-20`). `--parsable` prints only the job id so it can be stored. `echo` shows that id (example: `6558251`). Each task loads Java 21 (`openjdk/21.0.0_35-none-none`), rsyncs the tree into `work/<task>`, isolates `GRADLE_USER_HOME`, disables the Gradle daemon and file watching, and runs one `PAIR_INDEX` on the full 43-map pool. The grid is `{-1, 0, 0.25, 0.5, 0.75, 1}`; `-1` is the live DEFAULT mix.
-
-```bash
-sbatch --dependency=afterok:${ARRAY_ID} scripts/coeus-sweep-merge.sbatch
-```
-
-Queues the merge job so it starts only after **every** array task exits 0. It runs `scripts/summarize-aggression-sweep.py` on `matches/pairs` and writes `matches/pairs/summary.txt`. If any array task fails, this job is not satisfied (`DependencyNeverSatisfied`) and you resubmit the array first.
+Do not run this if you intend to leave a live sweep alone; it `scancel`s every job under your account.
 
 You can disconnect. The jobs keep running on compute nodes.
 
@@ -116,7 +99,7 @@ Stdout for array task 0. A healthy run shows Gradle tasks, then lines like:
 
 ```text
 [server] -------------------- Match Starting --------------------
-[server] ratplayer1 vs. ratplayer2 on arrows
+[server] ratplayer_a0 vs. ratplayer_a1 on arrows
 ```
 
 `FAILURE: Build failed` here means Gradle died (wrong Java, NFS file watching, etc.). `head` of the matching `.err` is the next place to look.
@@ -131,13 +114,13 @@ Pair logs (`a=-1-vs--1.log`, `a=0-vs-0.log`, …) appear as tasks finish, not at
 cat matches/pairs/summary.txt
 ```
 
-Win matrix after merge. Copy it home later:
+Win matrix after merge. Copy the pair logs home from the laptop (VPN on):
 
 ```bash
-scp -i ~/.ssh/id_ed25519_psu jorgep@login1.coeus.rc.pdx.edu:~/Team_2_BattleCode_454/matches/pairs/summary.txt .
+scripts/coeus-fetch-pairs.sh
 ```
 
-Runs on the laptop. Uses the cluster key to copy `summary.txt` into the current local directory.
+Uses the cluster key `~/.ssh/id_ed25519_psu` and rsyncs `~/Team_2_BattleCode_454/matches/pairs/` (logs, `summary.txt`, and pair-prefixed `.bc26` files the array copies after each task) plus leftover `work/**/*.bc26` into a timestamped `matches-coeus-pairs/` folder, then prints `summary.txt`. Pass a destination to reuse a path: `scripts/coeus-fetch-pairs.sh matches-coeus-pairs/latest`. Fetch the current run before the next `sbatch`; that job `rm -rf`s each `work/<task>` on start.
 
 ## 5. Warning: WebSocket `BindException` is noise
 

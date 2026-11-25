@@ -10,8 +10,22 @@ knob_names = (
     "BABY_CAT_FLEE_HEALTH",
     "KING_CAT_FLEE_HEALTH",
     "MAX_BABY_RATS",
+    "BABY_HUNT_IN_BACKSTAB",
 )
 pair_re = re.compile(r"^a=(.+)-vs-(.+)\.log$")
+
+
+def pkg(raw):
+    """Match scripts/sweep-aggression.sh aggression_pkg: -1 -> ratplayer_am1."""
+    token = norm_a(raw).replace("-", "m").replace(".", "p")
+    return f"ratplayer_a{token}"
+
+
+def teams_for_pair(a1, a2, text):
+    named_a, named_b = pkg(a1), pkg(a2)
+    if named_a in text and (named_a == named_b or named_b in text):
+        return named_a, named_b
+    return "ratplayer1", "ratplayer2"
 
 
 def parse_wins(text, team_a, team_b):
@@ -82,8 +96,14 @@ def main(argv):
                 grid_labels.append(label)
         text = path.read_text(errors="replace")
         parse_knobs(text, knobs_by_a)
-        wins, games = parse_wins(text, team_a, team_b)
-        results[(a1, a2)] = (wins[team_a], wins[team_b], games)
+        named_a, named_b = teams_for_pair(a1, a2, text)
+        if a1 == a2:
+            _, games = parse_wins(text, named_a, named_b)
+            half = games // 2 if games else 0
+            results[(a1, a2)] = (half, half, games)
+        else:
+            wins, games = parse_wins(text, named_a, named_b)
+            results[(a1, a2)] = (wins[named_a], wins[named_b], games)
 
     grid_labels.sort(key=float)
     n = len(grid_labels)
@@ -124,7 +144,7 @@ def main(argv):
 
     lines.append("")
     lines.append("== Knobs ==")
-    knob_headers = ("a", "backstab", "baby_flee", "king_flee", "max_babies")
+    knob_headers = ("a", "backstab", "baby_flee", "king_flee", "max_babies", "hunt")
     knob_rows = []
     for a in grid_labels:
         knobs = knobs_by_a.get(norm_a(a), {})
@@ -135,6 +155,7 @@ def main(argv):
                 knobs.get("BABY_CAT_FLEE_HEALTH", "-"),
                 knobs.get("KING_CAT_FLEE_HEALTH", "-"),
                 knobs.get("MAX_BABY_RATS", "-"),
+                knobs.get("BABY_HUNT_IN_BACKSTAB", "-"),
             ]
         )
     widths = [len(h) for h in knob_headers]

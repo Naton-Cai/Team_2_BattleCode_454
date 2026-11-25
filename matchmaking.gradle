@@ -75,7 +75,7 @@ def parseConfigAssignments = { File cfg ->
       .replaceAll(/\/\/.*/, ' ')
       .replaceAll(/\s+/, ' ')
   def raw = [:]
-  def field = ~/(?s)static(?: final)? (?:int|float|PathingStrategy|CheeseTargetStrategy|CatResponseStrategy|BabyAction\[\]) (\w+) = ([^;]+);/
+  def field = ~/(?s)static(?: final)? (?:int|float|boolean|PathingStrategy|CheeseTargetStrategy|CatResponseStrategy|BabyAction\[\]) (\w+) = ([^;]+);/
   def matcher = field.matcher(body)
   while (matcher.find()) {
     raw[matcher.group(1)] = matcher.group(2).replaceAll(/\s+/, ' ').trim()
@@ -88,6 +88,9 @@ def resolveAssignment = { Map raw, String start ->
   walk = { String expr, Set seen ->
     if (expr ==~ /-?\d+/) {
       return expr as int
+    }
+    if (expr == 'true' || expr == 'false') {
+      return expr == 'true'
     }
     if (raw.containsKey(expr) && !seen.contains(expr)) {
       seen.add(expr)
@@ -125,6 +128,7 @@ def effectiveConfigValues = { File cfg, float aggression ->
       int cap = Math.round(defensiveCap + defensiveCap * a)
       resolved.MAX_BABY_RATS = Math.round(cap / 4f) * 4
     }
+    resolved.BABY_HUNT_IN_BACKSTAB = a >= 0.5f
   }
   return resolved
 }
@@ -145,7 +149,8 @@ def logEffectiveConfig = { float aggression, File cfg ->
   effectiveConfigPrinted[0] = true
   def values = effectiveConfigValues(cfg, aggression)
   logger.quiet("ratplayer2 effective Config (aggression=${aggression}):")
-  ['BACKSTAB_ROUND', 'BABY_CAT_FLEE_HEALTH', 'KING_CAT_FLEE_HEALTH', 'MAX_BABY_RATS'].each { name ->
+  ['BACKSTAB_ROUND', 'BABY_CAT_FLEE_HEALTH', 'KING_CAT_FLEE_HEALTH', 'MAX_BABY_RATS',
+      'BABY_HUNT_IN_BACKSTAB'].each { name ->
     logger.quiet(String.format('  %-32s %s', name, values[name]))
   }
 }
@@ -271,7 +276,7 @@ def sweepMapsArg = {
 }
 
 task sweepAggression(type: Exec) {
-  description 'True self-play AGGRESSION matrix: ratplayer1 vs ratplayer2 unique pairs including -1 (live DEFAULT). Default 3 maps; -PcompareMaps=full for the full pool. Does not write Config.'
+  description 'True self-play AGGRESSION matrix: ratplayer_a* snapshots unique pairs including -1 (live DEFAULT). Default 3 maps; -PcompareMaps=full for the full pool. Does not write Config.'
   group 'battlecode'
   commandLine(['bash', "${projectDir}/scripts/sweep-aggression.sh"] + sweepMapsArg())
   doFirst {

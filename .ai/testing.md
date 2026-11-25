@@ -100,7 +100,7 @@ mkdir -p matches
 
 The default replay name is `matches/{timestamp}-{git}-{teamA}-vs-{teamB}-on-{maps}.bc26`, so reruns do not overwrite. Pass `-Preplay=` to pick a name. `comparePlayers` writes a new `matches/{timestamp}-{git}/` directory per run. Use the team's candidate and opponent package names for feature evaluation. A self-match is a smoke check, not a strategy comparison. Inspect the runner's completion/result, bot errors, and the saved replay before recording success. [S1, P2]
 
-`sweepAggression` copies live `ratplayer` to `ratplayer1` and `ratplayer2`, then plays unique `AGGRESSION` pairs `i<=j` on `{-1, 0, 0.25, 0.5, 0.75, 1}` (21 pairings). `-1` keeps the live `DEFAULT_*` mix; `0`–`1` are the combat lerp. First pass uses `DefaultSmall,DefaultMedium,tiny`. It prints a win matrix plus knobs and does not write winners into `Config`.
+`sweepAggression` copies live `ratplayer` to one snapshot per grid value named `ratplayer_a<token>` (`-1` → `ratplayer_am1`, `0.5` → `ratplayer_a0p5`) so the client shows the aggression instead of `ratplayer1` vs `ratplayer2`. It then plays unique `AGGRESSION` pairs `i<=j` on `{-1, 0, 0.25, 0.5, 0.75, 1}` (21 pairings). `-1` keeps the live `DEFAULT_*` mix; `0`–`1` are the combat lerp, with `BABY_HUNT_IN_BACKSTAB` true at `a >= 0.5` and false below. First pass uses `DefaultSmall,DefaultMedium,tiny`. It prints a win matrix plus knobs and does not write winners into `Config`.
 
 ```bash
 ./gradlew sweepAggression

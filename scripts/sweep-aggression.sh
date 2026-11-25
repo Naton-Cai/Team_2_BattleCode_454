@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# True self-play on the AGGRESSION lerp: ratplayer1(a) vs ratplayer2(a').
-# Copies live ratplayer to both snapshots, then unique pairs i<=j (21 on the
-# default grid, including -1 = live DEFAULT mix). comparePlayers already plays
-# both sides, so (a, a') is not rerun as (a', a). Does not write winners into Config.
+# True self-play on the AGGRESSION lerp. Copies live ratplayer to one snapshot
+# per grid value named ratplayer_a<token> so the client shows the aggression
+# (e.g. ratplayer_a0p5 vs ratplayer_a1). Unique pairs i<=j (21 on the default
+# grid, including -1 = live DEFAULT mix). comparePlayers already plays both
+# sides, so (a, a') is not rerun as (a', a). Does not write winners into Config.
 #
 # Usage:
 #   scripts/sweep-aggression.sh
@@ -11,7 +12,7 @@
 #
 # Optional env:
 #   AGGRESSIONS=-1,0,0.25,0.5,0.75,1
-#   COPY_SOURCE=ratplayer TEAM_A=ratplayer1 TEAM_B=ratplayer2
+#   COPY_SOURCE=ratplayer
 #   PAIR_INDEX=0   # one unique pair (0-20 on the default grid); skip the matrix
 #
 # First pass (default): DefaultSmall,DefaultMedium,tiny  (~21x3x2 games)
@@ -22,8 +23,6 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 COPY_SOURCE=${COPY_SOURCE:-ratplayer}
-TEAM_A=${TEAM_A:-ratplayer1}
-TEAM_B=${TEAM_B:-ratplayer2}
 AGGRESSIONS=${AGGRESSIONS:--1,0,0.25,0.5,0.75,1}
 DEFAULT_MAPS="DefaultSmall,DefaultMedium,tiny"
 
@@ -56,6 +55,14 @@ for a in "${RAW_GRID[@]}"; do
   grid+=("$a")
 done
 
+# Java package: -1 -> ratplayer_am1, 0.5 -> ratplayer_a0p5.
+aggression_pkg() {
+  local token=$1
+  token=${token//-/m}
+  token=${token//./p}
+  echo "ratplayer_a${token}"
+}
+
 copy_one() {
   local dest=$1
   local args=(copyPlayer "-PcopySource=${COPY_SOURCE}" "-PcopyDest=${dest}" --console=plain)
@@ -79,27 +86,43 @@ if [[ -n "${PAIR_INDEX:-}" ]]; then
   pairs=("${pairs[PAIR_INDEX]}")
 fi
 
-copy_one "$TEAM_A"
-copy_one "$TEAM_B"
+needed=()
+for pair in "${pairs[@]}"; do
+  read -r a1 a2 <<<"$pair"
+  needed+=("$a1")
+  needed+=("$a2")
+done
+unique_a=()
+seen_a=" "
+for a in "${needed[@]}"; do
+  case "$seen_a" in
+    *" $a "*) continue ;;
+  esac
+  seen_a+="$a "
+  unique_a+=("$a")
+done
+
+for a in "${unique_a[@]}"; do
+  dest=$(aggression_pkg "$a")
+  copy_one "$dest"
+  set_args=(setSnapshotAggression "-PteamB=${dest}" "-Paggression=${a}" --console=plain)
+  echo "+ ./gradlew ${set_args[*]}" | tee -a "$COMBINED"
+  ./gradlew "${set_args[@]}" | tee -a "$COMBINED"
+done
 
 for pair in "${pairs[@]}"; do
   read -r a1 a2 <<<"$pair"
+  team_a=$(aggression_pkg "$a1")
+  team_b=$(aggression_pkg "$a2")
   point_log="${SWEEP_DIR}/a=${a1}-vs-${a2}.log"
   echo | tee -a "$COMBINED"
   echo "== aggression ${a1} vs ${a2} ==" | tee -a "$COMBINED" "$point_log"
 
-  set_a1=(setSnapshotAggression "-PteamB=${TEAM_A}" "-Paggression=${a1}" --console=plain)
-  echo "+ ./gradlew ${set_a1[*]}" | tee -a "$COMBINED" "$point_log"
-  ./gradlew "${set_a1[@]}" | tee -a "$COMBINED" "$point_log"
-
   compare_args=(
-    setSnapshotAggression
     classes
     comparePlayers
-    "-Paggression=${a2}"
-    "-PteamB=${TEAM_B}"
-    "-PcompareA=${TEAM_A}"
-    "-PcompareB=${TEAM_B}"
+    "-PcompareA=${team_a}"
+    "-PcompareB=${team_b}"
     --console=plain
   )
   if [[ "$FULL_POOL" -eq 0 ]]; then
@@ -114,4 +137,4 @@ if [[ -n "${PAIR_INDEX:-}" ]]; then
   exit 0
 fi
 
-python3 scripts/summarize-aggression-sweep.py "$SWEEP_DIR" "$TEAM_A" "$TEAM_B" "$SUMMARY"
+python3 scripts/summarize-aggression-sweep.py "$SWEEP_DIR" ratplayer1 ratplayer2 "$SUMMARY"

@@ -3,6 +3,7 @@
 ###### BATTLECODE ######
 
 **/matches
+matches-coeus-pairs/
 **/client
 
 ###### JAVA ######
@@ -208,6 +209,7 @@ feature.md
 # Generated player snapshots from scripts/copy-player.sh
 src/ratplayer1/
 src/ratplayer2/
+src/ratplayer_a*/
 
 # Isolated Coeus array worktrees
 work/
