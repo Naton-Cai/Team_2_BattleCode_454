@@ -106,8 +106,9 @@ for a in "${unique_a[@]}"; do
   dest=$(aggression_pkg "$a")
   copy_one "$dest"
   set_args=(setSnapshotAggression "-PteamB=${dest}" "-Paggression=${a}" --console=plain)
+  knob_log="${SWEEP_DIR}/knobs-a=${a}.txt"
   echo "+ ./gradlew ${set_args[*]}" | tee -a "$COMBINED"
-  ./gradlew "${set_args[@]}" | tee -a "$COMBINED"
+  ./gradlew "${set_args[@]}" | tee -a "$COMBINED" >"$knob_log"
 done
 
 for pair in "${pairs[@]}"; do
@@ -115,8 +116,20 @@ for pair in "${pairs[@]}"; do
   team_a=$(aggression_pkg "$a1")
   team_b=$(aggression_pkg "$a2")
   point_log="${SWEEP_DIR}/a=${a1}-vs-${a2}.log"
-  echo | tee -a "$COMBINED"
-  echo "== aggression ${a1} vs ${a2} ==" | tee -a "$COMBINED" "$point_log"
+  knob_a="${SWEEP_DIR}/knobs-a=${a1}.txt"
+  knob_b="${SWEEP_DIR}/knobs-a=${a2}.txt"
+  if [[ ! -f "$knob_a" || ! -f "$knob_b" ]]; then
+    echo "Missing knob dump for pair ${a1} vs ${a2}" >&2
+    exit 1
+  fi
+  {
+    echo
+    echo "== aggression ${a1} vs ${a2} =="
+    cat "$knob_a"
+    if [[ "$a1" != "$a2" ]]; then
+      cat "$knob_b"
+    fi
+  } | tee -a "$COMBINED" "$point_log"
 
   compare_args=(
     classes
